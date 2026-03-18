@@ -66,7 +66,7 @@ joystick.on("data", (data) => {
     }
 
     if (data[3]) 
-        mover1.set({ ColorWheel: Math.floor(Math.log(data[3]) / Math.log(2)) * 8 });
+        mover1.set({ ColorWheel: Math.floor(Math.log2(data[3])) * 8 });
 
     dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * data[0] - 127)) / SENSITIVITY;
     dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * data[1] - 127)) / SENSITIVITY;
