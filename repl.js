@@ -8,7 +8,7 @@ const rl = readline.createInterface({
 });
 
 const channel = await new Promise(res => rl.question("Enter channel: ", res));
-const mov = new mover.MyMover(Number.isNaN(Number(channel)) || channel.trim().length === 0 ? 1 : Number(channel), true);
+const mov = new mover.Mover(Number.isNaN(Number(channel)) || channel.trim().length === 0 ? 1 : Number(channel), true);
 
 console.log("Created mover on channel", Number.isNaN(Number(channel)) || channel.trim().length === 0 ? 1 : Number(channel));
 
