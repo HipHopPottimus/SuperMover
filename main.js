@@ -7,6 +7,8 @@ const DEADZONE = 10;
 const SENSITIVITY = 10;
 const UPDATE_INTERVAL = 30; // ms
 const NON_LINEAR_EXPONENT = 3;
+const INVERT_X = false;
+const INVERT_Y = false;
 
 function getJoystick(vendorId, productId) {
     let device = usb.findByIds(vendorId, productId);
@@ -43,8 +45,8 @@ function nonLinearMapping(value) {
 }
 
 joystick.on("data", (data) => {
-    dX = nonLinearMapping(applyDeadzone(127 - data[0])) / SENSITIVITY;
-    dY = nonLinearMapping(applyDeadzone(127 - data[1])) / SENSITIVITY;
+    dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * data[0] - 127)) / SENSITIVITY;
+    dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * data[1] - 127)) / SENSITIVITY;
     // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
 });
 
