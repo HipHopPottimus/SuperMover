@@ -4,7 +4,7 @@ import Mover from "./mover.js";
 const mover1 = new Mover.MyMover(1, process.env.debug === "true");
 
 const DEADZONE = 10;
-const SENSITIVITY = 10;
+const SENSITIVITY = 3;
 const UPDATE_INTERVAL = 30; // ms
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
@@ -68,17 +68,18 @@ joystick.on("data", (data) => {
     if (data[3]) 
         mover1.set({ ColorWheel: Math.floor(Math.log2(data[3])) * 8 });
 
-    dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * data[0] - 127)) / SENSITIVITY;
-    dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * data[1] - 127)) / SENSITIVITY;
+    dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * (data[0] - 127))) * SENSITIVITY;
+    dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * (data[1] - 127))) * SENSITIVITY;
 
     // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
 });
 
 setInterval(() => {
-    x += dX;
-    y += dY;
+    x += dX / UPDATE_INTERVAL;
+    y += dY / UPDATE_INTERVAL;
     x = clamp(x, 0, 255);
     y = clamp(y, 0, 255);
+    // console.log(x, y);
     mover1.set({
         Pan: x,
         Tilt: y,
