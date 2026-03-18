@@ -1,7 +1,7 @@
 import usb from "usb";
-import dmx from "./dmx";
+import Mover from "./mover.js";
 
-dmx.init();
+const mover1 = new Mover.MyMover(1);
 
 const DEADZONE = 1, SENSITIVITY = 10;
 
@@ -30,6 +30,8 @@ let joystick = getJoystick(0x046d, 0xc214);
 let dX = 0, dY = 0, x = 0, y = 0;
 
 joystick.on("data", (data) => {
+    // TODO error when this is centred at 127, returns ~25.5? (255 - (127 - 127)) / 10 = (255 - 0 / 10) = 25.5)
+    // Not sure if this is intended behaviour
     dX = (255 - (data[0] - 127)) / SENSITIVITY;
     dY = (255 - (data[1] - 127)) / SENSITIVITY;
 });
@@ -39,9 +41,9 @@ setInterval(() => {
     y += dY;
     x = clamp(x, 0, 255);
     y = clamp(y, 0, 255);
-    dmx.setChannels({
-        [dmx.CHANNELS.Pan]: x,
-        [dmx.CHANNELS.Tilt]: y
+    mover1.set({
+        Pan: x,
+        Tilt: y,
     });
 }, 100);
 
