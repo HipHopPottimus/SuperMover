@@ -90,7 +90,7 @@
 
 import getDmx from "./dmx.js";
 
-export class MyMover {
+export class Mover {
     /** @type {number} Start channel */
     channel;
 
@@ -259,7 +259,7 @@ export const SHUTTER = {
 }
 
 export default {
-    MyMover,
+    Mover,
     COLORS,
     GOBO,
     GOBO_ROTATION,
