@@ -46,6 +46,11 @@ function nonLinearMapping(value) {
 
 joystick.on("data", (data) => {
     const throttle = 255 - data[2];
+
+    mover1.set({
+        Dimmer: throttle,
+    });
+
     const buttons = {
         1: data[3] & 0x01,
         2: (data[3] >> 1) & 0x01,
@@ -60,12 +65,11 @@ joystick.on("data", (data) => {
         11: (data[4] >> 2) & 0x01,
     }
 
+    if (data[3]) 
+        mover1.set({ ColorWheel: Math.floor(Math.log(data[3]) / Math.log(2)) * 8 });
+
     dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * data[0] - 127)) / SENSITIVITY;
     dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * data[1] - 127)) / SENSITIVITY;
-
-    mover1.set({
-        Dimmer: throttle,
-    })
 
     // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
 });
