@@ -4,7 +4,7 @@ import Mover from "./mover.js";
 const mover1 = new Mover.MyMover(1, process.env.debug === "true");
 
 const DEADZONE = 10;
-const SENSITIVITY = 3;
+const SENSITIVITY = 1 / 10;
 const UPDATE_INTERVAL = 30; // ms
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
@@ -61,8 +61,8 @@ joystick.on("data", (data) => {
 });
 
 setInterval(() => {
-    x += dX / UPDATE_INTERVAL;
-    y += dY / UPDATE_INTERVAL;
+    x += dX * UPDATE_INTERVAL;
+    y += dY * UPDATE_INTERVAL;
     x = clamp(x, 0, 255);
     y = clamp(y, 0, 255);
     // console.log(x, y);
