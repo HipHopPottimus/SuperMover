@@ -162,6 +162,7 @@ export class MyMover {
      * @returns {void}
      */
     set(vals) {
+        // process.stdout.write(`\r\x1b[0;0H\x1b[2J${Object.entries(vals).map(([k, v]) => `${k}: ${v}`).join("\n")}`);
         vals = Object.fromEntries(Object.entries(vals).map(([k, v]) => [this.CHANNELS[k], v]));
         getDmx().setChannels(vals);
     }
