@@ -1,7 +1,7 @@
 import usb from "usb";
 import Mover from "./mover.js";
 
-const mover1 = new Mover.MyMover(1, process.env.debug === "true");
+const mover1 = new Mover.Mover(1, process.env.debug === "true");
 
 const DEADZONE = 10;
 const SENSITIVITY = 1 / 10;
