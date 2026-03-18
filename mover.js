@@ -198,7 +198,10 @@ export const COLORS = {
     Red: 32,
     Green: 40,
     Magenta: 48,
-    Yellow: 56
+    Yellow: 56,
+    ColorIndexing: function (index) { return 64 + index; },
+    ColorCycle: function (speed) { return 190 + Math.round(31 * Math.max(Math.min(1, speed), 0)); },
+    ReverseColorCycle: function (speed) { return 222 + Math.round(33 * Math.max(Math.min(1, speed), 0)); }
 }
 
 export const GOBO = {
