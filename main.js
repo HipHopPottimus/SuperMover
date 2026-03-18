@@ -45,8 +45,24 @@ function nonLinearMapping(value) {
 }
 
 joystick.on("data", (data) => {
+    const throttle = data[2] / 255; // May want to inverse as 0 is up (towards joystick) and 255 is down (away from joystick)
+    const buttons = {
+        1: data[3] & 0x01,
+        2: (data[3] >> 1) & 0x01,
+        3: (data[3] >> 2) & 0x01,
+        4: (data[3] >> 3) & 0x01,
+        5: (data[3] >> 4) & 0x01,
+        6: (data[3] >> 5) & 0x01,
+        7: (data[3] >> 6) & 0x01,
+        8: (data[3] >> 7) & 0x01,
+        9: data[4] & 0x01,
+        10: (data[4] >> 1) & 0x01,
+        11: (data[4] >> 2) & 0x01,
+    }
+
     dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * data[0] - 127)) / SENSITIVITY;
     dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * data[1] - 127)) / SENSITIVITY;
+
     // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
 });
 
