@@ -3,7 +3,7 @@ import Mover from "./mover.js";
 
 const mover1 = new Mover.MyMover(1);
 
-const DEADZONE = 1, SENSITIVITY = 10;
+const DEADZONE = 10, SENSITIVITY = 10;
 
 function getJoystick(vendorId, productId) {
     let device = usb.findByIds(vendorId, productId);
@@ -29,11 +29,15 @@ let joystick = getJoystick(0x046d, 0xc214);
 
 let dX = 0, dY = 0, x = 0, y = 0;
 
+function applyDeadzone(value) {
+    if (Math.abs(value) < DEADZONE) return 0;
+    return value;
+}
+
 joystick.on("data", (data) => {
-    // TODO error when this is centred at 127, returns ~25.5? (255 - (127 - 127)) / 10 = (255 - 0 / 10) = 25.5)
-    // Not sure if this is intended behaviour
-    dX = (255 - (data[0] - 127)) / SENSITIVITY;
-    dY = (255 - (data[1] - 127)) / SENSITIVITY;
+    dX = applyDeadzone(127 - data[0]) / SENSITIVITY;
+    dY = applyDeadzone(127 - data[1]) / SENSITIVITY;
+    // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
 });
 
 setInterval(() => {
