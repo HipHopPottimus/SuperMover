@@ -88,7 +88,7 @@
  * 15: Zoom narrow to wide
  */
 
-import { getDmx } from "./dmx.js";
+import getDmx from "./dmx.js";
 
 export class MyMover {
     /** @type {number} Start channel */
@@ -175,7 +175,7 @@ export class MyMover {
     }
 
     reset() {
-        getDmx().set({
+        this.set({
             Shutter: SHUTTER.Open,
             ColorWheel: COLORS.White,
             GoboWheel: GOBO.Open,
