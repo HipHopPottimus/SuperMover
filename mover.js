@@ -94,8 +94,12 @@ export class MyMover {
     /** @type {number} Start channel */
     channel;
 
-    constructor(channel = 1) {
+    debug = false;
+
+    constructor(channel = 1, debug = false) {
         this.channel = channel;
+        this.debug = debug;
+
         this.reset();
     }
 
@@ -173,6 +177,9 @@ export class MyMover {
      */
     setChannels(channels) {
         // console.log(channels);
+        if (this.debug) {
+            console.log(channels.map(([k, v]) => `${k}: ${v}`).join("\n"));
+        }
         getDmx().setChannels(channels);
     }
 
