@@ -1,9 +1,9 @@
 import usb from "usb";
-import { EnttecOpenDMXUSBDevice as DMXDevice } from "enttec-open-dmx-usb";
+import dmx from "./dmx";
+
+dmx.init();
 
 const DEADZONE = 1, SENSITIVITY = 10;
-
-let dmxDevice = new DMXDevice(await DMXDevice.getFirstAvailableDevice());
 
 function getJoystick(vendorId, productId) {
     let device = usb.findByIds(vendorId, productId);
@@ -11,14 +11,14 @@ function getJoystick(vendorId, productId) {
 
     device.open();
 
-    if(!device.interfaces?.[0]) throw new Error("No interfaces on joystick!");
+    if (!device.interfaces?.[0]) throw new Error("No interfaces on joystick!");
     let iface = device.interfaces[0];
 
-    try {if (iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch {}
+    try { if (iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch { }
     iface.claim();
 
     let endpoint = iface.endpoints.find(e => e.direction === "in");
-    if(!endpoint) throw new Error("No IN endpoint found");
+    if (!endpoint) throw new Error("No IN endpoint found");
 
     endpoint.startPoll();
 
@@ -39,17 +39,14 @@ setInterval(() => {
     y += dY;
     x = clamp(x, 0, 255);
     y = clamp(y, 0, 255);
-    dmxDevice.setChannels({12: 255});
-    dmxDevice.setChannels({11: 10});
-    dmxDevice.setChannels({1: x, 3: y});
-},100);
+    dmx.setChannels({
+        [dmx.CHANNELS.Pan]: x,
+        [dmx.CHANNELS.Tilt]: y
+    });
+}, 100);
 
 function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
-}
-
-function applyDeadzone(v) {
-    return Math.abs(v) < DEADZONE ? 0 : v;
 }
 
 console.log("Sending");
