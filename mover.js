@@ -178,7 +178,7 @@ export class MyMover {
     setChannels(channels) {
         // console.log(channels);
         if (this.debug) {
-            console.log(channels.map(([k, v]) => `${k}: ${v}`).join("\n"));
+            console.log(Object.entries(channels).map(([k, v]) => `${k}: ${v}`).join("\n"));
         }
         getDmx().setChannels(channels);
     }
