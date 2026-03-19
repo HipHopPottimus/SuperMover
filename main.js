@@ -133,6 +133,11 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
+                if(mover.channel === primaryMover.channel) {
+                    if(msg.values.Zoom !== undefined) 
+                        joystick1.zoom = msg.values.Zoom;
+                }
+
                 mover.set(msg.values);
                 updateState();
                 break;
