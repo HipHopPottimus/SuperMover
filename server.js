@@ -51,7 +51,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         const msg = JSON.parse(message);
-        console.log(msg);
+        if(debug) console.log(msg);
         switch (msg.type) {
             case 'CREATE_MOVER': {
                 if (blockChannels.includes(msg.channel)) {
@@ -91,7 +91,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log('Client disconnected!');
+        if(debug) console.log('Client disconnected!');
         const index = clients.indexOf(ws);
         if (index !== -1) {
             clients.splice(index, 1);
