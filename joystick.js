@@ -1,7 +1,8 @@
 import usb from "usb";
 
 const DEADZONE = 10;
-const SENSITIVITY = 1;
+const SENSITIVITY_X = 1;
+const SENSITIVITY_Y = SENSITIVITY_X * 540 / 270; // More sensitive to adjust for different multiplier (255 -> 540 for pan, 255 -> 270 for tilt)
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
 const INVERT_Y = false;
@@ -99,8 +100,8 @@ class Joystick {
         const throttleInput = data[2] ?? 0;
 
         this.throttle = 255 - throttleInput;
-        this.dX = mapAxis(xInput, INVERT_X) * SENSITIVITY;
-        this.dY = mapAxis(yInput, INVERT_Y) * SENSITIVITY;
+        this.dX = mapAxis(xInput, INVERT_X) * SENSITIVITY_X;
+        this.dY = mapAxis(yInput, INVERT_Y) * SENSITIVITY_Y;
 
         this.dZ = data[3] >> 1 & 1 ? -1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? ZOOM_SENSITIVITY : 0;
         this.onData?.();
