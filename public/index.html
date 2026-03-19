@@ -1,16 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SuperMover</title>
     <link rel="stylesheet" href="main.css">
 </head>
+
 <body>
     SuperMover
+    <form action="javascript:void(0);" onsubmit="event.preventDefault(); addMover(); return false;">
+        <input type="text" name="moverCh" id="moverCh" value="1">
+        <input type="submit" value="Add Mover">
+    </form>
+    <div class="movers">
 
-    <div id="output"></div>
+    </div>
+    <div id="mover-template" class="noSee">
+        <div class="mover" id="mover-{ch}">
+            <h2>Mover @ {ch}</h2>
 
+            <div class="mover-input-block">
+                <div class="sliders">
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-pan">
+                        <label for="{ch}-pan">Pan</label>
+                        <span id="{ch}-pan-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-pan-fine">
+                        <label for="{ch}-pan-fine">Pan Fine</label>
+                        <span id="{ch}-pan-fine-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-tilt">
+                        <label for="{ch}-tilt">Tilt</label>
+                        <span id="{ch}-tilt-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-tilt-fine">
+                        <label for="{ch}-tilt-fine">Tilt Fine</label>
+                        <span id="{ch}-tilt-fine-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-pt-speed">
+                        <label for="{ch}-pt-speed">P/T Spd</label>
+                        <span id="{ch}-pt-speed-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-focus">
+                        <label for="{ch}-focus">Focus</label>
+                        <span id="{ch}-focus-label">0</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="255" class="vertical-slider" id="{ch}-dimmer">
+                        <label for="{ch}-dimmer">Dimmer</label>
+                        <span id="{ch}-dimmer-label">255</span>
+                    </span>
+                    <span>
+                        <input type="range" min="0" max="255" value="0" class="vertical-slider" id="{ch}-zoom">
+                        <label for="{ch}-zoom">Zoom</label>
+                        <span id="{ch}-zoom-label">0</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-color">Color:</label>
+                <select id="{ch}-color">
+                    <option value="w:0">White</option>
+                    <option value="w:8">Orange</option>
+                    <option value="w:16">Lime Green</option>
+                    <option value="w:24">Cyan</option>
+                    <option value="w:32">Red</option>
+                    <option value="w:40">Green</option>
+                    <option value="w:48">Magenta</option>
+                    <option value="w:56">Yellow</option>
+                    <option value="indexed">Color Indexing</option>
+                    <option value="cycle">Color Cycle</option>
+                    <option value="rcycle">Reverse Color Cycle</option>
+                </select>
+                <span id="{ch}-color-speed-wrap" class="noSee">
+                    <label for="{ch}-color-speed">Index/Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="{ch}-color-speed">
+                    <span id="{ch}-color-speed-label">0%</span>
+                </span>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-gobo">Gobo:</label>
+                <select id="{ch}-gobo">
+                    <option value="w:0">Open</option>
+                    <option value="w:8">Gobo 1</option>
+                    <option value="w:16">Gobo 2</option>
+                    <option value="w:24">Gobo 3</option>
+                    <option value="w:32">Gobo 4</option>
+                    <option value="w:40">Gobo 5</option>
+                    <option value="w:48">Gobo 6</option>
+                    <option value="w:56">Gobo 7</option>
+                    <option value="g7shake">Gobo 7 Shake</option>
+                    <option value="g6shake">Gobo 6 Shake</option>
+                    <option value="g5shake">Gobo 5 Shake</option>
+                    <option value="g4shake">Gobo 4 Shake</option>
+                    <option value="g3shake">Gobo 3 Shake</option>
+                    <option value="g2shake">Gobo 2 Shake</option>
+                    <option value="g1shake">Gobo 1 Shake</option>
+                    <option value="cycle">Cycle Effect</option>
+                    <option value="rcycle">Reverse Cycle Effect</option>
+                </select>
+                <span id="{ch}-gobo-speed-wrap" class="noSee">
+                    <label for="{ch}-gobo-speed">Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="{ch}-gobo-speed">
+                    <span id="{ch}-gobo-speed-label">0%</span>
+                </span>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-gobo-rot">Gobo Rot:</label>
+                <select id="{ch}-gobo-rot">
+                    <option value="nofunc">No Function</option>
+                    <option value="index">Gobo Indexing</option>
+                    <option value="fwd">Rotation</option>
+                    <option value="stop">Stop</option>
+                    <option value="rev">Reverse Rotation</option>
+                    <option value="bounce">Bounce</option>
+                </select>
+                <span id="{ch}-gobo-rot-speed-wrap" class="noSee">
+                    <label for="{ch}-gobo-rot-speed">Index/Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="{ch}-gobo-rot-speed">
+                    <span id="{ch}-gobo-rot-speed-label">0%</span>
+                </span>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-prism">Prism:</label>
+                <select id="{ch}-prism">
+                    <option value="nofunc">No Function</option>
+                    <option value="6faucet">6-Faucet</option>
+                    <option value="6fwd">6-Faucet Rotation</option>
+                    <option value="6rev">6-Faucet Rev Rotation</option>
+                    <option value="5faucet">5-Faucet</option>
+                    <option value="5fwd">5-Faucet Rotation</option>
+                    <option value="5rev">5-Faucet Rev Rotation</option>
+                </select>
+                <span id="{ch}-prism-speed-wrap" class="noSee">
+                    <label for="{ch}-prism-speed">Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="{ch}-prism-speed">
+                    <span id="{ch}-prism-speed-label">0%</span>
+                </span>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-shutter">Shutter:</label>
+                <select id="{ch}-shutter">
+                    <option value="closed">Closed</option>
+                    <option value="open" selected>Open</option>
+                    <option value="strobe">Strobe</option>
+                    <option value="pulse">Pulse Strobe</option>
+                    <option value="random">Random Strobe</option>
+                </select>
+                <span id="{ch}-shutter-speed-wrap" class="noSee">
+                    <label for="{ch}-shutter-speed">Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="{ch}-shutter-speed">
+                    <span id="{ch}-shutter-speed-label">0%</span>
+                </span>
+            </div>
+
+            <div class="mover-input-block">
+                <label for="{ch}-func">Function:</label>
+                <select id="{ch}-func">
+                    <option value="0">No Function</option>
+                    <option value="8">Blackout on P/T</option>
+                    <option value="16">Blackout on Color</option>
+                    <option value="24">Blackout on Gobo</option>
+                    <option value="32">Blackout on P/T &amp; Color</option>
+                    <option value="40">Blackout on P/T &amp; Gobo</option>
+                    <option value="48">Blackout on P/T, Color &amp; Gobo</option>
+                    <option value="96">Pan Reset</option>
+                    <option value="104">Tilt Reset</option>
+                    <option value="112">Color Reset</option>
+                    <option value="120">Gobo Reset</option>
+                    <option value="136">Prism Reset</option>
+                    <option value="144">Focus &amp; Zoom Reset</option>
+                    <option value="152">All Reset</option>
+                </select>
+            </div>
+        </div>
+    </div>
     <script src="main.js"></script>
 </body>
+
 </html>

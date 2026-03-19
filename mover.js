@@ -94,6 +94,9 @@ export class Mover {
     /** @type {number} Start channel */
     channel;
 
+    /** @type {Record<number, number>} */
+    channelValues = {};
+
     debug = false;
 
     constructor(channel = 1, debug = false) {
@@ -180,6 +183,7 @@ export class Mover {
         if (this.debug) {
             console.log(Object.entries(channels).map(([k, v]) => `${k}: ${v}`).join("\n"));
         }
+        this.channelValues = { ...this.channelValues, ...channels };
         getDmx().setChannels(channels);
     }
 
