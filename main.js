@@ -19,7 +19,14 @@ const wss = new WebSocketServer({ server });
 let movers = [new mlib.Mover(1, debug)];
 const primaryMover = movers[0];
 
-const joystick1 = new joystick.Joystick(0x046d, 0xc214);
+let joystick1 = {};
+
+try {
+    joystick1 = new joystick.Joystick(0x046d, 0xc214);
+}
+catch(error) {
+    console.error("Error when initializing joystick", error);
+}
 
 joystick1.onData = () => {
     const values = {
