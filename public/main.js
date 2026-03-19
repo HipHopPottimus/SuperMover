@@ -1,5 +1,14 @@
 const socket = new WebSocket(`ws://${window.location.host}`);
 
+let timeout = setTimeout(() => {
+    document.body.innerHTML = "<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p>";
+}, 5000);
+
+socket.onopen = () => {
+    clearTimeout(timeout);
+    console.log("WebSocket connection established");
+}
+
 socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     switch (msg.type) {
@@ -17,6 +26,15 @@ socket.onmessage = (event) => {
         }
     }
 };
+
+socket.onerror = (err) => {
+    console.error("WebSocket error: ", err, "please refresh the page.");
+    document.body.innerHTML = "<h1>Connection error: " + err.message + "</h1><p>Please refresh the page.</p>";
+}
+
+socket.onclose = () => {
+    document.body.innerHTML = "<h1>Connection closed</h1><p>Please refresh the page.</p>";
+}
 
 function addMover() {
     const moverCh = parseInt(document.getElementById("moverCh").value);
