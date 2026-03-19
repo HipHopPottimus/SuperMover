@@ -74,6 +74,7 @@ wss.on('connection', (ws) => {
                     return;
                 }
                 mover.set(msg.values);
+                updateState();
                 break;
             }
             case 'GET_STATE': {

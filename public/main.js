@@ -4,9 +4,8 @@ socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     switch (msg.type) {
         case 'STATE': {
-            for (const mover of msg.state.movers) {
-                renderMover(mover.channel);
-            }
+            for (const mover of msg.state.movers)
+                renderMover(mover);
             break;
         }
         case 'ERROR': {
@@ -31,14 +30,121 @@ function addMover() {
     }));
 }
 
-function renderMover(ch) {
-    if (document.getElementById(`mover-${ch}`)) return;
-    const template = document.getElementById('mover-template').innerHTML;
-    const html = template.replace(/\{ch\}/g, ch);
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    document.querySelector('.movers').appendChild(div.firstElementChild);
-    initMoverControls(ch);
+function renderMover(mover) {
+    const ch = mover.channel;
+    if (!document.getElementById(`mover-${ch}`)) {
+        const template = document.getElementById('mover-template').innerHTML;
+        const html = template.replace(/\{ch\}/g, ch);
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        document.querySelector('.movers').appendChild(div.firstElementChild);
+        initMoverControls(ch);
+    }
+    fillMoverFromChannelValues(ch, mover.channelValues);
+}
+
+function setSlider(ch, id, val) {
+    document.getElementById(`${ch}-${id}`).value = val;
+    document.getElementById(`${ch}-${id}-label`).textContent = val;
+}
+
+function setSelectSpeed(ch, suffix, sel, spd) {
+    document.getElementById(`${ch}-${suffix}`).value = sel;
+    const wrap = document.getElementById(`${ch}-${suffix}-speed-wrap`);
+    if (spd !== undefined) {
+        const pct = Math.round(spd * 100);
+        document.getElementById(`${ch}-${suffix}-speed`).value = pct;
+        document.getElementById(`${ch}-${suffix}-speed-label`).textContent = pct + '%';
+        wrap.classList.remove('noSee');
+    } else {
+        wrap.classList.add('noSee');
+    }
+}
+
+function fillMoverFromChannelValues(ch, cv) {
+    if (!cv) return;
+
+    // Simple 0-255 sliders
+    const simpleSliders = [
+        ['pan', ch + 0],
+        ['pan-fine', ch + 1],
+        ['tilt', ch + 2],
+        ['tilt-fine', ch + 3],
+        ['pt-speed', ch + 4],
+        ['focus', ch + 9],
+        ['dimmer', ch + 10],
+        ['zoom', ch + 14],
+    ];
+    for (const [id, abs] of simpleSliders) {
+        if (cv[abs] !== undefined) setSlider(ch, id, cv[abs]);
+    }
+
+    // Color wheel (ch+5)
+    const col = cv[ch + 5];
+    if (col !== undefined) {
+        if (col < 64) setSelectSpeed(ch, 'color', `w:${Math.floor(col / 8) * 8}`);
+        else if (col <= 189) setSelectSpeed(ch, 'color', 'indexed', (col - 64) / 125);
+        else if (col <= 221) setSelectSpeed(ch, 'color', 'cycle', (col - 190) / 31);
+        else setSelectSpeed(ch, 'color', 'rcycle', (col - 222) / 33);
+    }
+
+    // Gobo wheel (ch+6)
+    const gob = cv[ch + 6];
+    if (gob !== undefined) {
+        if (gob < 64) setSelectSpeed(ch, 'gobo', `w:${Math.floor(gob / 8) * 8}`);
+        else if (gob <= 71) setSelectSpeed(ch, 'gobo', 'g7shake', (gob - 64) / 7);
+        else if (gob <= 79) setSelectSpeed(ch, 'gobo', 'g6shake', (gob - 72) / 7);
+        else if (gob <= 87) setSelectSpeed(ch, 'gobo', 'g5shake', (gob - 80) / 7);
+        else if (gob <= 95) setSelectSpeed(ch, 'gobo', 'g4shake', (gob - 88) / 7);
+        else if (gob <= 103) setSelectSpeed(ch, 'gobo', 'g3shake', (gob - 96) / 7);
+        else if (gob <= 111) setSelectSpeed(ch, 'gobo', 'g2shake', (gob - 104) / 7);
+        else if (gob <= 119) setSelectSpeed(ch, 'gobo', 'g1shake', (gob - 112) / 7);
+        else if (gob <= 127) setSelectSpeed(ch, 'gobo', 'w:0');
+        else if (gob <= 189) setSelectSpeed(ch, 'gobo', 'cycle', (gob - 128) / 61);
+        else if (gob <= 193) setSelectSpeed(ch, 'gobo', 'w:0');
+        else setSelectSpeed(ch, 'gobo', 'rcycle', (gob - 194) / 61);
+    }
+
+    // Gobo rotation (ch+7)
+    const rot = cv[ch + 7];
+    if (rot !== undefined) {
+        if (rot === 0) setSelectSpeed(ch, 'gobo-rot', 'nofunc');
+        else if (rot <= 63) setSelectSpeed(ch, 'gobo-rot', 'index', (rot - 1) / 62);
+        else if (rot <= 145) setSelectSpeed(ch, 'gobo-rot', 'fwd', (rot - 64) / 81);
+        else if (rot <= 149) setSelectSpeed(ch, 'gobo-rot', 'stop');
+        else if (rot <= 231) setSelectSpeed(ch, 'gobo-rot', 'rev', (rot - 150) / 81);
+        else setSelectSpeed(ch, 'gobo-rot', 'bounce', (rot - 232) / 23);
+    }
+
+    // Prism (ch+8)
+    const pri = cv[ch + 8];
+    if (pri !== undefined) {
+        if (pri < 4) setSelectSpeed(ch, 'prism', 'nofunc');
+        else if (pri <= 6) setSelectSpeed(ch, 'prism', '6faucet');
+        else if (pri <= 65) setSelectSpeed(ch, 'prism', '6fwd', (pri - 7) / 58);
+        else if (pri <= 127) setSelectSpeed(ch, 'prism', '6rev', (pri - 66) / 57);
+        else if (pri <= 134) setSelectSpeed(ch, 'prism', pri < 132 ? 'nofunc' : '5faucet');
+        else if (pri <= 193) setSelectSpeed(ch, 'prism', '5fwd', (pri - 135) / 58);
+        else if (pri <= 251) setSelectSpeed(ch, 'prism', '5rev', (pri - 194) / 57);
+        else setSelectSpeed(ch, 'prism', '5faucet');
+    }
+
+    // Shutter (ch+11)
+    const shu = cv[ch + 11];
+    if (shu !== undefined) {
+        if (shu < 4) setSelectSpeed(ch, 'shutter', 'closed');
+        else if (shu < 8) setSelectSpeed(ch, 'shutter', 'open');
+        else if (shu <= 76) setSelectSpeed(ch, 'shutter', 'strobe', (shu - 8) / 68);
+        else if (shu <= 145) setSelectSpeed(ch, 'shutter', 'pulse', (shu - 77) / 68);
+        else if (shu <= 215) setSelectSpeed(ch, 'shutter', 'random', (shu - 146) / 69);
+        else setSelectSpeed(ch, 'shutter', 'open');
+    }
+
+    // Function (ch+12)
+    const fn = cv[ch + 12];
+    if (fn !== undefined) {
+        document.getElementById(`${ch}-func`).value = String(fn);
+    }
 }
 
 function sendMoverSet(ch, values) {
