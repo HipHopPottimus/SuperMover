@@ -5,8 +5,9 @@ const SENSITIVITY = 1;
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
 const INVERT_Y = false;
-const UPDATE_INTERVAL_MS = 50;
-const ZOOM_SENSITIVITY = 50;
+const UPDATE_INTERVAL_MS = 10;
+const ZOOM_SENSITIVITY = 300;
+const ZOOM_EASING = 0.1; // Lower is more eased
 
 class Joystick {
     /** @type {usb.usb.Device} */
@@ -46,6 +47,9 @@ class Joystick {
     dZ = 0;
 
     /** @type {number} */
+    zoomVelocity = 0;
+
+    /** @type {number} */
     throttle = 255;
 
     /** @type {ReturnType<typeof setInterval> | undefined} */
@@ -78,7 +82,9 @@ class Joystick {
         this.updateTimer = setInterval(() => {
             this.x = clamp(this.x + this.dX * UPDATE_INTERVAL_MS / 1000, 0, 255);
             this.y = clamp(this.y + this.dY * UPDATE_INTERVAL_MS / 1000, 0, 255);
-            this.zoom = clamp(this.zoom + this.dZ * UPDATE_INTERVAL_MS / 1000, 0, 255);
+
+            this.zoomVelocity += (this.dZ - this.zoomVelocity) * ZOOM_EASING;
+            this.zoom = clamp(this.zoom + this.zoomVelocity * UPDATE_INTERVAL_MS / 1000, 0, 255);
             this.onUpdate?.();
         }, UPDATE_INTERVAL_MS);
 
