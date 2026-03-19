@@ -4,7 +4,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
 
 import mlib from './mover.js';
-import joystick from "./joystick.js";
+import jlib from "./joystick.js";
 
 const debug = process.env.debug === "true";
 if (debug) console.log("Debug mode is ON");
@@ -22,7 +22,7 @@ const primaryMover = movers[0];
 let joystick1 = {};
 
 try {
-    joystick1 = new joystick.Joystick(0x046d, 0xc214);
+    joystick1 = new jlib.Joystick(0x046d, 0xc214);
 }
 catch(error) {
     console.error("Error when initializing joystick", error);
