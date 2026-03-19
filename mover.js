@@ -196,7 +196,14 @@ export class Mover {
             Prism: PRISM.NoFunction,
             Function: 0,
             Zoom: 0,
-            Dimmer: 255
+            Focus: 0,
+            Dimmer: 255,
+            Pan: 0,
+            PanFine: 0,
+            Tilt: 0,
+            TiltFine: 0,
+            PTSpeed: 0,
+            MovementMacros: 0,
         });
     }
 }
