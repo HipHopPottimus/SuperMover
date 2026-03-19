@@ -15,9 +15,9 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const movers = [];
+let movers = [];
 
-const blockChannels = [];
+let blockChannels = [];
 
 function getState() {
     return {
@@ -65,6 +65,11 @@ wss.on('connection', (ws) => {
                     blockChannels.push(i);
                 movers.push(new mlib.Mover(msg.channel, debug));
                 updateState();
+                break;
+            }
+            case 'FORGET_MOVER': {
+                movers = movers.filter(m => m.channel != msg.channel);
+                blockChannels = blockChannels.filter(block => block < msg.channel && block > msg.channel + 15);
                 break;
             }
             case 'MOVER_SET': {

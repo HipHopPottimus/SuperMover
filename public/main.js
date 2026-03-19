@@ -318,4 +318,15 @@ function initMoverControls(ch) {
     funcSelect.addEventListener('change', () => {
         sendMoverSet(ch, { Function: parseInt(funcSelect.value) });
     });
+
+    // Forget mover
+    const forgetButton = document.getElementById(`forget-${ch}`);
+    forgetButton.addEventListener("click", () => {
+        console.log(ch);
+        socket.send(JSON.stringify({
+            type: 'FORGET_MOVER',
+            channel: ch
+        }));
+        document.getElementById(`mover-${ch}`).remove();
+    });
 }
