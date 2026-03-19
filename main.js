@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
 
 import mlib from './mover.js';
@@ -16,45 +16,66 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const movers = [
-    new mlib.Mover(1, debug),
-];
+const movers = [new mlib.Mover(1, debug)];
+const primaryMover = movers[0];
 
 const joystick1 = new joystick.Joystick(0x046d, 0xc214);
 
 joystick1.onData = () => {
-    movers[0].set({
+    const values = {
         Pan: Math.round(joystick1.x),
         Tilt: Math.round(joystick1.y),
-    });
-    movers[0].set({
         Dimmer: joystick1.throttle,
-    });
-    if (joystick1.rawData[3]) movers[0].set({ ColorWheel: Math.floor(Math.log2(joystick1.rawData[3])) * 8 });
-    updateState();
-}
+    };
 
-const blockChannels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const colorWheelValue = getColorWheelValue(joystick1.rawData[3]);
+    if (colorWheelValue !== undefined) {
+        values.ColorWheel = colorWheelValue;
+    }
+
+    primaryMover.set(values);
+    updateState();
+};
+
+const blockedChannels = new Set(Array.from({ length: 15 }, (_, index) => index + 1));
 
 function getState() {
     return {
         movers,
-    }
+    };
 }
 
 function updateState() {
     const state = getState();
-    const message = JSON.stringify({
-        type: 'STATE',
-        state
-    });
-    clients.forEach((client) => {
-        client.send(message);
-    });
+    const message = JSON.stringify({ type: 'STATE', state });
 
+    for (const client of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    }
 }
 
 const clients = [];
+
+function getColorWheelValue(rawValue) {
+    if (!Number.isInteger(rawValue) || rawValue <= 0) return undefined;
+
+    const position = Math.log2(rawValue);
+    if (!Number.isInteger(position)) return undefined;
+
+    return position * 8;
+}
+
+function isChannelBlocked(channel) {
+    return blockedChannels.has(channel);
+}
+
+function blockMoverChannels(startChannel) {
+    for (let channel = startChannel; channel < startChannel + 15; channel++) {
+        blockedChannels.add(channel);
+    }
+}
 
 wss.on('connection', (ws) => {
     console.log('Client connected!');
@@ -63,23 +84,35 @@ wss.on('connection', (ws) => {
 
     ws.send(JSON.stringify({
         type: 'STATE',
-        state: getState()
-    }))
+        state: getState(),
+    }));
 
     ws.on('message', (message) => {
-        const msg = JSON.parse(message);
+        let msg;
+
+        try {
+            msg = JSON.parse(message.toString());
+        } catch {
+            ws.send(JSON.stringify({
+                type: 'ERROR',
+                message: 'Invalid JSON message received.',
+            }));
+            return;
+        }
+
         if (debug) console.log(msg);
+
         switch (msg.type) {
             case 'CREATE_MOVER': {
-                if (blockChannels.includes(msg.channel)) {
+                if (isChannelBlocked(msg.channel)) {
                     ws.send(JSON.stringify({
                         type: 'ERROR',
                         message: `Channel ${msg.channel} is already in use by another mover. Please choose a different channel.`
                     }));
                     return;
                 }
-                for (let i = msg.channel; i < msg.channel + 15; i++)
-                    blockChannels.push(i);
+
+                blockMoverChannels(msg.channel);
                 movers.push(new mlib.Mover(msg.channel, debug));
                 updateState();
                 break;
@@ -90,6 +123,7 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'ERROR', message: `No mover at channel ${msg.channel}` }));
                     return;
                 }
+
                 mover.set(msg.values);
                 updateState();
                 break;
@@ -97,7 +131,7 @@ wss.on('connection', (ws) => {
             case 'GET_STATE': {
                 ws.send(JSON.stringify({
                     type: 'STATE',
-                    state: getState()
+                    state: getState(),
                 }));
                 break;
             }
