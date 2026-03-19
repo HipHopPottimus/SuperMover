@@ -5,6 +5,7 @@ const SENSITIVITY = 1;
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
 const INVERT_Y = false;
+const UPDATE_INTERVAL = 50;
 
 class Joystick {
     /** @type {usb.usb.Device}*/
@@ -12,7 +13,7 @@ class Joystick {
 
     /** @type {usb.Endpoint} */
     endpoint;
-    
+
     /** @type {number[]} */
     rawData;
 
@@ -20,16 +21,16 @@ class Joystick {
     onData;
 
     //more accessible processed joystick data
-    
-    /**@type {number}*/
-    x;
-    /**@type {number}*/
-    y;
 
     /**@type {number}*/
-    dX;
+    x = 127;
     /**@type {number}*/
-    dY;
+    y = 127;
+
+    /**@type {number}*/
+    dX = 0;
+    /**@type {number}*/
+    dY = 0;
 
     /**@type {number}*/
     throttle;
@@ -37,18 +38,18 @@ class Joystick {
     constructor(vendorId, productId) {
         this.device = usb.findByIds(vendorId, productId);
         if (!this.device) throw new Error("Joystick not found!");
-    
+
         this.device.open();
-    
+
         if (!this.device.interfaces?.[0]) throw new Error("No interfaces on joystick!");
         let iface = this.device.interfaces[0];
-    
+
         try { if (iface.isKernelDriverActive()) iface.detachKernelDriver(); } catch { }
         iface.claim();
-    
+
         this.endpoint = iface.endpoints.find(e => e.direction === "in");
         if (!this.endpoint) throw new Error("No IN endpoint found");
-    
+
         this.endpoint.on("data", (data) => {
             this.rawData = data;
             this.throttle = 255 - data[2];
@@ -56,8 +57,8 @@ class Joystick {
             this.dX = nonLinearMapping(applyDeadzone((INVERT_X * 2 - 1) * (data[0] - 127))) * SENSITIVITY;
             this.dY = nonLinearMapping(applyDeadzone((INVERT_Y * 2 - 1) * (data[1] - 127))) * SENSITIVITY;
 
-            if(this.onData) this.onData();
-        
+            if (this.onData) this.onData();
+
             // console.log(`Got: ${data[0]}, ${data[1]} | dX: ${dX}, dY: ${dY}`);
         });
 
@@ -69,7 +70,7 @@ class Joystick {
             this.y = clamp(this.y, 0, 255);
         }, UPDATE_INTERVAL);
 
-        endpoint.startPoll();
+        this.endpoint.startPoll();
     }
 }
 
