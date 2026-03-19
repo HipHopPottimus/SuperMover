@@ -53,9 +53,9 @@ function computeColorValue(ch) {
     const sel = document.getElementById(`${ch}-color`).value;
     const s = spd(`${ch}-color-speed`);
     if (sel.startsWith('w:')) return parseInt(sel.slice(2));
-    if (sel === 'indexed') return 64  + Math.round(125 * s);
-    if (sel === 'cycle')   return 190 + Math.round(31 * s);
-    if (sel === 'rcycle')  return 222 + Math.round(33 * s);
+    if (sel === 'indexed') return 64 + Math.round(125 * s);
+    if (sel === 'cycle') return 190 + Math.round(31 * s);
+    if (sel === 'rcycle') return 222 + Math.round(33 * s);
     return 0;
 }
 
@@ -63,15 +63,15 @@ function computeGoboValue(ch) {
     const sel = document.getElementById(`${ch}-gobo`).value;
     const s = spd(`${ch}-gobo-speed`);
     if (sel.startsWith('w:')) return parseInt(sel.slice(2));
-    if (sel === 'g7shake') return 64  + Math.round(7 * s);
-    if (sel === 'g6shake') return 72  + Math.round(7 * s);
-    if (sel === 'g5shake') return 80  + Math.round(7 * s);
-    if (sel === 'g4shake') return 88  + Math.round(7 * s);
-    if (sel === 'g3shake') return 96  + Math.round(7 * s);
+    if (sel === 'g7shake') return 64 + Math.round(7 * s);
+    if (sel === 'g6shake') return 72 + Math.round(7 * s);
+    if (sel === 'g5shake') return 80 + Math.round(7 * s);
+    if (sel === 'g4shake') return 88 + Math.round(7 * s);
+    if (sel === 'g3shake') return 96 + Math.round(7 * s);
     if (sel === 'g2shake') return 104 + Math.round(7 * s);
     if (sel === 'g1shake') return 112 + Math.round(7 * s);
-    if (sel === 'cycle')   return 128 + Math.round(61 * s);
-    if (sel === 'rcycle')  return 194 + Math.round(61 * s);
+    if (sel === 'cycle') return 128 + Math.round(61 * s);
+    if (sel === 'rcycle') return 194 + Math.round(61 * s);
     return 0;
 }
 
@@ -79,10 +79,10 @@ function computeGoboRotValue(ch) {
     const sel = document.getElementById(`${ch}-gobo-rot`).value;
     const s = spd(`${ch}-gobo-rot-speed`);
     if (sel === 'nofunc') return 0;
-    if (sel === 'index')  return 1   + Math.round(62 * s);
-    if (sel === 'fwd')    return 64  + Math.round(81 * s);
-    if (sel === 'stop')   return 146;
-    if (sel === 'rev')    return 150 + Math.round(81 * s);
+    if (sel === 'index') return 1 + Math.round(62 * s);
+    if (sel === 'fwd') return 64 + Math.round(81 * s);
+    if (sel === 'stop') return 146;
+    if (sel === 'rev') return 150 + Math.round(81 * s);
     if (sel === 'bounce') return 232 + Math.round(23 * s);
     return 0;
 }
@@ -90,13 +90,13 @@ function computeGoboRotValue(ch) {
 function computePrismValue(ch) {
     const sel = document.getElementById(`${ch}-prism`).value;
     const s = spd(`${ch}-prism-speed`);
-    if (sel === 'nofunc')  return 0;
+    if (sel === 'nofunc') return 0;
     if (sel === '6faucet') return 4;
-    if (sel === '6fwd')    return 7   + Math.round(58 * s);
-    if (sel === '6rev')    return 66  + Math.round(57 * s);
+    if (sel === '6fwd') return 7 + Math.round(58 * s);
+    if (sel === '6rev') return 66 + Math.round(57 * s);
     if (sel === '5faucet') return 132;
-    if (sel === '5fwd')    return 135 + Math.round(58 * s);
-    if (sel === '5rev')    return 194 + Math.round(57 * s);
+    if (sel === '5fwd') return 135 + Math.round(58 * s);
+    if (sel === '5rev') return 194 + Math.round(57 * s);
     return 0;
 }
 
@@ -104,9 +104,9 @@ function computeShutterValue(ch) {
     const sel = document.getElementById(`${ch}-shutter`).value;
     const s = spd(`${ch}-shutter-speed`);
     if (sel === 'closed') return 0;
-    if (sel === 'open')   return 4;
-    if (sel === 'strobe') return 8   + Math.round(68 * s);
-    if (sel === 'pulse')  return 77  + Math.round(68 * s);
+    if (sel === 'open') return 4;
+    if (sel === 'strobe') return 8 + Math.round(68 * s);
+    if (sel === 'pulse') return 77 + Math.round(68 * s);
     if (sel === 'random') return 146 + Math.round(69 * s);
     return 4;
 }
@@ -114,18 +114,18 @@ function computeShutterValue(ch) {
 function initMoverControls(ch) {
     // Simple 0-255 sliders
     const sliderMap = {
-        'pan':       'Pan',
-        'pan-fine':  'PanFine',
-        'tilt':      'Tilt',
+        'pan': 'Pan',
+        'pan-fine': 'PanFine',
+        'tilt': 'Tilt',
         'tilt-fine': 'TiltFine',
-        'pt-speed':  'PTSpeed',
-        'focus':     'Focus',
-        'dimmer':    'Dimmer',
-        'zoom':      'Zoom',
+        'pt-speed': 'PTSpeed',
+        'focus': 'Focus',
+        'dimmer': 'Dimmer',
+        'zoom': 'Zoom',
     };
     for (const [id, dmxKey] of Object.entries(sliderMap)) {
         const slider = document.getElementById(`${ch}-${id}`);
-        const label  = document.getElementById(`${ch}-${id}-label`);
+        const label = document.getElementById(`${ch}-${id}-label`);
         slider.addEventListener('input', () => {
             label.textContent = slider.value;
             sendMoverSet(ch, { [dmxKey]: parseInt(slider.value) });
@@ -133,10 +133,10 @@ function initMoverControls(ch) {
     }
 
     // Color wheel
-    const colorSelect    = document.getElementById(`${ch}-color`);
+    const colorSelect = document.getElementById(`${ch}-color`);
     const colorSpeedWrap = document.getElementById(`${ch}-color-speed-wrap`);
-    const colorSpeed     = document.getElementById(`${ch}-color-speed`);
-    const colorSpeedLbl  = document.getElementById(`${ch}-color-speed-label`);
+    const colorSpeed = document.getElementById(`${ch}-color-speed`);
+    const colorSpeedLbl = document.getElementById(`${ch}-color-speed-label`);
     const needsColorSpeed = () => ['indexed', 'cycle', 'rcycle'].includes(colorSelect.value);
     colorSelect.addEventListener('change', () => {
         colorSpeedWrap.classList.toggle('noSee', !needsColorSpeed());
@@ -148,10 +148,10 @@ function initMoverControls(ch) {
     });
 
     // Gobo wheel
-    const goboSelect    = document.getElementById(`${ch}-gobo`);
+    const goboSelect = document.getElementById(`${ch}-gobo`);
     const goboSpeedWrap = document.getElementById(`${ch}-gobo-speed-wrap`);
-    const goboSpeed     = document.getElementById(`${ch}-gobo-speed`);
-    const goboSpeedLbl  = document.getElementById(`${ch}-gobo-speed-label`);
+    const goboSpeed = document.getElementById(`${ch}-gobo-speed`);
+    const goboSpeedLbl = document.getElementById(`${ch}-gobo-speed-label`);
     const needsGoboSpeed = () => !goboSelect.value.startsWith('w:');
     goboSelect.addEventListener('change', () => {
         goboSpeedWrap.classList.toggle('noSee', !needsGoboSpeed());
@@ -163,10 +163,10 @@ function initMoverControls(ch) {
     });
 
     // Gobo rotation
-    const goboRotSelect    = document.getElementById(`${ch}-gobo-rot`);
+    const goboRotSelect = document.getElementById(`${ch}-gobo-rot`);
     const goboRotSpeedWrap = document.getElementById(`${ch}-gobo-rot-speed-wrap`);
-    const goboRotSpeed     = document.getElementById(`${ch}-gobo-rot-speed`);
-    const goboRotSpeedLbl  = document.getElementById(`${ch}-gobo-rot-speed-label`);
+    const goboRotSpeed = document.getElementById(`${ch}-gobo-rot-speed`);
+    const goboRotSpeedLbl = document.getElementById(`${ch}-gobo-rot-speed-label`);
     const needsGoboRotSpeed = () => !['nofunc', 'stop'].includes(goboRotSelect.value);
     goboRotSelect.addEventListener('change', () => {
         goboRotSpeedWrap.classList.toggle('noSee', !needsGoboRotSpeed());
@@ -178,10 +178,10 @@ function initMoverControls(ch) {
     });
 
     // Prism
-    const prismSelect    = document.getElementById(`${ch}-prism`);
+    const prismSelect = document.getElementById(`${ch}-prism`);
     const prismSpeedWrap = document.getElementById(`${ch}-prism-speed-wrap`);
-    const prismSpeed     = document.getElementById(`${ch}-prism-speed`);
-    const prismSpeedLbl  = document.getElementById(`${ch}-prism-speed-label`);
+    const prismSpeed = document.getElementById(`${ch}-prism-speed`);
+    const prismSpeedLbl = document.getElementById(`${ch}-prism-speed-label`);
     const needsPrismSpeed = () => !['nofunc', '6faucet', '5faucet'].includes(prismSelect.value);
     prismSelect.addEventListener('change', () => {
         prismSpeedWrap.classList.toggle('noSee', !needsPrismSpeed());
@@ -193,10 +193,10 @@ function initMoverControls(ch) {
     });
 
     // Shutter
-    const shutterSelect    = document.getElementById(`${ch}-shutter`);
+    const shutterSelect = document.getElementById(`${ch}-shutter`);
     const shutterSpeedWrap = document.getElementById(`${ch}-shutter-speed-wrap`);
-    const shutterSpeed     = document.getElementById(`${ch}-shutter-speed`);
-    const shutterSpeedLbl  = document.getElementById(`${ch}-shutter-speed-label`);
+    const shutterSpeed = document.getElementById(`${ch}-shutter-speed`);
+    const shutterSpeedLbl = document.getElementById(`${ch}-shutter-speed-label`);
     const needsShutterSpeed = () => !['closed', 'open'].includes(shutterSelect.value);
     shutterSelect.addEventListener('change', () => {
         shutterSpeedWrap.classList.toggle('noSee', !needsShutterSpeed());

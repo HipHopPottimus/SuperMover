@@ -51,6 +51,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         const msg = JSON.parse(message);
+        console.log(msg);
         switch (msg.type) {
             case 'CREATE_MOVER': {
                 if (blockChannels.includes(msg.channel)) {
