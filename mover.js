@@ -197,7 +197,7 @@ export class Mover {
             Function: 0,
             Zoom: 0,
             Focus: 0,
-            Dimmer: 255,
+            Dimmer: 0,
             Pan: 0,
             PanFine: 0,
             Tilt: 0,
