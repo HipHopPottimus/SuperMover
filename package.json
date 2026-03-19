@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "dependencies": {
+    "enttec-open-dmx-usb": "^4.0.1",
+    "express": "^5.2.1",
+    "prompt-sync": "^4.2.0",
+    "usb": "^2.17.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/prompt-sync": "^4.2.3"
+  }
+}

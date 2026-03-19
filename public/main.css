@@ -1,0 +1,50 @@
+body {
+    background: white;
+    /* Fix transparency issues */
+}
+
+.noSee {
+    display: none;
+}
+
+.vertical-slider {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    -webkit-appearance: slider-vertical;
+    width: 28px;
+    height: 200px;
+}
+
+.sliders span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.sliders {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.mover-body {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.mover-selects {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+.mover-input-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
