@@ -7,7 +7,7 @@ const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 10;
-const ZOOM_SENSITIVITY = 300;
+const ZOOM_SENSITIVITY = 500;
 const ZOOM_EASING = 0.1; // Lower is more eased
 
 class Joystick {
@@ -103,7 +103,7 @@ class Joystick {
         this.dX = mapAxis(xInput, INVERT_X) * SENSITIVITY_X;
         this.dY = mapAxis(yInput, INVERT_Y) * SENSITIVITY_Y;
 
-        this.dZ = data[3] >> 1 & 1 ? -1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? ZOOM_SENSITIVITY : 0;
+        this.dZ = data[3] >> 1 & 1 ? 1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? -ZOOM_SENSITIVITY : 0;
         this.onData?.();
     }
 

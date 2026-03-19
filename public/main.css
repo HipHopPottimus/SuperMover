@@ -15,6 +15,10 @@ body {
     height: 200px;
 }
 
+.vt-ltr {
+    direction: ltr;
+}
+
 .sliders span {
     display: flex;
     flex-direction: column;
@@ -22,9 +26,13 @@ body {
     gap: 8px;
 }
 
+.slider-label {
+    width: 0px;
+}
+
 .sliders {
     display: flex;
-    gap: 16px;
+    gap: 5px;
     align-items: flex-start;
 }
 

@@ -63,7 +63,25 @@ function renderMover(mover) {
 
 function setSlider(ch, id, val) {
     document.getElementById(`${ch}-${id}`).value = val;
-    document.getElementById(`${ch}-${id}-label`).textContent = val;
+    switch (id) {
+        case 'zoom':
+            let deg = 28 + (10 - 28) * (val / 255); // Narrow to wide
+            document.getElementById(`${ch}-${id}-label`).textContent = deg.toFixed(1) + '°';
+            break;
+        case 'dimmer':
+            document.getElementById(`${ch}-${id}-label`).textContent = (val / 2.55).toFixed(1) + '%';
+            break;
+        case 'pan':
+            let panDeg = 540 * (val / 255) - 270; // -270 to +270
+            document.getElementById(`${ch}-${id}-label`).textContent = panDeg.toFixed(0) + '°';
+            break;
+        case 'tilt':
+            let tiltDeg = 270 * (val / 255) - 135; // -135 to +135
+            document.getElementById(`${ch}-${id}-label`).textContent = tiltDeg.toFixed(0) + '°';
+            break;
+        default:
+            document.getElementById(`${ch}-${id}-label`).textContent = val;
+    }
 }
 
 function setSelectSpeed(ch, suffix, sel, spd) {
@@ -251,7 +269,25 @@ function initMoverControls(ch) {
         const slider = document.getElementById(`${ch}-${id}`);
         const label = document.getElementById(`${ch}-${id}-label`);
         slider.addEventListener('input', () => {
-            label.textContent = slider.value;
+            switch(id) {
+                case 'zoom':
+                    let deg = 28 + (10 - 28) * (slider.value / 255); // Narrow to wide
+                    label.textContent = deg.toFixed(1) + '°';
+                    break;
+                case 'dimmer':
+                    label.textContent = (slider.value / 2.55).toFixed(1) + '%';
+                    break;
+                case 'pan':
+                    let panDeg = 540 * (slider.value / 255) - 270; // -270 to +270
+                    label.textContent = panDeg.toFixed(0) + '°';
+                    break;
+                case 'tilt':
+                    let tiltDeg = 270 * (slider.value / 255) - 135; // -135 to +135
+                    label.textContent = tiltDeg.toFixed(0) + '°';
+                    break;
+                default:
+                    label.textContent = slider.value;
+            }
             sendMoverSet(ch, { [dmxKey]: parseInt(slider.value) });
         });
     }
