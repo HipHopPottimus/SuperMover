@@ -25,17 +25,25 @@ joystick1.onData = () => {
     const values = {
         Pan: Math.round(joystick1.x),
         Tilt: Math.round(joystick1.y),
+        Zoom: Math.round(joystick1.zoom),
         Dimmer: joystick1.throttle,
     };
-
-    const colorWheelValue = getColorWheelValue(joystick1.rawData[3]);
-    if (colorWheelValue !== undefined) {
-        values.ColorWheel = colorWheelValue;
-    }
 
     primaryMover.set(values);
     updateState();
 };
+
+joystick1.onUpdate = () => {
+    const values = {
+        Pan: Math.round(joystick1.x),
+        Tilt: Math.round(joystick1.y),
+        Zoom: Math.round(joystick1.zoom),
+        Dimmer: joystick1.throttle,
+    };
+
+    primaryMover.set(values);
+    updateState();
+}
 
 const blockedChannels = new Set(Array.from({ length: 15 }, (_, index) => index + 1));
 
@@ -57,15 +65,6 @@ function updateState() {
 }
 
 const clients = [];
-
-function getColorWheelValue(rawValue) {
-    if (!Number.isInteger(rawValue) || rawValue <= 0) return undefined;
-
-    const position = Math.log2(rawValue);
-    if (!Number.isInteger(position)) return undefined;
-
-    return position * 8;
-}
 
 function isChannelBlocked(channel) {
     return blockedChannels.has(channel);

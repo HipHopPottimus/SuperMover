@@ -6,6 +6,7 @@ const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = false;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 50;
+const ZOOM_SENSITIVITY = 50;
 
 class Joystick {
     /** @type {usb.usb.Device} */
@@ -23,6 +24,9 @@ class Joystick {
     /** @type {Function | undefined} */
     onData;
 
+    /** @type {Function | undefined} */
+    onUpdate;
+
     /** @type {number} */
     x = 0;
 
@@ -34,6 +38,12 @@ class Joystick {
 
     /** @type {number} */
     dY = 0;
+
+    /** @type {number} */
+    zoom = 0;
+
+    /** @type {boolean} */
+    dZ = 0;
 
     /** @type {number} */
     throttle = 255;
@@ -68,6 +78,8 @@ class Joystick {
         this.updateTimer = setInterval(() => {
             this.x = clamp(this.x + this.dX * UPDATE_INTERVAL_MS / 1000, 0, 255);
             this.y = clamp(this.y + this.dY * UPDATE_INTERVAL_MS / 1000, 0, 255);
+            this.zoom = clamp(this.zoom + this.dZ * UPDATE_INTERVAL_MS / 1000, 0, 255);
+            this.onUpdate?.();
         }, UPDATE_INTERVAL_MS);
 
         this.endpoint.startPoll();
@@ -84,6 +96,7 @@ class Joystick {
         this.dX = mapAxis(xInput, INVERT_X) * SENSITIVITY;
         this.dY = mapAxis(yInput, INVERT_Y) * SENSITIVITY;
 
+        this.dZ = data[3] >> 1 & 1 ? -1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? ZOOM_SENSITIVITY : 0;
         this.onData?.();
     }
 
