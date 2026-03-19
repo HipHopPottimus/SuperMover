@@ -1,6 +1,23 @@
 body {
-    background: white;
+    min-height: 100vh;
+    padding-bottom: 200px;
+
     /* Fix transparency issues */
+    background: white;
+}
+
+footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    /* transform: translateX(-50%); */
+    text-align: right;
+    font-size: min(2vw, 2vh);
+}
+
+footer img {
+    width: min(10vw, 10vh);
+    aspect-ratio: 1;
 }
 
 .noSee {
@@ -55,4 +72,8 @@ body {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.logo {
+    position: absolute;
 }
