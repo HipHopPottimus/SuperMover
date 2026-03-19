@@ -117,6 +117,11 @@ wss.on('connection', (ws) => {
                 updateState();
                 break;
             }
+            case 'FORGET_MOVER': {
+                movers = movers.filter(m => m.channel != msg.channel);
+                blockChannels = blockChannels.filter(block => block < msg.channel && block > msg.channel + 15);
+                break;
+            }
             case 'MOVER_SET': {
                 const mover = movers.find(m => m.channel === msg.channel);
                 if (!mover) {
