@@ -16,7 +16,7 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const movers = [new mlib.Mover(1, debug)];
+let movers = [new mlib.Mover(1, debug)];
 const primaryMover = movers[0];
 
 const joystick1 = new joystick.Joystick(0x046d, 0xc214);
@@ -117,8 +117,13 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'FORGET_MOVER': {
+                if(msg.channel === primaryMover.channel) {
+                    ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
+                    return;
+                }
                 movers = movers.filter(m => m.channel != msg.channel);
-                blockChannels = blockChannels.filter(block => block < msg.channel && block > msg.channel + 15);
+                for(let channel = msg.channel; channel < msg.channel + 15; channel++)
+                    blockedChannels.delete(channel);
                 break;
             }
             case 'MOVER_SET': {
