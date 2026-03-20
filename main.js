@@ -6,6 +6,8 @@ import path from 'path';
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 
+const USE_FINE_CONTROL = false;
+
 const debug = process.env.debug === "true";
 if (debug) console.log("Debug mode is ON");
 const app = express();
@@ -28,29 +30,17 @@ catch(error) {
     console.error("Error when initializing joystick", error);
 }
 
-joystick1.onData = () => {
+joystick1.onData = joystick1.onUpdate = () => {
     const values = {
-        Pan: Math.round(joystick1.x),
-        Tilt: Math.round(joystick1.y),
         Zoom: Math.round(joystick1.zoom),
         Dimmer: joystick1.throttle,
     };
 
     primaryMover.set(values);
+    primaryMover.setPanDeg(joystick1.x  / 255 * 540, USE_FINE_CONTROL);
+    primaryMover.setTiltDeg(joystick1.y / 255 * 270, USE_FINE_CONTROL);
     updateState();
 };
-
-joystick1.onUpdate = () => {
-    const values = {
-        Pan: Math.round(joystick1.x),
-        Tilt: Math.round(joystick1.y),
-        Zoom: Math.round(joystick1.zoom),
-        Dimmer: joystick1.throttle,
-    };
-
-    primaryMover.set(values);
-    updateState();
-}
 
 const blockedChannels = new Set(Array.from({ length: 15 }, (_, index) => index + 1));
 
