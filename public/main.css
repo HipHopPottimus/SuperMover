@@ -27,7 +27,6 @@ footer img {
 .vertical-slider {
     writing-mode: vertical-lr;
     direction: rtl;
-    -webkit-appearance: slider-vertical;
     width: 28px;
     height: 200px;
 }
