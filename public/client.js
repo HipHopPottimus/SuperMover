@@ -392,3 +392,9 @@ function initMoverControls(ch) {
         document.getElementById(`mover-${ch}`).remove();
     });
 }
+
+function requestISU() {
+    socket.send(JSON.stringify({
+        type: 'GET_STATE'
+    }));
+}
