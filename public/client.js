@@ -65,7 +65,7 @@ function setSlider(ch, id, val) {
     document.getElementById(`${ch}-${id}`).value = val;
     switch (id) {
         case 'zoom':
-            let deg = 28 + (10 - 28) * (val / 255); // Narrow to wide
+            let deg = 23 + (10 - 23) * (val / 255); // Narrow to wide
             document.getElementById(`${ch}-${id}-label`).textContent = deg.toFixed(1) + '°';
             break;
         case 'pt-speed':
