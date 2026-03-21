@@ -184,7 +184,11 @@ export class Mover {
             // console.log(Object.entries(channels).map(([k, v]) => `${k}: ${v}`).join("\n"));
             // Very spammy
         }
-        this.channelValues = { ...this.channelValues, ...channels };
+        this.channelValues = {...this.channelValues, ...channels};
+        for(const [channelName, channel] of Object.entries(this.CHANNELS)) {
+            this.channelValues[channelName] = this.channelValues[channel];
+        }
+        console.log(this.channelValues);
         getDmx().setChannels(channels);
     }
 
