@@ -18,7 +18,6 @@ socket.onmessage = (event) => {
     switch (msg.type) {
         case 'STATE': {
             currentState = msg.state;
-            window.currentState = msg.state;
             for (const mover of msg.state.movers)
                 renderMover(mover);
             renderCues();

@@ -2,8 +2,6 @@ import IDBWebStorage from "./libs/IDBWebStorage.js";
 
 const storage = new IDBWebStorage("SuperMoverStorage");
 
-window.cueStorage = storage;
-
 await storage.loadData();
 
 if(!storage.data.cues) storage.data.cues = {};
