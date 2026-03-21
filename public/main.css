@@ -7,6 +7,11 @@ body {
     display: none;
 }
 
+.workspace {
+    display: flex;
+    column-gap: 50px;
+}
+
 .vertical-slider {
     writing-mode: vertical-lr;
     direction: rtl;
@@ -55,4 +60,107 @@ body {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.mover-settings {
+    background-color: lightgray;
+    border: 1px solid black;
+    border-radius: 10px;
+    text-align: center;
+    padding: 3px;
+}
+
+.cue-table {
+    display: grid;
+    grid-gap: 1px;
+    grid-auto-flow: column;
+    margin-bottom: 10px;
+}
+
+.cue-table > div {
+    outline: 1px solid #777777;
+    overflow-y: scroll;
+    height: 200px;
+}
+
+.cue-table > div > p {
+    padding: 1px 3px;
+    margin: 2px 5px;
+    border-radius: 10px;
+}
+
+.cue-table-header {
+    text-decoration: underline;
+}
+
+.empty-message {
+    color: #575757;
+}
+
+.cue-save-options {
+    display: flex;
+    justify-content: stretch;
+    column-gap: 1px;
+}
+
+.cue-table-add {
+    color: grey;
+    font-weight: bolder;
+    text-align: center;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.cue-table-delete {
+    text-align: center;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.cue-table-mover, .cue-table-cue, .cue-table-delete {
+    transition: opacity 0.5s, background-color 0.5s;
+}
+
+.cue-table-mover.drag-active {
+    background-color: #9ccaff;
+}
+
+.cue-table-cue.drag-active {
+    background-color: #eeeeee;
+}
+
+.cue-table-add.drag-active {
+    opacity: 1;
+    height: auto;
+    background-color: lightgray;
+}
+
+.cue-table-delete.drag-active {
+    opacity: 1;
+    height: auto;
+    background-color: #ff9c9c;
+}
+
+
+.instructions p {
+    margin: 2px;
+}
+
+.instructions {
+    margin-bottom: 2px;
+}
+
+.cue-save-options button {
+    width: 100%;
+}
+
+dialog {
+    position: fixed;
+    left: 50vw;
+    top: 30vh;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    border: 1px solid black;
 }

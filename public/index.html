@@ -9,13 +9,25 @@
 </head>
 
 <body>
-    SupperMoover ඞ
+    <p>SupperMoover ඞ</p>
     <form action="javascript:void(0);" onsubmit="event.preventDefault(); addMover(); return false;">
         <input type="text" name="moverCh" id="moverCh" value="1">
         <input type="submit" value="Add Mover">
     </form>
-    <div class="movers">
-
+    <div class="workspace">
+        <div class="movers"></div>
+        <div class="cue-storage">
+            <h2>Saved cues</h2>
+            <div class="cue-table">
+                <div id="mover-list"></div>
+                <div id="cue-list"></div>
+            </div>
+            <div class="instructions">
+                <p>Drag a mover over to the cues list to save it's state as a cue</p>
+                <p>Drag a cue to a mover to recall it</p>
+            </div>
+            <div class="cue-storage-save-options"></div>
+        </div>
     </div>
     <div id="mover-template" class="noSee">
         <div class="mover" id="mover-{ch}">
@@ -194,7 +206,7 @@
             </div>
         </div>
     </div>
-    <script src="client.js"></script>
+    <script src="client.js" type="module"></script>
 </body>
 
 </html>
