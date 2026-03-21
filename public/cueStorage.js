@@ -24,27 +24,27 @@ async function getFileHandle(){
         permission = false;
     }
     if(!permission){
-        let popup = document.createElement("dialog");
-        await (new Promise((resolve,reject) => {
-            popup.innerHTML = 
-            `
+        await new Promise((resolve,reject) => {
+            let popup = document.createElement("dialog");
+            popup.innerHTML = `
             <p>We need permission to edit your cues file</p>
-            <button id="request-permission-popup-button">Give permission</button>
-            `
+            <button class="request-permission-popup-button">Give permission</button>
+            `;
             document.body.appendChild(popup);
             popup.show();
-            popup.querySelector("#request-permission-popup-button").addEventListener("click", async () => {
-                console.log("click");
+            popup.querySelector(".request-permission-popup-button").addEventListener("click", async () => {
                 let permission = await fileHandle.requestPermission({mode: "readwrite"});
                 if(permission == "granted"){
                     popup.remove();
+                    //resolve all other popups that might have been created
+                    document.querySelectorAll(".request-permission-popup-button").forEach(b => b.click());
                     resolve();
                 }
                 else {
                     alert("There was an error getting permission. Check your browser permissions");
                 }
             });
-        }));
+        });
     }
     return fileHandle;
 }
