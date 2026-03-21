@@ -528,10 +528,17 @@ async function load() {
     renderCues();
 }
 
+function requestISU() {
+    socket.send(JSON.stringify({
+        type: 'GET_STATE'
+    }));
+}
+
 if(document.readyState != "loading") load();
 else document.addEventListener("load", load);
 
 //globally accessible functions
 Object.assign(window, {
-    addMover
+    addMover,
+    requestISU
 });

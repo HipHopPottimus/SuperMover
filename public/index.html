@@ -10,11 +10,13 @@
 </head>
 
 <body>
-    <p>SupperMoover ඞ</p>
-    <form action="javascript:void(0);" onsubmit="event.preventDefault(); addMover(); return false;">
+    <span>SupperMoover</span>
+    <form style="display: inline-block;" action="javascript:void(0);"
+        onsubmit="event.preventDefault(); addMover(); return false;">
         <input type="text" name="moverCh" id="moverCh" value="1">
         <input type="submit" value="Add Mover">
     </form>
+    <button onclick="requestISU()">Request ISU</button>
     <div class="workspace">
         <div class="movers"></div>
         <div class="cue-storage">
