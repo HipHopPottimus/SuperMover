@@ -8,7 +8,7 @@ const INVERT_X = false;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 10;
 const ZOOM_SENSITIVITY = 500;
-const ZOOM_EASING = 0.1; // Lower is more eased
+const ZOOM_EASING = 0.2; // Lower is more eased
 
 class Joystick {
     /** @type {usb.usb.Device} */

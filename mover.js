@@ -181,7 +181,8 @@ export class Mover {
     setChannels(channels) {
         // console.log(channels);
         if (this.debug) {
-            console.log(Object.entries(channels).map(([k, v]) => `${k}: ${v}`).join("\n"));
+            // console.log(Object.entries(channels).map(([k, v]) => `${k}: ${v}`).join("\n"));
+            // Very spammy
         }
         this.channelValues = {...this.channelValues, ...channels};
         for(const [channelName, channel] of Object.entries(this.CHANNELS)) {

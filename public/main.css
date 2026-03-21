@@ -1,6 +1,23 @@
 body {
-    background: white;
+    min-height: 100vh;
+    padding-bottom: 200px;
+
     /* Fix transparency issues */
+    background: white;
+}
+
+footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    /* transform: translateX(-50%); */
+    text-align: right;
+    font-size: min(2vw, 2vh);
+}
+
+footer img {
+    width: min(10vw, 10vh);
+    aspect-ratio: 1;
 }
 
 .noSee {
@@ -15,7 +32,6 @@ body {
 .vertical-slider {
     writing-mode: vertical-lr;
     direction: rtl;
-    -webkit-appearance: slider-vertical;
     width: 28px;
     height: 200px;
 }
@@ -163,4 +179,6 @@ dialog {
     transform: translate(-50%, -50%);
     margin: 0;
     border: 1px solid black;
+.logo {
+    position: absolute;
 }

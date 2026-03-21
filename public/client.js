@@ -72,8 +72,12 @@ function setSlider(ch, id, val) {
     document.getElementById(`${ch}-${id}`).value = val;
     switch (id) {
         case 'zoom':
-            let deg = 28 + (10 - 28) * (val / 255); // Narrow to wide
+            let deg = 23 + (10 - 23) * (val / 255); // Narrow to wide
             document.getElementById(`${ch}-${id}-label`).textContent = deg.toFixed(1) + '°';
+            break;
+        case 'pt-speed':
+            let pct = 100 - Math.round(val / 255 * 100);
+            document.getElementById(`${ch}-${id}-label`).textContent = pct + '%';
             break;
         case 'dimmer':
             document.getElementById(`${ch}-${id}-label`).textContent = (val / 2.55).toFixed(1) + '%';
@@ -280,6 +284,10 @@ function initMoverControls(ch) {
                 case 'zoom':
                     let deg = 28 + (10 - 28) * (slider.value / 255); // Narrow to wide
                     label.textContent = deg.toFixed(1) + '°';
+                    break;
+                case 'pt-speed':
+                    let pct = 100 - Math.round(slider.value / 255 * 100);
+                    label.textContent = pct + '%';
                     break;
                 case 'dimmer':
                     label.textContent = (slider.value / 2.55).toFixed(1) + '%';
