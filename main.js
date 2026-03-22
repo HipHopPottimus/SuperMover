@@ -8,7 +8,7 @@ import jlib from "./joystick.js";
 
 const USE_FINE_CONTROL = false;
 
-const debug = process.env.debug === "true";
+const debug = process.env.debug === "true" || process.argv.includes("--debug");
 if (debug) console.log("Debug mode is ON");
 const app = express();
 const port = 3000;
@@ -28,6 +28,9 @@ try {
 }
 catch(error) {
     console.error("Error when initializing joystick", error);
+    if(process.argv.includes("--dummy-joystick-updates")) setInterval(() => {
+        if(joystick1.onUpdate) joystick1.onUpdate({zoom: 128, throttle: 128, x: 128, y: 128});
+    }, 50);
 }
 
 joystick1.onData = joystick1.onUpdate = () => {

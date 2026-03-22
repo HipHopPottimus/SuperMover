@@ -18,10 +18,10 @@ socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     switch (msg.type) {
         case 'STATE': {
+            if(currentState?.movers?.length != msg.state.movers.length) renderCues();
             currentState = msg.state;
             for (const mover of msg.state.movers)
                 renderMover(mover);
-            renderCues();
             break;
         }
         case 'ERROR': {
