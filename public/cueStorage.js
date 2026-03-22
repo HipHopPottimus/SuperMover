@@ -104,7 +104,7 @@ async function syncCues() {
     if(!await getFileHandle()) return;
     await storage.saveData();
 
-    const ourVersion = storage.data.cues;
+    const ourVersion = storage.data;
 
     let theirVersion;
     try {
@@ -115,11 +115,12 @@ async function syncCues() {
     }
 
     if(!theirVersion.cues) theirVersion.cues = {};
+    if(!theirVersion.show) theirVersion.show = {};
 
     for(const change of storage.data.changes) {
         switch(change.changeType) {
             case "update":
-                theirVersion.cues[change.cueName] = ourVersion[change.cueName];
+                theirVersion.cues[change.cueName] = ourVersion.cues[change.cueName];
                 break;
             case "delete":
                 delete theirVersion.cues[change.cueName];

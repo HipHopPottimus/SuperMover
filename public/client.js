@@ -381,7 +381,7 @@ async function renderCues() {
     moverList.innerHTML = `<p class="cue-table-header">Movers</p>`;
 
     for(let mover of currentState.movers)
-        moverList.innerHTML += `<p class="cue-table-mover" data-channel="${mover.channel}" id="cue-table-mover-${mover.channel}">Mover # ${mover.channel}</p>`;
+        moverList.innerHTML += `<p class="cue-table-mover" data-channel="${mover.channel}" id="cue-table-mover-${mover.channel}">Mover #${mover.channel}</p>`;
 
 
     const cueList = document.getElementById("cue-list");
@@ -394,6 +394,16 @@ async function renderCues() {
     if(!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
     cueList.innerHTML += `<p class="cue-table-delete"><img src="imgs/bin.svg" width="15"/></p>`;
+
+    const showContainer = document.getElementById("show-container");
+    showContainer.innerHTML = `
+        <p class="cue-table-header">Show cues</p>
+        <table id="show-table"></table>
+    `;
+
+    const showTable = document.getElementById("show-table");
+    const showTableHeader = showTable.insertRow();
+    showTableHeader.innerHTML = currentState.movers.map(m => `<th>Mover #${m.channel}</th>`).join("");
 
     for(const moverListing of moverList.querySelectorAll(".cue-table-mover")) {
         setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.getElementsByClassName("cue-table-cue"), async event => {
@@ -451,6 +461,12 @@ function setupDragDrop(element, data, targets, onDrop) {
     }
 }
 
+function requestISU() {
+    socket.send(JSON.stringify({
+        type: 'GET_STATE'
+    }));
+}
+
 async function load() {
     try {
         await cueStorage.syncCues();
@@ -460,12 +476,6 @@ async function load() {
         alert("Error when syncing cues\n"+e);
     }
     renderCues();
-}
-
-function requestISU() {
-    socket.send(JSON.stringify({
-        type: 'GET_STATE'
-    }));
 }
 
 if(document.readyState != "loading") load();
