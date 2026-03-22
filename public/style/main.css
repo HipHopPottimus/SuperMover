@@ -78,14 +78,6 @@ footer img {
     flex-wrap: wrap;
 }
 
-.mover-settings {
-    background-color: lightgray;
-    border: 1px solid black;
-    border-radius: 10px;
-    text-align: center;
-    padding: 3px;
-}
-
 .cue-table {
     display: grid;
     grid-gap: 1px;
@@ -99,10 +91,11 @@ footer img {
     height: 200px;
 }
 
-.cue-table > div > p {
+.cue-table p {
     padding: 1px 3px;
     margin: 2px 5px;
     border-radius: 10px;
+    transition: opacity 0.5s, background-color 0.5s;
 }
 
 .cue-table-header {
@@ -119,10 +112,13 @@ footer img {
     column-gap: 1px;
 }
 
-.cue-table-add {
+.cue-table-add, .cue-stack-add {
     color: grey;
     font-weight: bolder;
     text-align: center;
+}
+
+.cue-table-add {
     opacity: 0;
     height: 0;
     overflow: hidden;
@@ -135,10 +131,6 @@ footer img {
     overflow: hidden;
 }
 
-.cue-table-mover, .cue-table-cue, .cue-table-delete {
-    transition: opacity 0.5s, background-color 0.5s;
-}
-
 .cue-table-mover.drag-active {
     background-color: #9ccaff;
 }
@@ -147,7 +139,7 @@ footer img {
     background-color: #eeeeee;
 }
 
-.cue-table-add.drag-active {
+.cue-table-add.drag-active, .cue-stack-add.drag-active {
     opacity: 1;
     height: auto;
     background-color: lightgray;
@@ -157,6 +149,34 @@ footer img {
     opacity: 1;
     height: auto;
     background-color: #ff9c9c;
+}
+
+#cue-stack-table {
+    border-collapse: collapse;
+    margin-left: 7px;
+}
+
+#cue-stack-table td p {
+    margin: 0;
+}
+
+.cue-stack-table th, .cue-stack-table td {
+    padding-right: 12px;
+    padding-top: 10px;
+}
+
+#cue-stack-table th {
+    font-weight: 10;
+    border-bottom: 1px solid #b3b3b3;
+}
+
+
+.cue-stack-add-row:not(:has(.drag-active)) td {
+    line-height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    opacity: 0;
 }
 
 .instructions p {
