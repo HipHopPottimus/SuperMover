@@ -6,7 +6,7 @@
  * 5: Pan/Tilt Speed (0 fast, 255 slow)
  * 6: Color Wheel
  *     0-7: White
- *     8-15: Orange
+ *     8-15: Medium bastard amber
  *     16-23: Lime green
  *     24-31: Cyan
  *     32-39: Red
@@ -214,7 +214,7 @@ export class Mover {
 
 export const COLORS = {
     White: 0,
-    Orange: 8,
+    MediumBastardAmber: 8,
     LimeGreen: 16,
     Cyan: 24,
     Red: 32,
