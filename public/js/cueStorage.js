@@ -1,4 +1,4 @@
-import IDBWebStorage from "./libs/IDBWebStorage.js";
+import IDBWebStorage from "../libs/IDBWebStorage.js";
 
 const storage = new IDBWebStorage("SuperMoverStorage");
 
