@@ -5,7 +5,6 @@ const LOW_SENSITIVITY_X = 0.2;
 const LOW_SENSITIVITY_Y = LOW_SENSITIVITY_X * 540 / 270;
 const HIGH_SENSITIVITY_X = 1;
 const HIGH_SENSITIVITY_Y = HIGH_SENSITIVITY_X * 540 / 270;
-const USE_HIGH_SENSITIVITY = false;
 const NON_LINEAR_EXPONENT = 3;
 const INVERT_X = true;
 const INVERT_Y = false;
@@ -58,6 +57,9 @@ class Joystick {
 
     /** @type {ReturnType<typeof setInterval> | undefined} */
     updateTimer;
+
+    /** @type {boolean} */
+    USE_HIGH_SENSITIVITY = false;
 
     constructor(vendorId, productId) {
         this.device = usb.findByIds(vendorId, productId);
