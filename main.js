@@ -5,6 +5,7 @@ import path from 'path';
 
 import mlib from './mover.js';
 import jlib from "./joystick.js";
+import glib from "./gamepad.js";
 
 const USE_FINE_CONTROL = true;
 
@@ -18,8 +19,9 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-let movers = [new mlib.Mover(1, debug)];
+let movers = [new mlib.Mover(1, debug), new mlib.Mover(16, debug)];
 const primaryMover = movers[0];
+const gamepadMover = movers[1];
 
 let joystick1 = {};
 
@@ -33,6 +35,22 @@ catch(error) {
     }, 50);
 }
 
+let gamepad1 = {};
+
+try {
+    gamepad1 = new glib.Gamepad(0);
+    console.log("Gamepad initialized on controller index 0");
+} catch(error) {
+    console.error("Error when initializing gamepad", error);
+}
+
+gamepad1.onUpdate = () => {
+    gamepadMover.set({ Zoom: Math.round(gamepad1.zoom) });
+    gamepadMover.setPanDeg(gamepad1.x  / 255 * 540, USE_FINE_CONTROL);
+    gamepadMover.setTiltDeg(gamepad1.y / 255 * 270, USE_FINE_CONTROL);
+    updateState();
+};
+
 joystick1.onData = joystick1.onUpdate = () => {
     const values = {
         Zoom: Math.round(joystick1.zoom),
@@ -45,7 +63,10 @@ joystick1.onData = joystick1.onUpdate = () => {
     updateState();
 };
 
-const blockedChannels = new Set(Array.from({ length: 15 }, (_, index) => index + 1));
+const blockedChannels = new Set([
+    ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
+    ...Array.from({ length: 15 }, (_, i) => i + 16),  // ch 16–30 (gamepad mover)
+]);
 
 function getState() {
     return {
@@ -117,7 +138,7 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'FORGET_MOVER': {
-                if(msg.channel === primaryMover.channel) {
+                if(msg.channel === primaryMover.channel || msg.channel === gamepadMover.channel) {
                     ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
                     return;
                 }
