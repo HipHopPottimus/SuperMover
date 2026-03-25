@@ -7,7 +7,7 @@ function computeColorValue(ch) {
     const s = spd(`${ch}-color-speed`);
     if (sel.startsWith('w:')) return parseInt(sel.slice(2));
     if (sel === 'indexed') return 64 + Math.round(125 * s);
-    if (sel === 'cycle') return 190 + Math.round(31 * s);
+    if (sel === 'cycle') return 221 - Math.round(31 * s);
     if (sel === 'rcycle') return 222 + Math.round(33 * s);
     return 0;
 }
