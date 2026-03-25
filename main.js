@@ -45,7 +45,7 @@ try {
 }
 
 gamepad1.onUpdate = () => {
-    gamepadMover.set({ Zoom: Math.round(gamepad1.zoom) });
+    gamepadMover.set({ Zoom: Math.round(gamepad1.zoom), Dimmer: Math.round(gamepad1.dimmer) });
     gamepadMover.setPanDeg(gamepad1.x  / 255 * 540, USE_FINE_CONTROL);
     gamepadMover.setTiltDeg(gamepad1.y / 255 * 270, USE_FINE_CONTROL);
     updateState();
