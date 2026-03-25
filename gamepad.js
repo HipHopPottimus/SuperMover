@@ -1,5 +1,7 @@
 import * as XInput from "xinput-ffi";
 
+let has_gamepad_errored = false;
+
 const DEADZONE = 0.05;
 const HIGH_SENSITIVITY_X = 127;
 const HIGH_SENSITIVITY_Y = HIGH_SENSITIVITY_X * 540 / 270;
@@ -47,7 +49,11 @@ export class Gamepad {
             try {
                 const { gamepad } = await XInput.getState(this._index);
                 this._handleState(gamepad);
-            } catch (err) { console.error("Failed to get gamepad state:", err); }
+            } catch (err) {
+                if (has_gamepad_errored) return;
+                console.error("Failed to get gamepad state:", err);
+                has_gamepad_errored = true;
+            }
         }, 1000 / 60);
 
         this._updateTimer = setInterval(() => {
