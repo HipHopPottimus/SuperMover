@@ -135,12 +135,14 @@ footer img {
     overflow: hidden;
 }
 
-.cue-table-mover, .cue-table-cue, .cue-table-delete {
-    transition: opacity 0.5s, background-color 0.5s;
+.cue-table-mover-sub {
+    font-size: 0.85em;
+    color: #555;
+    padding-left: 14px !important;
 }
 
 .cue-table-mover.drag-active {
-    background-color: #9ccaff;
+    background-color: #d6e9ff;
 }
 
 .cue-table-cue.drag-active {
@@ -156,7 +158,41 @@ footer img {
 .cue-table-delete.drag-active {
     opacity: 1;
     height: auto;
-    background-color: #ff9c9c;
+    background-color: #ffd6d6;
+}
+
+/* Individual hover highlights */
+.cue-table-mover[data-mode="all"].drag-hover {
+    background-color: #4a9eff;
+    outline: 2px solid #0060cc;
+    color: white;
+}
+
+.cue-table-mover[data-mode="pos"].drag-hover {
+    background-color: #5cc85c;
+    outline: 2px solid #2a7a2a;
+    color: white;
+}
+
+.cue-table-mover[data-mode="nopos"].drag-hover {
+    background-color: #ffaa33;
+    outline: 2px solid #cc6600;
+    color: white;
+}
+
+.cue-table-cue.drag-hover {
+    background-color: #bbbbbb;
+    outline: 2px solid #666;
+}
+
+.cue-table-add.drag-hover {
+    background-color: #aaaaaa;
+    outline: 2px solid #444;
+}
+
+.cue-table-delete.drag-hover {
+    background-color: #ff4444;
+    outline: 2px solid #aa0000;
 }
 
 

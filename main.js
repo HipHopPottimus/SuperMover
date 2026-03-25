@@ -155,8 +155,33 @@ wss.on('connection', (ws) => {
                 }
 
                 if(mover.channel === primaryMover.channel) {
-                    if(msg.values.Zoom !== undefined) 
+                    if(msg.values.Zoom !== undefined)
                         joystick1.zoom = msg.values.Zoom;
+                    if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
+                        const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
+                        const panFine = msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0);
+                        joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+                    }
+                    if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
+                        const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
+                        const tiltFine = msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0);
+                        joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
+                    }
+                }
+
+                if(mover.channel === gamepadMover.channel) {
+                    if(msg.values.Zoom !== undefined) gamepad1.zoom = msg.values.Zoom;
+                    if(msg.values.Dimmer !== undefined) gamepad1.dimmer = msg.values.Dimmer;
+                    if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
+                        const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
+                        const panFine = msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0);
+                        gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+                    }
+                    if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
+                        const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
+                        const tiltFine = msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0);
+                        gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
+                    }
                 }
 
                 mover.set(msg.values);

@@ -385,8 +385,11 @@ async function renderCues() {
     const moverList = document.getElementById("mover-list");
     moverList.innerHTML = `<p class="cue-table-header">Movers</p>`;
 
-    for (let mover of currentState.movers)
-        moverList.innerHTML += `<p class="cue-table-mover" data-channel="${mover.channel}" id="cue-table-mover-${mover.channel}">Mover # ${mover.channel}</p>`;
+    for (let mover of currentState.movers) {
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-main" data-channel="${mover.channel}" data-mode="all" id="cue-table-mover-${mover.channel}">Mover #${mover.channel}</p>`;
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="pos" id="cue-table-mover-${mover.channel}-pos">↳ Pos only</p>`;
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="nopos" id="cue-table-mover-${mover.channel}-nopos">↳ Not pos</p>`;
+    }
 
 
     const cueList = document.getElementById("cue-list");
@@ -400,7 +403,7 @@ async function renderCues() {
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
     cueList.innerHTML += `<p class="cue-table-delete"><img src="imgs/bin.svg" width="15"/></p>`;
 
-    for (const moverListing of moverList.querySelectorAll(".cue-table-mover")) {
+    for (const moverListing of moverList.querySelectorAll(".cue-table-mover-main")) {
         setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.getElementsByClassName("cue-table-cue"), async event => {
             if (event.target.className.includes("cue-table-add")) {
                 const cueName = prompt("Enter new cue name:");
@@ -423,7 +426,15 @@ async function renderCues() {
                 return;
             }
             const ch = Number.parseInt(event.target.getAttribute("data-channel"));
-            sendMoverSet(ch, await cueStorage.getCue(cueName));
+            const mode = event.target.getAttribute("data-mode") ?? "all";
+            const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
+            let values = cueStorage.getCue(cueName);
+            if (mode === "pos") {
+                values = Object.fromEntries(Object.entries(values).filter(([k]) => POS_KEYS.has(k)));
+            } else if (mode === "nopos") {
+                values = Object.fromEntries(Object.entries(values).filter(([k]) => !POS_KEYS.has(k)));
+            }
+            sendMoverSet(ch, values);
         });
     }
 }
@@ -437,7 +448,10 @@ function setupDragDrop(element, data, targets, onDrop) {
     });
 
     element.addEventListener("dragend", event => {
-        [...targets].forEach(t => t.classList.remove("drag-active"));
+        [...targets].forEach(t => {
+            t.classList.remove("drag-active");
+            t.classList.remove("drag-hover");
+        });
     });
 
     for (let target of targets) {
@@ -445,9 +459,18 @@ function setupDragDrop(element, data, targets, onDrop) {
             if (event.dataTransfer.types.includes(elementId)) event.preventDefault();
         });
 
+        target.addEventListener("dragenter", event => {
+            if (event.dataTransfer.types.includes(elementId)) target.classList.add("drag-hover");
+        });
+
+        target.addEventListener("dragleave", () => {
+            target.classList.remove("drag-hover");
+        });
+
         target.addEventListener("drop", event => {
             if (!event.dataTransfer.types.includes(elementId)) return;
 
+            target.classList.remove("drag-hover");
             event.preventDefault();
             event.stopImmediatePropagation();
             const data = JSON.parse(event.dataTransfer.getData(elementId));
