@@ -6,7 +6,7 @@ import path from 'path';
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 
-const USE_FINE_CONTROL = false;
+const USE_FINE_CONTROL = true;
 
 const debug = process.env.debug === "true" || process.argv.includes("--debug");
 if (debug) console.log("Debug mode is ON");

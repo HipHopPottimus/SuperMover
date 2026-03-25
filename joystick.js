@@ -1,10 +1,13 @@
 import usb from "usb";
 
 const DEADZONE = 10;
-const SENSITIVITY_X = 1;
-const SENSITIVITY_Y = SENSITIVITY_X * 540 / 270; // More sensitive to adjust for different multiplier (255 -> 540 for pan, 255 -> 270 for tilt)
+const LOW_SENSITIVITY_X = 0.2;
+const LOW_SENSITIVITY_Y = LOW_SENSITIVITY_X * 540 / 270;
+const HIGH_SENSITIVITY_X = 1;
+const HIGH_SENSITIVITY_Y = HIGH_SENSITIVITY_X * 540 / 270;
+const USE_HIGH_SENSITIVITY = false;
 const NON_LINEAR_EXPONENT = 3;
-const INVERT_X = false;
+const INVERT_X = true;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 10;
 const ZOOM_SENSITIVITY = 500;
@@ -30,7 +33,7 @@ class Joystick {
     onUpdate;
 
     /** @type {number} */
-    x = 0;
+    x = 170;
 
     /** @type {number} */
     y = 0;
@@ -94,14 +97,16 @@ class Joystick {
 
     handleInput(data) {
         this.rawData = Array.from(data);
+        
+        this.USE_HIGH_SENSITIVITY = data[3] & 1 ? true : false;
 
         const xInput = data[0];
         const yInput = data[1];
         const throttleInput = data[2] ?? 0;
 
         this.throttle = 255 - throttleInput;
-        this.dX = mapAxis(xInput, INVERT_X) * SENSITIVITY_X;
-        this.dY = mapAxis(yInput, INVERT_Y) * SENSITIVITY_Y;
+        this.dX = mapAxis(xInput, INVERT_X) * (this.USE_HIGH_SENSITIVITY ? HIGH_SENSITIVITY_X : LOW_SENSITIVITY_X);
+        this.dY = mapAxis(yInput, INVERT_Y) * (this.USE_HIGH_SENSITIVITY ? HIGH_SENSITIVITY_Y : LOW_SENSITIVITY_Y);
 
         this.dZ = data[3] >> 1 & 1 ? 1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? -ZOOM_SENSITIVITY : 0;
         this.onData?.();
