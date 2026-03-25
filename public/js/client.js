@@ -18,7 +18,7 @@ socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     switch (msg.type) {
         case 'STATE': {
-            if(currentState?.movers?.length != msg.state.movers.length) renderCues();
+            if (currentState?.movers?.length != msg.state.movers.length) renderCues();
             currentState = msg.state;
             for (const mover of msg.state.movers)
                 renderMover(mover);
@@ -214,7 +214,7 @@ function initMoverControls(ch) {
         const slider = document.getElementById(`${ch}-${id}`);
         const label = document.getElementById(`${ch}-${id}-label`);
         slider.addEventListener('input', () => {
-            switch(id) {
+            switch (id) {
                 case 'zoom':
                     let deg = 28 + (10 - 28) * (slider.value / 255); // Narrow to wide
                     label.textContent = deg.toFixed(1) + '°';
@@ -339,7 +339,7 @@ async function setCue(cueName, ch) {
     await renderCues();
 }
 
-async function deleteCue(cueName){
+async function deleteCue(cueName) {
     await cueStorage.deleteCue(cueName);
     await renderCues();
 }
@@ -347,7 +347,7 @@ async function deleteCue(cueName){
 async function renderCues() {
     const cueStorageSaveOptions = document.querySelector(".cue-storage-save-options");
     let fileHandle = await cueStorage.getFileHandle();
-    if(fileHandle) {
+    if (fileHandle) {
         cueStorageSaveOptions.innerHTML = `
             <p>Currently syncing with ${fileHandle.name}</p>
             <button id="sync-cues">Sync now</button>
@@ -358,29 +358,34 @@ async function renderCues() {
                 await renderCues();
                 alert(`Sync successful`);
             }
-            catch(e) {
+            catch (e) {
                 console.error(e);
-                alert("Sync error\n"+e);
+                alert("Sync error\n" + e);
             }
         });
     }
     else {
         cueStorageSaveOptions.innerHTML = `
             <button id="open-cue-file">Sync cues with a file on your device</button>
+            <button id="copy-cues-json">Copy cues JSON to clipboard</button>
         `;
         document.getElementById("open-cue-file").addEventListener("click", async () => {
             await cueStorage.openNewFile();
             await cueStorage.syncCues();
             renderCues();
         });
+        document.getElementById("copy-cues-json").addEventListener("click", async () => {
+            await navigator.clipboard.writeText(JSON.stringify({ cues: cueStorage.getCues() }));
+            alert("Cues JSON copied to clipboard");
+        });
     }
 
-    if(!currentState) return;
-    
+    if (!currentState) return;
+
     const moverList = document.getElementById("mover-list");
     moverList.innerHTML = `<p class="cue-table-header">Movers</p>`;
 
-    for(let mover of currentState.movers)
+    for (let mover of currentState.movers)
         moverList.innerHTML += `<p class="cue-table-mover" data-channel="${mover.channel}" id="cue-table-mover-${mover.channel}">Mover # ${mover.channel}</p>`;
 
 
@@ -388,33 +393,33 @@ async function renderCues() {
     cueList.innerHTML = `<p class="cue-table-header">Saved cues</p>`;
 
     const cueNames = Object.keys(cueStorage.getCues());
-    for(let cueName of cueNames)
-            cueList.innerHTML += `<p class="cue-table-cue" id="cue-table-cue-${cueName}">${cueName}</p>`;
+    for (let cueName of cueNames)
+        cueList.innerHTML += `<p class="cue-table-cue" id="cue-table-cue-${cueName}">${cueName}</p>`;
 
-    if(!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
+    if (!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
     cueList.innerHTML += `<p class="cue-table-delete"><img src="imgs/bin.svg" width="15"/></p>`;
 
-    for(const moverListing of moverList.querySelectorAll(".cue-table-mover")) {
+    for (const moverListing of moverList.querySelectorAll(".cue-table-mover")) {
         setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.getElementsByClassName("cue-table-cue"), async event => {
-            if(event.target.className.includes("cue-table-add")) {
+            if (event.target.className.includes("cue-table-add")) {
                 const cueName = prompt("Enter new cue name:");
-                if(!cueName) return;
+                if (!cueName) return;
                 await setCue(cueName, event.data);
             }
             else {
-                if(confirm(`Are you sure you want to overwrite cue ${event.target.innerHTML}?`)){
+                if (confirm(`Are you sure you want to overwrite cue ${event.target.innerHTML}?`)) {
                     await setCue(event.target.innerHTML, event.data);
                 }
             }
         });
     }
 
-    for(const cueListing of cueList.querySelectorAll(".cue-table-cue")) {
+    for (const cueListing of cueList.querySelectorAll(".cue-table-cue")) {
         const cueName = cueListing.innerHTML;
         setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete"), async event => {
-            if(event.target.classList.contains("cue-table-delete")) {
-                if(confirm(`Are you sure you want to delete cue ${cueName}?`)) await deleteCue(cueName);
+            if (event.target.classList.contains("cue-table-delete")) {
+                if (confirm(`Are you sure you want to delete cue ${cueName}?`)) await deleteCue(cueName);
                 return;
             }
             const ch = Number.parseInt(event.target.getAttribute("data-channel"));
@@ -435,18 +440,18 @@ function setupDragDrop(element, data, targets, onDrop) {
         [...targets].forEach(t => t.classList.remove("drag-active"));
     });
 
-    for(let target of targets) {
+    for (let target of targets) {
         target.addEventListener("dragover", event => {
-            if(event.dataTransfer.types.includes(elementId)) event.preventDefault();
+            if (event.dataTransfer.types.includes(elementId)) event.preventDefault();
         });
 
         target.addEventListener("drop", event => {
-            if(!event.dataTransfer.types.includes(elementId)) return;
-            
+            if (!event.dataTransfer.types.includes(elementId)) return;
+
             event.preventDefault();
             event.stopImmediatePropagation();
             const data = JSON.parse(event.dataTransfer.getData(elementId));
-            onDrop({target, data});
+            onDrop({ target, data });
         });
     }
 }
@@ -455,9 +460,9 @@ async function load() {
     try {
         await cueStorage.syncCues();
     }
-    catch(e) {
+    catch (e) {
         console.error(e);
-        alert("Error when syncing cues\n"+e);
+        alert("Error when syncing cues\n" + e);
     }
     renderCues();
 }
@@ -468,7 +473,7 @@ function requestISU() {
     }));
 }
 
-if(document.readyState != "loading") load();
+if (document.readyState != "loading") load();
 else document.addEventListener("load", load);
 
 //globally accessible functions
