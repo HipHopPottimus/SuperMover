@@ -5,7 +5,8 @@
     "express": "^5.2.1",
     "prompt-sync": "^4.2.0",
     "usb": "^2.17.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "xinput-ffi": "^4.0.2"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
