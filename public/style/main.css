@@ -48,7 +48,35 @@ footer img {
 }
 
 .slider-label {
-    width: 0px;
+    min-width: 5ch;
+    text-align: center;
+    white-space: nowrap;
+}
+
+[id$="-speed-label"] {
+    display: inline-block;
+    min-width: 4ch;
+    white-space: nowrap;
+}
+
+[id$="-speed-wrap"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: middle;
+    max-width: 300px;
+    opacity: 1;
+    visibility: visible;
+    transition: max-width 200ms ease-out, opacity 150ms ease-out;
+}
+
+[id$="-speed-wrap"].noSee {
+    max-width: 0;
+    opacity: 0;
+    visibility: hidden;
+    gap: 0;
 }
 
 .sliders {
