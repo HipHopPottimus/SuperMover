@@ -19,7 +19,7 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-let movers = [new mlib.Mover(1, debug), new mlib.Mover(16, debug)];
+let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
 const primaryMover = movers[0];
 const gamepadMover = movers[1];
 
@@ -74,8 +74,8 @@ joystick1.onUpdate = () => {
 
 
 const blockedChannels = new Set([
-    ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
-    ...Array.from({ length: 15 }, (_, i) => i + 16),  // ch 16–30 (gamepad mover)
+    ...Array.from({ length: primaryMover.channelCount }, (_, i) => i + 1),
+    ...Array.from({ length: gamepadMover.channelCount }, (_, i) => i + 16),
 ]);
 
 function getState() {
@@ -101,8 +101,8 @@ function isChannelBlocked(channel) {
     return blockedChannels.has(channel);
 }
 
-function blockMoverChannels(startChannel) {
-    for (let channel = startChannel; channel < startChannel + 15; channel++) {
+function blockMoverChannels(startChannel, count) {
+    for (let channel = startChannel; channel < startChannel + (count || 15); channel++) {
         blockedChannels.add(channel);
     }
 }
@@ -142,8 +142,10 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
-                blockMoverChannels(msg.channel);
-                movers.push(new mlib.Mover(msg.channel, debug));
+                const fixtureType = msg.fixtureType || '375z';
+                const newMover = new mlib.Mover(msg.channel, debug, fixtureType);
+                blockMoverChannels(msg.channel, newMover.channelCount);
+                movers.push(newMover);
                 updateState();
                 break;
             }
@@ -152,8 +154,10 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
                     return;
                 }
+                const forgetMover = movers.find(m => m.channel == msg.channel);
+                const forgetCount = forgetMover ? forgetMover.channelCount : 15;
                 movers = movers.filter(m => m.channel != msg.channel);
-                for(let channel = msg.channel; channel < msg.channel + 15; channel++)
+                for(let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
                     blockedChannels.delete(channel);
                 break;
             }

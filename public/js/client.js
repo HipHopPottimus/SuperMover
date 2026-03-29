@@ -1,6 +1,35 @@
 import cueStorage from "./cueStorage.js";
 import channelValues from "./channelValueUtil.js";
 
+const FIXTURE_PROFILES = {
+    '375z': {
+        name: 'Intimidator 375z',
+        channelCount: 15,
+        offsets: {
+            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
+            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, Prism: 8,
+            Focus: 9, Dimmer: 10, Shutter: 11, Function: 12, MovementMacros: 13, Zoom: 14,
+        },
+        hasStaticGobo: false,
+    },
+    '475z': {
+        name: 'Intimidator 475z',
+        channelCount: 16,
+        offsets: {
+            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
+            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, StaticGoboWheel: 8,
+            Prism: 9, Focus: 10, Zoom: 11, Dimmer: 12, Shutter: 13, Function: 14, MovementMacros: 15,
+        },
+        hasStaticGobo: true,
+    }
+};
+
+function getProfile(type) {
+    return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
+}
+
+const moverFixtureTypes = {};
+
 const socket = new WebSocket(`ws://${window.location.host}`);
 
 let currentState;
@@ -45,89 +74,146 @@ socket.onclose = () => {
 
 function addMover() {
     const moverCh = parseInt(document.getElementById("moverCh").value);
+    const fixtureType = document.getElementById("moverType").value;
     if (isNaN(moverCh) || moverCh < 1 || moverCh > 512) {
         alert("Please enter a valid channel number (1-512)");
         return;
     }
     socket.send(JSON.stringify({
         type: 'CREATE_MOVER',
-        channel: moverCh
+        channel: moverCh,
+        fixtureType: fixtureType
     }));
 }
 
 function renderMover(mover) {
     const ch = mover.channel;
+    const fixtureType = mover.fixtureType || '375z';
+    moverFixtureTypes[ch] = fixtureType;
+    const profile = getProfile(fixtureType);
+
     if (!document.getElementById(`mover-${ch}`)) {
         const template = document.getElementById('mover-template').innerHTML;
-        const html = template.replace(/\{ch\}/g, ch);
+        let html = template.replace(/\{ch\}/g, ch);
+        html = html.replace(/\{type\}/g, profile.name);
         const div = document.createElement('div');
         div.innerHTML = html;
+
+        if (profile.hasStaticGobo) {
+            const selectsDiv = div.querySelector('.mover-selects');
+            const staticGoboBlock = document.createElement('div');
+            staticGoboBlock.className = 'mover-input-block';
+            staticGoboBlock.innerHTML = `
+                <label for="${ch}-static-gobo">Static Gobo:</label>
+                <select id="${ch}-static-gobo">
+                    <option value="w:0">Open</option>
+                    <option value="w:7">Gobo 1</option>
+                    <option value="w:14">Gobo 2</option>
+                    <option value="w:21">Gobo 3</option>
+                    <option value="w:28">Gobo 4</option>
+                    <option value="w:35">Gobo 5</option>
+                    <option value="w:42">Gobo 6</option>
+                    <option value="w:49">Gobo 7</option>
+                    <option value="w:56">Gobo 8</option>
+                    <option value="g8shake">Gobo 8 Shake</option>
+                    <option value="g7shake">Gobo 7 Shake</option>
+                    <option value="g6shake">Gobo 6 Shake</option>
+                    <option value="g5shake">Gobo 5 Shake</option>
+                    <option value="g4shake">Gobo 4 Shake</option>
+                    <option value="g3shake">Gobo 3 Shake</option>
+                    <option value="g2shake">Gobo 2 Shake</option>
+                    <option value="g1shake">Gobo 1 Shake</option>
+                    <option value="rcycle">Reverse Cycle</option>
+                    <option value="cycle">Cycle Effect</option>
+                </select>
+                <span id="${ch}-static-gobo-speed-wrap" class="noSee">
+                    <label for="${ch}-static-gobo-speed">Speed:</label>
+                    <input type="range" min="0" max="100" value="0" id="${ch}-static-gobo-speed">
+                    <span id="${ch}-static-gobo-speed-label">0%</span>
+                </span>
+            `;
+            const forgetBtn = selectsDiv.querySelector(`#forget-${ch}`);
+            selectsDiv.insertBefore(staticGoboBlock, forgetBtn);
+        }
+
         document.querySelector('.movers').appendChild(div.firstElementChild);
-        initMoverControls(ch);
+        initMoverControls(ch, fixtureType);
     }
-    fillMoverFromChannelValues(ch, mover.channelValues);
+    fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
 }
 
 function setSlider(ch, id, val) {
-    document.getElementById(`${ch}-${id}`).value = val;
+    const el = document.getElementById(`${ch}-${id}`);
+    if (!el) return;
+    el.value = val;
+    const labelEl = document.getElementById(`${ch}-${id}-label`);
+    if (!labelEl) return;
     switch (id) {
-        case 'zoom':
-            let deg = 23 + (10 - 23) * (val / 255); // Narrow to wide
-            document.getElementById(`${ch}-${id}-label`).textContent = deg.toFixed(1) + '°';
+        case 'zoom': {
+            const ft = moverFixtureTypes[ch] || '375z';
+            const wide = ft === '475z' ? 13 : 10;
+            const narrow = 28;
+            let deg = wide + (narrow - wide) * (val / 255);
+            labelEl.textContent = deg.toFixed(1) + '\u00B0';
             break;
+        }
         case 'pt-speed':
             let pct = 100 - Math.round(val / 255 * 100);
-            document.getElementById(`${ch}-${id}-label`).textContent = pct + '%';
+            labelEl.textContent = pct + '%';
             break;
         case 'dimmer':
-            document.getElementById(`${ch}-${id}-label`).textContent = (val / 2.55).toFixed(1) + '%';
+            labelEl.textContent = (val / 2.55).toFixed(1) + '%';
             break;
         case 'pan':
-            let panDeg = 540 * (val / 255) - 270; // -270 to +270
-            document.getElementById(`${ch}-${id}-label`).textContent = panDeg.toFixed(0) + '°';
+            let panDeg = 540 * (val / 255) - 270;
+            labelEl.textContent = panDeg.toFixed(0) + '\u00B0';
             break;
         case 'tilt':
-            let tiltDeg = 270 * (val / 255) - 135; // -135 to +135
-            document.getElementById(`${ch}-${id}-label`).textContent = tiltDeg.toFixed(0) + '°';
+            let tiltDeg = 270 * (val / 255) - 135;
+            labelEl.textContent = tiltDeg.toFixed(0) + '\u00B0';
             break;
         default:
-            document.getElementById(`${ch}-${id}-label`).textContent = val;
+            labelEl.textContent = val;
     }
 }
 
 function setSelectSpeed(ch, suffix, sel, spd) {
-    document.getElementById(`${ch}-${suffix}`).value = sel;
+    const el = document.getElementById(`${ch}-${suffix}`);
+    if (!el) return;
+    el.value = sel;
     const wrap = document.getElementById(`${ch}-${suffix}-speed-wrap`);
     if (spd !== undefined) {
         const pct = Math.round(spd * 100);
-        document.getElementById(`${ch}-${suffix}-speed`).value = pct;
-        document.getElementById(`${ch}-${suffix}-speed-label`).textContent = pct + '%';
-        wrap.classList.remove('noSee');
+        const spdEl = document.getElementById(`${ch}-${suffix}-speed`);
+        if (spdEl) spdEl.value = pct;
+        const lbl = document.getElementById(`${ch}-${suffix}-speed-label`);
+        if (lbl) lbl.textContent = pct + '%';
+        if (wrap) wrap.classList.remove('noSee');
     } else {
-        wrap.classList.add('noSee');
+        if (wrap) wrap.classList.add('noSee');
     }
 }
 
-function fillMoverFromChannelValues(ch, cv) {
+function fillMoverFromChannelValues(ch, cv, fixtureType) {
     if (!cv) return;
+    const profile = getProfile(fixtureType);
+    const off = profile.offsets;
 
-    // Simple 0-255 sliders
     const simpleSliders = [
-        ['pan', ch + 0],
-        ['pan-fine', ch + 1],
-        ['tilt', ch + 2],
-        ['tilt-fine', ch + 3],
-        ['pt-speed', ch + 4],
-        ['focus', ch + 9],
-        ['dimmer', ch + 10],
-        ['zoom', ch + 14],
+        ['pan', off.Pan],
+        ['pan-fine', off.PanFine],
+        ['tilt', off.Tilt],
+        ['tilt-fine', off.TiltFine],
+        ['pt-speed', off.PTSpeed],
+        ['focus', off.Focus],
+        ['dimmer', off.Dimmer],
+        ['zoom', off.Zoom],
     ];
     for (const [id, abs] of simpleSliders) {
-        if (cv[abs] !== undefined) setSlider(ch, id, cv[abs]);
+        if (cv[ch + abs] !== undefined) setSlider(ch, id, cv[ch + abs]);
     }
 
-    // Color wheel (ch+5)
-    const col = cv[ch + 5];
+    const col = cv[ch + off.ColorWheel];
     if (col !== undefined) {
         if (col < 64) setSelectSpeed(ch, 'color', `w:${Math.floor(col / 8) * 8}`);
         else if (col <= 189) setSelectSpeed(ch, 'color', 'indexed', (col - 64) / 125);
@@ -135,8 +221,7 @@ function fillMoverFromChannelValues(ch, cv) {
         else setSelectSpeed(ch, 'color', 'rcycle', (col - 222) / 33);
     }
 
-    // Gobo wheel (ch+6)
-    const gob = cv[ch + 6];
+    const gob = cv[ch + off.GoboWheel];
     if (gob !== undefined) {
         if (gob < 64) setSelectSpeed(ch, 'gobo', `w:${Math.floor(gob / 8) * 8}`);
         else if (gob <= 71) setSelectSpeed(ch, 'gobo', 'g7shake', (gob - 64) / 7);
@@ -147,37 +232,54 @@ function fillMoverFromChannelValues(ch, cv) {
         else if (gob <= 111) setSelectSpeed(ch, 'gobo', 'g2shake', (gob - 104) / 7);
         else if (gob <= 119) setSelectSpeed(ch, 'gobo', 'g1shake', (gob - 112) / 7);
         else if (gob <= 127) setSelectSpeed(ch, 'gobo', 'w:0');
-        else if (gob <= 189) setSelectSpeed(ch, 'gobo', 'cycle', (gob - 128) / 61);
-        else if (gob <= 193) setSelectSpeed(ch, 'gobo', 'w:0');
-        else setSelectSpeed(ch, 'gobo', 'rcycle', (gob - 194) / 61);
+        else if (gob <= 191) setSelectSpeed(ch, 'gobo', 'cycle', (gob - 128) / 63);
+        else setSelectSpeed(ch, 'gobo', 'rcycle', (gob - 192) / 63);
     }
 
-    // Gobo rotation (ch+7)
-    const rot = cv[ch + 7];
+    const rot = cv[ch + off.GoboRotation];
     if (rot !== undefined) {
         if (rot === 0) setSelectSpeed(ch, 'gobo-rot', 'nofunc');
-        else if (rot <= 63) setSelectSpeed(ch, 'gobo-rot', 'index', (rot - 1) / 62);
-        else if (rot <= 145) setSelectSpeed(ch, 'gobo-rot', 'fwd', (rot - 64) / 81);
+        else if (rot <= 63) setSelectSpeed(ch, 'gobo-rot', 'index', rot / 63);
+        else if (rot <= 147) setSelectSpeed(ch, 'gobo-rot', 'fwd', (rot - 64) / 83);
         else if (rot <= 149) setSelectSpeed(ch, 'gobo-rot', 'stop');
-        else if (rot <= 231) setSelectSpeed(ch, 'gobo-rot', 'rev', (rot - 150) / 81);
+        else if (rot <= 231) setSelectSpeed(ch, 'gobo-rot', 'rev', (rot - 148) / 83);
         else setSelectSpeed(ch, 'gobo-rot', 'bounce', (rot - 232) / 23);
     }
 
-    // Prism (ch+8)
-    const pri = cv[ch + 8];
-    if (pri !== undefined) {
-        if (pri < 4) setSelectSpeed(ch, 'prism', 'nofunc');
-        else if (pri <= 6) setSelectSpeed(ch, 'prism', '6faucet');
-        else if (pri <= 65) setSelectSpeed(ch, 'prism', '6fwd', (pri - 7) / 58);
-        else if (pri <= 127) setSelectSpeed(ch, 'prism', '6rev', (pri - 66) / 57);
-        else if (pri <= 134) setSelectSpeed(ch, 'prism', pri < 132 ? 'nofunc' : '5faucet');
-        else if (pri <= 193) setSelectSpeed(ch, 'prism', '5fwd', (pri - 135) / 58);
-        else if (pri <= 251) setSelectSpeed(ch, 'prism', '5rev', (pri - 194) / 57);
-        else setSelectSpeed(ch, 'prism', '5faucet');
+    if (profile.hasStaticGobo && off.StaticGoboWheel !== undefined) {
+        const sg = cv[ch + off.StaticGoboWheel];
+        if (sg !== undefined) {
+            if (sg < 7) setSelectSpeed(ch, 'static-gobo', 'w:0');
+            else if (sg <= 63) setSelectSpeed(ch, 'static-gobo', `w:${Math.floor((sg - 1) / 7) * 7 + 7}`);
+            else if (sg <= 71) setSelectSpeed(ch, 'static-gobo', 'g8shake', (sg - 64) / 7);
+            else if (sg <= 78) setSelectSpeed(ch, 'static-gobo', 'g7shake', (sg - 72) / 6);
+            else if (sg <= 85) setSelectSpeed(ch, 'static-gobo', 'g6shake', (sg - 79) / 6);
+            else if (sg <= 92) setSelectSpeed(ch, 'static-gobo', 'g5shake', (sg - 86) / 6);
+            else if (sg <= 99) setSelectSpeed(ch, 'static-gobo', 'g4shake', (sg - 93) / 6);
+            else if (sg <= 106) setSelectSpeed(ch, 'static-gobo', 'g3shake', (sg - 100) / 6);
+            else if (sg <= 113) setSelectSpeed(ch, 'static-gobo', 'g2shake', (sg - 107) / 6);
+            else if (sg <= 120) setSelectSpeed(ch, 'static-gobo', 'g1shake', (sg - 114) / 6);
+            else if (sg <= 127) setSelectSpeed(ch, 'static-gobo', 'w:0');
+            else if (sg <= 191) setSelectSpeed(ch, 'static-gobo', 'rcycle', (sg - 128) / 63);
+            else setSelectSpeed(ch, 'static-gobo', 'cycle', (sg - 192) / 63);
+        }
     }
 
-    // Shutter (ch+11)
-    const shu = cv[ch + 11];
+    const pri = cv[ch + off.Prism];
+    if (pri !== undefined) {
+        if (pri < 4) setSelectSpeed(ch, 'prism', 'nofunc');
+        else if (pri <= 6) setSelectSpeed(ch, 'prism', 'round');
+        else if (pri <= 65) setSelectSpeed(ch, 'prism', 'rfwd', (pri - 7) / 58);
+        else if (pri <= 123) setSelectSpeed(ch, 'prism', 'rrev', (pri - 66) / 57);
+        else if (pri <= 127) setSelectSpeed(ch, 'prism', 'round');
+        else if (pri <= 131) setSelectSpeed(ch, 'prism', 'nofunc');
+        else if (pri <= 134) setSelectSpeed(ch, 'prism', 'linear');
+        else if (pri <= 193) setSelectSpeed(ch, 'prism', 'lfwd', (pri - 135) / 58);
+        else if (pri <= 251) setSelectSpeed(ch, 'prism', 'lrev', (pri - 194) / 57);
+        else setSelectSpeed(ch, 'prism', 'linear');
+    }
+
+    const shu = cv[ch + off.Shutter];
     if (shu !== undefined) {
         if (shu < 4) setSelectSpeed(ch, 'shutter', 'closed');
         else if (shu < 8) setSelectSpeed(ch, 'shutter', 'open');
@@ -187,8 +289,7 @@ function fillMoverFromChannelValues(ch, cv) {
         else setSelectSpeed(ch, 'shutter', 'open');
     }
 
-    // Function (ch+12)
-    const fn = cv[ch + 12];
+    const fn = cv[ch + off.Function];
     if (fn !== undefined) {
         document.getElementById(`${ch}-func`).value = String(fn);
     }
@@ -198,8 +299,9 @@ function sendMoverSet(ch, values) {
     socket.send(JSON.stringify({ type: 'MOVER_SET', channel: ch, values }));
 }
 
-function initMoverControls(ch) {
-    // Simple 0-255 sliders
+function initMoverControls(ch, fixtureType) {
+    const profile = getProfile(fixtureType);
+
     const sliderMap = {
         'pan': 'Pan',
         'pan-fine': 'PanFine',
@@ -213,11 +315,12 @@ function initMoverControls(ch) {
     for (const [id, dmxKey] of Object.entries(sliderMap)) {
         const slider = document.getElementById(`${ch}-${id}`);
         const label = document.getElementById(`${ch}-${id}-label`);
+        if (!slider) continue;
         slider.addEventListener('input', () => {
             switch (id) {
                 case 'zoom':
-                    let deg = 28 + (10 - 28) * (slider.value / 255); // Narrow to wide
-                    label.textContent = deg.toFixed(1) + '°';
+                    let deg = 28 + (10 - 28) * (slider.value / 255);
+                    label.textContent = deg.toFixed(1) + '\u00B0';
                     break;
                 case 'pt-speed':
                     let pct = 100 - Math.round(slider.value / 255 * 100);
@@ -227,12 +330,12 @@ function initMoverControls(ch) {
                     label.textContent = (slider.value / 2.55).toFixed(1) + '%';
                     break;
                 case 'pan':
-                    let panDeg = 540 * (slider.value / 255) - 270; // -270 to +270
-                    label.textContent = panDeg.toFixed(0) + '°';
+                    let panDeg = 540 * (slider.value / 255) - 270;
+                    label.textContent = panDeg.toFixed(0) + '\u00B0';
                     break;
                 case 'tilt':
-                    let tiltDeg = 270 * (slider.value / 255) - 135; // -135 to +135
-                    label.textContent = tiltDeg.toFixed(0) + '°';
+                    let tiltDeg = 270 * (slider.value / 255) - 135;
+                    label.textContent = tiltDeg.toFixed(0) + '\u00B0';
                     break;
                 default:
                     label.textContent = slider.value;
@@ -264,11 +367,11 @@ function initMoverControls(ch) {
     const needsGoboSpeed = () => !goboSelect.value.startsWith('w:');
     goboSelect.addEventListener('change', () => {
         goboSpeedWrap.classList.toggle('noSee', !needsGoboSpeed());
-        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch) });
+        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
     goboSpeed.addEventListener('input', () => {
         goboSpeedLbl.textContent = goboSpeed.value + '%';
-        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch) });
+        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
 
     // Gobo rotation
@@ -279,19 +382,39 @@ function initMoverControls(ch) {
     const needsGoboRotSpeed = () => !['nofunc', 'stop'].includes(goboRotSelect.value);
     goboRotSelect.addEventListener('change', () => {
         goboRotSpeedWrap.classList.toggle('noSee', !needsGoboRotSpeed());
-        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch) });
+        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
     goboRotSpeed.addEventListener('input', () => {
         goboRotSpeedLbl.textContent = goboRotSpeed.value + '%';
-        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch) });
+        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
+
+    // Static gobo (475z only)
+    if (profile.hasStaticGobo) {
+        const sgSelect = document.getElementById(`${ch}-static-gobo`);
+        const sgSpeedWrap = document.getElementById(`${ch}-static-gobo-speed-wrap`);
+        const sgSpeed = document.getElementById(`${ch}-static-gobo-speed`);
+        const sgSpeedLbl = document.getElementById(`${ch}-static-gobo-speed-label`);
+        if (sgSelect) {
+            const needsSGSpeed = () => !sgSelect.value.startsWith('w:');
+            sgSelect.addEventListener('change', () => {
+                sgSpeedWrap.classList.toggle('noSee', !needsSGSpeed());
+                sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
+            });
+            sgSpeed.addEventListener('input', () => {
+                sgSpeedLbl.textContent = sgSpeed.value + '%';
+                sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
+            });
+        }
+    }
 
     // Prism
     const prismSelect = document.getElementById(`${ch}-prism`);
     const prismSpeedWrap = document.getElementById(`${ch}-prism-speed-wrap`);
     const prismSpeed = document.getElementById(`${ch}-prism-speed`);
     const prismSpeedLbl = document.getElementById(`${ch}-prism-speed-label`);
-    const needsPrismSpeed = () => !['nofunc', '6faucet', '5faucet'].includes(prismSelect.value);
+    const staticPrismVals = ['nofunc', 'round', 'linear'];
+    const needsPrismSpeed = () => !staticPrismVals.includes(prismSelect.value);
     prismSelect.addEventListener('change', () => {
         prismSpeedWrap.classList.toggle('noSee', !needsPrismSpeed());
         sendMoverSet(ch, { Prism: channelValues.computePrismValue(ch) });
@@ -330,6 +453,7 @@ function initMoverControls(ch) {
             channel: ch
         }));
         document.getElementById(`mover-${ch}`).remove();
+        delete moverFixtureTypes[ch];
     });
 }
 
@@ -386,9 +510,11 @@ async function renderCues() {
     moverList.innerHTML = `<p class="cue-table-header">Movers</p>`;
 
     for (let mover of currentState.movers) {
-        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-main" data-channel="${mover.channel}" data-mode="all" id="cue-table-mover-${mover.channel}">Mover #${mover.channel}</p>`;
-        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="pos" id="cue-table-mover-${mover.channel}-pos">↳ Pos only</p>`;
-        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="nopos" id="cue-table-mover-${mover.channel}-nopos">↳ Not pos</p>`;
+        const ft = mover.fixtureType || '375z';
+        const label = ft === '475z' ? `475z #${mover.channel}` : `Mover #${mover.channel}`;
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-main" data-channel="${mover.channel}" data-mode="all" id="cue-table-mover-${mover.channel}">${label}</p>`;
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="pos" id="cue-table-mover-${mover.channel}-pos">\u21B3 Pos only</p>`;
+        moverList.innerHTML += `<p class="cue-table-mover cue-table-mover-sub" data-channel="${mover.channel}" data-mode="nopos" id="cue-table-mover-${mover.channel}-nopos">\u21B3 Not pos</p>`;
     }
 
 
@@ -499,7 +625,6 @@ function requestISU() {
 if (document.readyState != "loading") load();
 else document.addEventListener("load", load);
 
-//globally accessible functions
 Object.assign(window, {
     addMover,
     requestISU
