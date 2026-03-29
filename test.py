@@ -12,7 +12,7 @@ from PyDMXControl.controllers import uDMXController
 from PyDMXControl.profiles.Generic import Custom
 
 dmx = uDMXController()
-universe = dmx.add_fixture(Custom, start_channel=1, channels=64, name="universe")
+universe = dmx.add_fixture(Custom, start_channel=1, channels=48, name="universe")
 
 def set_channel(address, value):
     universe.set_channel(address - 1, value)
