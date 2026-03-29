@@ -45,22 +45,37 @@ try {
 }
 
 gamepad1.onUpdate = () => {
-    gamepadMover.set({ Zoom: Math.round(gamepad1.zoom), Dimmer: Math.round(gamepad1.dimmer) });
-    gamepadMover.setPanDeg(gamepad1.x  / 255 * 540, USE_FINE_CONTROL);
-    gamepadMover.setTiltDeg(gamepad1.y / 255 * 270, USE_FINE_CONTROL);
+    const panValue = Math.round(gamepad1.x / 255 * 65535);
+    const tiltValue = Math.round(gamepad1.y / 255 * 65535);
+    gamepadMover.setChannels({
+        [gamepadMover.CHANNELS.Zoom]: Math.round(gamepad1.zoom),
+        [gamepadMover.CHANNELS.Dimmer]: Math.round(gamepad1.dimmer),
+        [gamepadMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
+        [gamepadMover.CHANNELS.PanFine]: panValue & 0xFF,
+        [gamepadMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
+        [gamepadMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
+    });
     updateState();
 };
 
-joystick1.onData = joystick1.onUpdate = () => {
-    const values = {
-        Zoom: Math.round(joystick1.zoom),
-        Dimmer: joystick1.throttle,
-    };
-
-    primaryMover.set(values);
-    primaryMover.setPanDeg(joystick1.x  / 255 * 540, USE_FINE_CONTROL);
-    primaryMover.setTiltDeg(joystick1.y / 255 * 270, USE_FINE_CONTROL);
+joystick1.onUpdate = () => {
+    const panValue = Math.round(joystick1.x / 255 * 65535);
+    const tiltValue = Math.round(joystick1.y / 255 * 65535);
+    primaryMover.setChannels({
+        [primaryMover.CHANNELS.Zoom]: Math.round(joystick1.zoom),
+        [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
+        [primaryMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
+        [primaryMover.CHANNELS.PanFine]: panValue & 0xFF,
+        [primaryMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
+        [primaryMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
+    });
     updateState();
+};
+
+joystick1.onData = () => {
+    primaryMover.setChannels({
+        [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
+    });
 };
 
 const blockedChannels = new Set([
