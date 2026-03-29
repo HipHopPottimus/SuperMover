@@ -142,7 +142,7 @@ footer img {
 }
 
 .cue-table-mover, .cue-table-cue,  .cue-table-delete,  .cue-table-add {
-    transition: 0.5s all;
+    transition: 100ms all;
 }
 
 .cue-table-mover.drag-active {

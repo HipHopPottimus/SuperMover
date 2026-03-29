@@ -72,11 +72,6 @@ joystick1.onUpdate = () => {
     updateState();
 };
 
-joystick1.onData = () => {
-    primaryMover.setChannels({
-        [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
-    });
-};
 
 const blockedChannels = new Set([
     ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
