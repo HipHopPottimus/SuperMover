@@ -16,7 +16,7 @@ export const FIXTURE_TYPES = {
             'ColorWheel', 'GoboWheel', 'GoboRotation', 'StaticGoboWheel',
             'Prism', 'Focus', 'Zoom', 'Dimmer', 'Shutter', 'Function', 'MovementMacros'
         ],
-    }
+    },
 };
 
 export function getFixtureProfile(type) {

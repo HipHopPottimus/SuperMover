@@ -1,7 +1,10 @@
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
+import {Client as OSCClient, Server as OSCServer} from "node-osc";
 import path from 'path';
+
+import getDmx from './dmx.js';
 
 import mlib from './mover.js';
 import jlib from "./joystick.js";
@@ -71,6 +74,21 @@ joystick1.onUpdate = () => {
     });
     updateState();
 };
+
+const oscServer = new OSCServer(9000, "0.0.0.0");
+
+oscServer.on("message", msg => {
+    const [_, cmd, pb] = msg[0].split("/");
+    if (cmd.includes("pb")) {
+        const intensity = msg[1];
+        console.log(pb, msg[1]);
+        let data = {};
+        let channelsToSet = [1,2,3,4,5];
+        channelsToSet.forEach(c => data[c] = intensity);
+        getDmx().setChannels(data);
+    }
+  }
+);
 
 
 const blockedChannels = new Set([
