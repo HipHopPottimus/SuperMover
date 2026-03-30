@@ -6,7 +6,7 @@ await storage.loadData();
 
 if(!storage.data.cues) storage.data.cues = {};
 if(!storage.data.changes) storage.data.changes = [];
-if(!storage.data.cueStack) storage.data.cueStack = [];
+if(!storage.data.cueStack) storage.data.cueStack = {};
 
 await storage.saveData();
 
@@ -93,6 +93,21 @@ async function deleteCue(cueName) {
     await logChange(cueName, "delete");
 }
 
+async function addToCueStack(cueNumber, cue) {
+    storage.data.cueStack[cueNumber] = cue;
+    await logChange(cueNumber, "cue-stack-update");
+}
+
+async function setFadeTime(cueNumber, fadeTime) {
+    storage.data.cueStack[cueNumber].fadeTime = fadeTime;
+    await logChange(cueNumber, "cue-stack-update");
+}
+
+async function updateCueStack(cueNumber, ch, newCue) {
+    storage.data.cueStack[cueNumber].movers[ch] = newCue;
+    await logChange(cueNumber, "cue-stack-update");
+}
+
 async function syncCues() {
     if(!await getFileHandle()) return;
     await storage.saveData();
@@ -108,7 +123,7 @@ async function syncCues() {
     }
 
     if(!theirVersion.cues) theirVersion.cues = {};
-    if(!theirVersion.cueStack) theirVersion.cueStack = [];
+    if(!theirVersion.cueStack) theirVersion.cueStack = {};
 
     for(const change of storage.data.changes) {
         switch(change.changeType) {
@@ -135,6 +150,9 @@ export default {
     openNewFile,
     setCue,
     deleteCue,
+    addToCueStack,
+    updateCueStack,
+    setFadeTime,
     get cues() {
         return storage.data.cues;
     },
