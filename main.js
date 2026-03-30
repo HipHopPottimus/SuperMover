@@ -75,11 +75,14 @@ joystick1.onUpdate = () => {
     updateState();
 };
 
+const client = new OSCClient("192.168.200.1", 8000);
+client.send("/feedback/pb+exec");
+
 const oscServer = new OSCServer(9000, "0.0.0.0");
 
 oscServer.on("message", msg => {
     const [_, cmd, pb] = msg[0].split("/");
-    if (cmd.includes("pb")) {
+    if (cmd.includes("pb") && pb == 1) {
         const intensity = msg[1];
         console.log(pb, msg[1]);
         let data = {};
