@@ -1,8 +1,11 @@
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
+import {Client as OSCClient, Server as OSCServer} from "node-osc";
 import path from 'path';
 import { Server as OscServer } from "node-osc"
+
+import getDmx from './dmx.js';
 
 import mlib from './mover.js';
 import jlib from "./joystick.js";
@@ -20,7 +23,7 @@ app.use(express.static(path.join('.', 'public')));
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-let movers = [new mlib.Mover(1, debug), new mlib.Mover(16, debug)];
+let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
 const primaryMover = movers[0];
 const gamepadMover = movers[1];
 
@@ -46,21 +49,16 @@ try {
 }
 
 gamepad1.onUpdate = () => {
-    gamepadMover.set({ Zoom: Math.round(gamepad1.zoom), Dimmer: Math.round(gamepad1.dimmer) });
-    gamepadMover.setPanDeg(gamepad1.x  / 255 * 540, USE_FINE_CONTROL);
-    gamepadMover.setTiltDeg(gamepad1.y / 255 * 270, USE_FINE_CONTROL);
-    updateState();
-};
-
-joystick1.onData = joystick1.onUpdate = () => {
-    const values = {
-        Zoom: Math.round(joystick1.zoom),
-        Dimmer: joystick1.throttle,
-    };
-
-    primaryMover.set(values);
-    primaryMover.setPanDeg(joystick1.x  / 255 * 540, USE_FINE_CONTROL);
-    primaryMover.setTiltDeg(joystick1.y / 255 * 270, USE_FINE_CONTROL);
+    const panValue = Math.round(gamepad1.x / 255 * 65535);
+    const tiltValue = Math.round(gamepad1.y / 255 * 65535);
+    gamepadMover.setChannels({
+        [gamepadMover.CHANNELS.Zoom]: Math.round(gamepad1.zoom),
+        [gamepadMover.CHANNELS.Dimmer]: Math.round(gamepad1.dimmer),
+        [gamepadMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
+        [gamepadMover.CHANNELS.PanFine]: panValue & 0xFF,
+        [gamepadMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
+        [gamepadMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
+    });
     updateState();
 };
 
@@ -81,6 +79,42 @@ oscServer.on("message", (msg) => {
 const blockedChannels = new Set([
     ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
     ...Array.from({ length: 15 }, (_, i) => i + 16),  // ch 16–30 (gamepad mover)
+joystick1.onUpdate = () => {
+    const panValue = Math.round(joystick1.x / 255 * 65535);
+    const tiltValue = Math.round(joystick1.y / 255 * 65535);
+    primaryMover.setChannels({
+        [primaryMover.CHANNELS.Zoom]: Math.round(joystick1.zoom),
+        [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
+        [primaryMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
+        [primaryMover.CHANNELS.PanFine]: panValue & 0xFF,
+        [primaryMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
+        [primaryMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
+    });
+    updateState();
+};
+
+const client = new OSCClient("192.168.200.1", 8000);
+client.send("/feedback/pb+exec");
+
+const oscServer = new OSCServer(9000, "0.0.0.0");
+
+oscServer.on("message", msg => {
+    const [_, cmd, pb] = msg[0].split("/");
+    if (cmd.includes("pb") && pb == 1) {
+        const intensity = msg[1];
+        console.log(pb, msg[1]);
+        let data = {};
+        let channelsToSet = [1,2,3,4,5];
+        channelsToSet.forEach(c => data[c] = intensity);
+        getDmx().setChannels(data);
+    }
+  }
+);
+
+
+const blockedChannels = new Set([
+    ...Array.from({ length: primaryMover.channelCount }, (_, i) => i + 1),
+    ...Array.from({ length: gamepadMover.channelCount }, (_, i) => i + 16),
 ]);
 
 function getState() {
@@ -106,8 +140,8 @@ function isChannelBlocked(channel) {
     return blockedChannels.has(channel);
 }
 
-function blockMoverChannels(startChannel) {
-    for (let channel = startChannel; channel < startChannel + 15; channel++) {
+function blockMoverChannels(startChannel, count) {
+    for (let channel = startChannel; channel < startChannel + (count || 15); channel++) {
         blockedChannels.add(channel);
     }
 }
@@ -147,8 +181,10 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
-                blockMoverChannels(msg.channel);
-                movers.push(new mlib.Mover(msg.channel, debug));
+                const fixtureType = msg.fixtureType || '375z';
+                const newMover = new mlib.Mover(msg.channel, debug, fixtureType);
+                blockMoverChannels(msg.channel, newMover.channelCount);
+                movers.push(newMover);
                 updateState();
                 break;
             }
@@ -157,8 +193,10 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
                     return;
                 }
+                const forgetMover = movers.find(m => m.channel == msg.channel);
+                const forgetCount = forgetMover ? forgetMover.channelCount : 15;
                 movers = movers.filter(m => m.channel != msg.channel);
-                for(let channel = msg.channel; channel < msg.channel + 15; channel++)
+                for(let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
                     blockedChannels.delete(channel);
                 break;
             }
