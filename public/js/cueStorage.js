@@ -108,6 +108,17 @@ async function updateCueStack(cueNumber, ch, newCue) {
     await logChange(cueNumber, "cue-stack-update");
 }
 
+async function changeCueNumber(oldCueNumber, newCueNumber) {
+    storage.data.cueStack[newCueNumber] = storage.data.cueStack[oldCueNumber];
+    await deleteFromCueStack(oldCueNumber);
+    await logChange(newCueNumber, "cue-stack-update");
+}
+
+async function deleteFromCueStack(cueNumber) {
+    delete storage.data.cueStack[cueNumber];
+    await logChange(cueNumber, "cue-stack-delete");
+}
+
 async function syncCues() {
     if(!await getFileHandle()) return;
     await storage.saveData();
@@ -152,6 +163,8 @@ export default {
     deleteCue,
     addToCueStack,
     updateCueStack,
+    deleteFromCueStack,
+    changeCueNumber,
     setFadeTime,
     get cues() {
         return storage.data.cues;

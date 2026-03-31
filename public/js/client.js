@@ -37,12 +37,12 @@ socket.onmessage = (event) => {
 
                     const fadeTime = cueStorage.cueStack[msg.cueNumber].fadeTime * 1000;
 
-                    document.querySelectorAll(".cue-stack-table tr").forEach(r => {
+                    document.querySelectorAll(".cue-stack-table p").forEach(r => {
                         r.style.transition = `background-color ${fadeTime}ms`;
                         r.classList.remove("cue-stack-active");
                     });
 
-                    document.querySelectorAll("#cue-stack-row-"+msg.cueNumber).forEach(r => {
+                    document.querySelectorAll(`.cue-stack-table-${msg.cueNumber}, #cue-stack-fade-time-${msg.cueNumber}, #cue-stack-number-${msg.cueNumber}, #cue-stack-delete-${msg.cueNumber}`).forEach(r => {
                         r.style.transition = `background-color ${fadeTime}ms`;
                         r.classList.add("cue-stack-active");
                     });
@@ -396,8 +396,7 @@ async function generateCueStackTable() {
     const cueStackContainer = document.getElementById("cue-stack-container");
     cueStackContainer.innerHTML = `
         <p class="cue-table-header">Cue stack</p>
-        <table id="cue-stack-table" class="cue-stack-table"></table>
-        <button onclick="clearOSCCue()">Clear current cue</button>
+        <div id="cue-stack-table" class="cue-stack-table"></div>
     `;
     
     if(!Object.entries(cueStorage.cueStack).length) {
@@ -406,33 +405,52 @@ async function generateCueStackTable() {
 
     const cueStackTable = document.getElementById("cue-stack-table");
 
-    const cueStackTableHeader = cueStackTable.insertRow();
-    cueStackTableHeader.innerHTML = `<th>Cue number</th>
-        ${currentState.movers.map(m => `<th>Mover #${m.channel}</th>`).join("")}
-        <th>Fade time</th>`;
+    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 3}, 1fr)`;
 
-    console.log(currentState.movers);
+    cueStackTable.innerHTML += `<p class="cue-stack-table-header">Cue number</p>
+        ${currentState.movers.map(m => `<p class="cue-stack-table-header">Mover #${m.channel}</p>`).join("")}
+        <p class="cue-stack-table-header">Fade time</p>
+        <p class="cue-stack-table-header">Delete</p>
+    `;
 
+    for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
+        cueStackTable.innerHTML += `
+            <p contenteditable id="cue-stack-number-${cueNumber}">${cueNumber}</p>
+            ${currentState.movers.map(m => 
+                `<p class="cue-stack-cue cue-stack-table-${cueNumber}" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p>`
+            ).join("")}
+            <p contenteditable class="cue-stack-fade-time" id="cue-stack-fade-time-${cueNumber}">${cue.fadeTime}</p>
+            <p id="cue-stack-delete-${cueNumber}"><img src="imgs/bin.svg" width="15"/></p>
+        `;
+    }
+
+    cueStackTable.innerHTML += `<p class="cue-stack-add-header">Add a cue</p>` + currentState.movers.map(m => `<p class="cue-stack-add" data-channel="${m.channel}">+</p>`).join("");
+
+    //apply listeners now that table construction is done
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
-        const cueRow = cueStackTable.insertRow();
-        cueRow.id = "cue-stack-row-"+cueNumber;
-        cueRow.innerHTML = `<td>${cueNumber}</td>
-        ${currentState.movers.map(m => 
-            `<td><p class="cue-stack-cue" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p></td>`
-        ).join("")}
-        <td><p contenteditable class="cue-stack-fade-time" id="cue-stack-fade-time-${cueNumber}">${cue.fadeTime}</p></td>`;
+        document.getElementById(`cue-stack-number-${cueNumber}`).addEventListener("blur", async e => {
+            const newCueNumber = Number.parseFloat(e.target.innerHTML);
+            if(isNaN(newCueNumber) || !newCueNumber) {
+                e.target.innerHTML = cueNumber;
+                return;
+            }
+            await cueStorage.changeCueNumber(cueNumber, newCueNumber);
+            renderCues();
+        });
+        
         document.getElementById(`cue-stack-fade-time-${cueNumber}`).addEventListener("blur", async e => {
             const fadeTime = Number.parseFloat(e.target.innerHTML);
             if(isNaN(fadeTime)) return;
             await cueStorage.setFadeTime(cueNumber, fadeTime);
             e.target.innerHTML = cue.fadeTime;
-            
+        });
+
+        document.getElementById(`cue-stack-delete-${cueNumber}`).addEventListener("click", async e => {
+            if(!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
+            await cueStorage.deleteFromCueStack(cueNumber);
+            renderCues();
         });
     }
-
-    const newCueRow = cueStackTable.insertRow();
-    newCueRow.classList.add("cue-stack-add-row");
-    newCueRow.innerHTML = "<td>Add a cue</td>" + currentState.movers.map(m => `<td><p data-channel="${m.channel}" class="cue-stack-add">+</p></td>`).join("");
 }
 
 async function renderCues() {
@@ -524,8 +542,8 @@ async function renderCues() {
             console.log(event.target);
 
             if(event.target.classList.contains("cue-stack-add")) {
-                const cueNumber = prompt("Enter new cue number:");
-                if(!cueNumber) return;
+                const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
+                if(isNaN(cueNumber) || !cueNumber) return;
                 cueStorage.addToCueStack(cueNumber, {movers: {[ch]: cueName}, fadeTime: 0});
                 renderCues();
                 return;
@@ -603,7 +621,7 @@ async function load() {
 }
 
 function clearOSCCue() {
-    document.querySelectorAll(".cue-stack-table tr").forEach(r => {
+    document.querySelectorAll(".cue-stack-table p").forEach(r => {
         r.style.transition = `background-color 500ms`;
         r.classList.remove("cue-stack-active");
     });
