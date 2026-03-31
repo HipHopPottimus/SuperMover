@@ -3,7 +3,6 @@ import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import {Client as OSCClient, Server as OSCServer} from "node-osc";
 import path from 'path';
-import { Server as OscServer } from "node-osc"
 
 import getDmx from './dmx.js';
 
@@ -62,23 +61,6 @@ gamepad1.onUpdate = () => {
     updateState();
 };
 
-const oscServer = new OscServer(8000, "0.0.0.0");
-
-oscServer.on("message", (msg) => {
-    const [_, cmd, pb, cueNumber] = msg[0].split("/");
-    for (const client of clients) {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                type: "OSC",
-                cueNumber,
-            }));
-        }
-    }
-});
-
-const blockedChannels = new Set([
-    ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
-    ...Array.from({ length: 15 }, (_, i) => i + 16),  // ch 16–30 (gamepad mover)
 joystick1.onUpdate = () => {
     const panValue = Math.round(joystick1.x / 255 * 65535);
     const tiltValue = Math.round(joystick1.y / 255 * 65535);
@@ -92,25 +74,6 @@ joystick1.onUpdate = () => {
     });
     updateState();
 };
-
-const client = new OSCClient("192.168.200.1", 8000);
-client.send("/feedback/pb+exec");
-
-const oscServer = new OSCServer(9000, "0.0.0.0");
-
-oscServer.on("message", msg => {
-    const [_, cmd, pb] = msg[0].split("/");
-    if (cmd.includes("pb") && pb == 1) {
-        const intensity = msg[1];
-        console.log(pb, msg[1]);
-        let data = {};
-        let channelsToSet = [1,2,3,4,5];
-        channelsToSet.forEach(c => data[c] = intensity);
-        getDmx().setChannels(data);
-    }
-  }
-);
-
 
 const blockedChannels = new Set([
     ...Array.from({ length: primaryMover.channelCount }, (_, i) => i + 1),
@@ -148,6 +111,32 @@ function blockMoverChannels(startChannel, count) {
 
 wss.on('connection', (ws) => {
     console.log('Client connected!');
+
+    const oscClient = new OSCClient("192.168.200.1", 8000);
+    oscClient.send("/feedback/pb+exec");
+
+    const oscServer = new OSCServer(8000, "0.0.0.0");
+    oscServer.on("message", msg => {
+        const path = msg[0].split("/");
+        const [_, cmd, pb, cueNumber] = path;
+
+        if(cmd != "pb") return;
+        
+        if(cueNumber) {
+            ws.send(JSON.stringify({type: "OSC", cueNumber: cueNumber}));
+            return;
+        }
+
+        if(process.argv.includes("--use-quickq-feedback") && pb == 1) {
+            const intensity = msg[1];
+            console.log(pb, msg[1]);
+            let data = {};
+            let channelsToSet = [1,2,3,4,5];
+            channelsToSet.forEach(c => data[c] = intensity);
+            getDmx().setChannels(data);
+            return;
+        }
+    });
 
     clients.push(ws);
 

@@ -87,17 +87,22 @@ let dmxDevice = new DummyDevice();
 try {
     dmxDevice = new EnttecDevice(await EnttecDevice.getFirstAvailableDevice());
     console.log("Enttec Open DMX USB device found");
-} catch {
+} 
+catch {
     try {
         dmxDevice = new UDMXDevice();
         console.log("uDMX device found (fallback)");
-    } catch {
-        try {
-            dmxDevice = new PythonDMXDevice();
-            await dmxDevice.ready;
-            console.log("Python uDMX bridge started (fallback)");
-        } catch {
-            console.error("No DMX device found (neither Enttec, uDMX, nor Python bridge), using dummy device");
+    } 
+    catch {
+        if(process.argv.includes("--python-dmx")) {
+            try {
+                dmxDevice = new PythonDMXDevice();
+                await dmxDevice.ready;
+                console.log("Python uDMX bridge started (fallback)");
+            }
+            catch {
+                console.error("No DMX device found (neither Enttec, uDMX, nor Python bridge), using dummy device");
+            }
         }
     }
 }

@@ -684,9 +684,6 @@ async function renderCues() {
 
             const mode = event.target.getAttribute("data-mode") ?? "all";
             const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
-            let values = cueStorage.cues[cueName];
-            const mode = event.target.getAttribute("data-mode") ?? "all";
-            const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
             let values = cueStorage.getCue(cueName);
             if (mode === "pos") {
                 values = Object.fromEntries(Object.entries(values).filter(([k]) => POS_KEYS.has(k)));
