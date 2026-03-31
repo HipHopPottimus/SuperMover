@@ -34,24 +34,43 @@ socket.onmessage = (event) => {
                     ch = Number.parseInt(ch);
 
                     const cueToSet = cueStorage.cues[cueName];
-                    console.log(cueToSet);
 
-                    const initialValue = currentState.movers.filter(m => m.channel == ch)[0].channelValues.Dimmer;
-                    const targetValue = cueToSet.Dimmer;
                     const fadeTime = cueStorage.cueStack[msg.cueNumber].fadeTime * 1000;
 
-                    let value  = initialValue;
-                    const updateInterval = 50;
-                    const intervalId = setInterval(() => {
-                        value = Math.floor((updateInterval / fadeTime) * (targetValue - initialValue));
-                        console.log(updateInterval, fadeTime, targetValue, initialValue);
-                        if(value == targetValue) clearInterval(intervalId);
-                        console.log({...cueStorage.cues[cueName], Dimmer: value});
-                        sendMoverSet(ch, {...cueStorage.cues[cueName], Dimmer: value});
-                        console.log(value);
-                    }, updateInterval);
-                    document.querySelectorAll(".cue-stack-table tr").forEach(t => t.classList.remove("cue-stack-active"));
-                    document.querySelectorAll("#cue-stack-row-"+msg.cueNumber).forEach(t => t.classList.add("cue-stack-active"));
+                    document.querySelectorAll(".cue-stack-table tr").forEach(r => {
+                        r.style.transition = `background-color ${fadeTime}ms`;
+                        r.classList.remove("cue-stack-active");
+                    });
+
+                    document.querySelectorAll("#cue-stack-row-"+msg.cueNumber).forEach(r => {
+                        r.style.transition = `background-color ${fadeTime}ms`;
+                        r.classList.add("cue-stack-active");
+                    });
+
+                    const transitionableAttributes = ["Focus", "Dimmer", "Zoom"];
+
+                    const nonTransitionableData = {...cueToSet};
+                    transitionableAttributes.forEach(a => delete nonTransitionableData[a]);
+                    sendMoverSet(ch, nonTransitionableData)
+
+                    for(const attribute of transitionableAttributes) {
+                        const initialValue = currentState.movers.filter(m => m.channel == ch)[0].channelValues[attribute];
+                        const targetValue = cueToSet[attribute];
+
+                        let value  = initialValue;
+                        const startTime = performance.now();
+                        const intervalId = setInterval(() => {
+                            const elapsedTime = performance.now() - startTime;
+                            value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
+                            //console.log(initialValue, targetValue, elapsedTime, fadeTime, value);
+                            if(elapsedTime >= fadeTime) {
+                                value = targetValue;
+                                clearInterval(intervalId);
+                            }
+                            console.log(attribute, value);
+                            sendMoverSet(ch, {[attribute]: value});
+                        }, 16.7);
+                    }
                 }
             }
             break;
@@ -378,6 +397,7 @@ async function generateCueStackTable() {
     cueStackContainer.innerHTML = `
         <p class="cue-table-header">Cue stack</p>
         <table id="cue-stack-table" class="cue-stack-table"></table>
+        <button onclick="clearOSCCue()">Clear current cue</button>
     `;
     
     if(!Object.entries(cueStorage.cueStack).length) {
@@ -582,6 +602,13 @@ async function load() {
     renderCues();
 }
 
+function clearOSCCue() {
+    document.querySelectorAll(".cue-stack-table tr").forEach(r => {
+        r.style.transition = `background-color 500ms`;
+        r.classList.remove("cue-stack-active");
+    });
+}
+
 function requestISU() {
     socket.send(JSON.stringify({
         type: 'GET_STATE'
@@ -594,5 +621,6 @@ else document.addEventListener("load", load);
 //globally accessible functions
 Object.assign(window, {
     addMover,
+    clearOSCCue,
     requestISU
 });
