@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import {Client as OSCClient, Server as OSCServer} from "node-osc";
 import path from 'path';
+import { Server as OscServer } from "node-osc"
 
 import getDmx from './dmx.js';
 
@@ -61,6 +62,23 @@ gamepad1.onUpdate = () => {
     updateState();
 };
 
+const oscServer = new OscServer(8000, "0.0.0.0");
+
+oscServer.on("message", (msg) => {
+    const [_, cmd, pb, cueNumber] = msg[0].split("/");
+    for (const client of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+                type: "OSC",
+                cueNumber,
+            }));
+        }
+    }
+});
+
+const blockedChannels = new Set([
+    ...Array.from({ length: 15 }, (_, i) => i + 1),   // ch 1–15  (joystick mover)
+    ...Array.from({ length: 15 }, (_, i) => i + 16),  // ch 16–30 (gamepad mover)
 joystick1.onUpdate = () => {
     const panValue = Math.round(joystick1.x / 255 * 65535);
     const tiltValue = Math.round(joystick1.y / 255 * 65535);

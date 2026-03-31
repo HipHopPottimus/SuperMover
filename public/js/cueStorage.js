@@ -6,6 +6,7 @@ await storage.loadData();
 
 if(!storage.data.cues) storage.data.cues = {};
 if(!storage.data.changes) storage.data.changes = [];
+if(!storage.data.cueStack) storage.data.cueStack = {};
 
 await storage.saveData();
 
@@ -92,19 +93,37 @@ async function deleteCue(cueName) {
     await logChange(cueName, "delete");
 }
 
-function getCues() {
-    return storage.data.cues;
+async function addToCueStack(cueNumber, cue) {
+    storage.data.cueStack[cueNumber] = cue;
+    await logChange(cueNumber, "cue-stack-update");
 }
 
-function getCue(cueName) {
-    return storage.data.cues[cueName];
+async function setFadeTime(cueNumber, fadeTime) {
+    storage.data.cueStack[cueNumber].fadeTime = fadeTime;
+    await logChange(cueNumber, "cue-stack-update");
+}
+
+async function updateCueStack(cueNumber, ch, newCue) {
+    storage.data.cueStack[cueNumber].movers[ch] = newCue;
+    await logChange(cueNumber, "cue-stack-update");
+}
+
+async function changeCueNumber(oldCueNumber, newCueNumber) {
+    storage.data.cueStack[newCueNumber] = storage.data.cueStack[oldCueNumber];
+    await deleteFromCueStack(oldCueNumber);
+    await logChange(newCueNumber, "cue-stack-update");
+}
+
+async function deleteFromCueStack(cueNumber) {
+    delete storage.data.cueStack[cueNumber];
+    await logChange(cueNumber, "cue-stack-delete");
 }
 
 async function syncCues() {
     if(!await getFileHandle()) return;
     await storage.saveData();
 
-    const ourVersion = storage.data.cues;
+    const ourVersion = storage.data;
 
     let theirVersion;
     try {
@@ -115,11 +134,12 @@ async function syncCues() {
     }
 
     if(!theirVersion.cues) theirVersion.cues = {};
+    if(!theirVersion.cueStack) theirVersion.cueStack = {};
 
     for(const change of storage.data.changes) {
         switch(change.changeType) {
             case "update":
-                theirVersion.cues[change.cueName] = ourVersion[change.cueName];
+                theirVersion.cues[change.cueName] = ourVersion.cues[change.cueName];
                 break;
             case "delete":
                 delete theirVersion.cues[change.cueName];
@@ -141,7 +161,16 @@ export default {
     openNewFile,
     setCue,
     deleteCue,
-    getCues,
-    getCue,
+    addToCueStack,
+    updateCueStack,
+    deleteFromCueStack,
+    changeCueNumber,
+    setFadeTime,
+    get cues() {
+        return storage.data.cues;
+    },
+    get cueStack() {
+        return storage.data.cueStack;
+    },
     syncCues
 }
