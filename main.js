@@ -117,6 +117,8 @@ wss.on('connection', (ws) => {
 
     const oscServer = new OSCServer(8000, "0.0.0.0");
     oscServer.on("message", msg => {
+        clients.push(ws);
+
         const path = msg[0].split("/");
         const [_, cmd, pb, cueNumber] = path;
 
@@ -137,8 +139,6 @@ wss.on('connection', (ws) => {
             return;
         }
     });
-
-    clients.push(ws);
 
     ws.send(JSON.stringify({
         type: 'STATE',

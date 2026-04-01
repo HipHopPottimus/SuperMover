@@ -166,6 +166,7 @@ export default {
     deleteFromCueStack,
     changeCueNumber,
     setFadeTime,
+    logChange,
     get cues() {
         return storage.data.cues;
     },
