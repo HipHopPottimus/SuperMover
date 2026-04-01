@@ -112,12 +112,13 @@ function blockMoverChannels(startChannel, count) {
 wss.on('connection', (ws) => {
     console.log('Client connected!');
 
+    clients.push(ws);
+
     const oscClient = new OSCClient("192.168.200.1", 8000);
     oscClient.send("/feedback/pb+exec");
 
     const oscServer = new OSCServer(8000, "0.0.0.0");
     oscServer.on("message", msg => {
-        clients.push(ws);
 
         const path = msg[0].split("/");
         const [_, cmd, pb, cueNumber] = path;
@@ -131,7 +132,6 @@ wss.on('connection', (ws) => {
 
         if(process.argv.includes("--use-quickq-feedback") && pb == 1) {
             const intensity = msg[1];
-            console.log(pb, msg[1]);
             let data = {};
             let channelsToSet = [1,2,3,4,5];
             channelsToSet.forEach(c => data[c] = intensity);
