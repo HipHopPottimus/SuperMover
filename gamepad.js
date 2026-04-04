@@ -24,7 +24,7 @@ export class Gamepad {
     zoomVelocity = 0;
 
     /** @type {number} 0-255 dimmer */
-    dimmer = 255;
+    dimmer = 0;
 
     /** @type {number} */
     dimmerVelocity = 0;

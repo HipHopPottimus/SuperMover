@@ -32,10 +32,10 @@ class Joystick {
     onUpdate;
 
     /** @type {number} */
-    x = 170;
+    x = ((127 << 8) + 127) / 257;
 
     /** @type {number} */
-    y = 0;
+    y = ((127 << 8) + 127) / 257;
 
     /** @type {number} */
     dX = 0;
