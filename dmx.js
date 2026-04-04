@@ -2,6 +2,7 @@ import { EnttecOpenDMXUSBDevice as EnttecDevice } from "enttec-open-dmx-usb";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 import usb from "usb";
 
 class DummyDevice {
@@ -60,24 +61,35 @@ class UDMXDevice {
 class PythonDMXDevice {
     constructor() {
         const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-        const python = path.join(scriptDir, ".venv", "Scripts", "python.exe");
-        this.proc = spawn(python, [path.join(scriptDir, "test.py")], { stdio: ["pipe", "pipe", "pipe"] });
-        this.ready = new Promise(resolve => {
+        const venvPython = path.join(scriptDir, ".venv", "Scripts", "python.exe");
+        if (!fs.existsSync(venvPython)) {
+            throw new Error("Python venv not found at " + venvPython);
+        }
+        this.dead = false;
+        this.proc = spawn(venvPython, [path.join(scriptDir, "test.py")], { stdio: ["pipe", "pipe", "pipe"] });
+        this.ready = new Promise((resolve, reject) => {
             this.proc.stdout.on("data", data => {
                 if (data.toString().trim() === "READY") resolve();
             });
-        });
-        this.proc.stderr.on("data", data => {
-            console.error("[python]", data.toString().trim());
-        });
-        this.proc.on("exit", code => {
-            console.log("Python DMX process exited:", code);
+            this.proc.on("exit", code => {
+                this.dead = true;
+                reject(new Error("Python DMX bridge exited with code " + code));
+            });
         });
     }
 
     async setChannels(channels) {
-        await this.ready;
-        this.proc.stdin.write(JSON.stringify(channels) + "\n");
+        if (this.dead) return;
+        try {
+            await this.ready;
+        } catch {
+            return;
+        }
+        try {
+            this.proc.stdin.write(JSON.stringify(channels) + "\n");
+        } catch {
+            this.dead = true;
+        }
     }
 }
 
@@ -87,22 +99,20 @@ let dmxDevice = new DummyDevice();
 try {
     dmxDevice = new EnttecDevice(await EnttecDevice.getFirstAvailableDevice());
     console.log("Enttec Open DMX USB device found");
-} 
+}
 catch {
     try {
         dmxDevice = new UDMXDevice();
         console.log("uDMX device found (fallback)");
-    } 
+    }
     catch {
-        if(process.argv.includes("--python-dmx")) {
-            try {
-                dmxDevice = new PythonDMXDevice();
-                await dmxDevice.ready;
-                console.log("Python uDMX bridge started (fallback)");
-            }
-            catch {
-                console.error("No DMX device found (neither Enttec, uDMX, nor Python bridge), using dummy device");
-            }
+        try {
+            dmxDevice = new PythonDMXDevice();
+            await dmxDevice.ready;
+            console.log("Python uDMX bridge started (fallback)");
+        }
+        catch (err) {
+            console.log("No DMX hardware found, using dummy device" + (err.message ? " (" + err.message + ")" : ""));
         }
     }
 }

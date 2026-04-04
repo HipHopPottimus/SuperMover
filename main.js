@@ -26,25 +26,22 @@ let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z'
 const primaryMover = movers[0];
 const gamepadMover = movers[1];
 
-let joystick1 = {};
+let joystick1 = { onUpdate() {} };
 
 try {
     joystick1 = new jlib.Joystick(0x046d, 0xc214);
-}
-catch(error) {
-    console.error("Error when initializing joystick", error);
-    if(process.argv.includes("--dummy-joystick-updates")) setInterval(() => {
-        if(joystick1.onUpdate) joystick1.onUpdate({zoom: 128, throttle: 128, x: 128, y: 128});
-    }, 50);
+    console.log("Joystick initialized");
+} catch {
+    console.log("No joystick found");
 }
 
-let gamepad1 = {};
+let gamepad1 = { onUpdate() {} };
 
 try {
     gamepad1 = new glib.Gamepad(0);
     console.log("Gamepad initialized on controller index 0");
-} catch(error) {
-    console.error("Error when initializing gamepad", error);
+} catch {
+    console.log("No gamepad found");
 }
 
 gamepad1.onUpdate = () => {
