@@ -5,6 +5,8 @@ import path from "path";
 import fs from "fs";
 import usb from "usb";
 
+const FPS_TARGET = 40;
+
 class DummyDevice {
     setChannels() { }
 }
@@ -24,6 +26,7 @@ class UDMXDevice {
     _startSending() {
         if (this.started) return;
         this.started = true;
+        this._lastFrame = performance.now();
         this._sendLoop();
     }
 
@@ -47,7 +50,10 @@ class UDMXDevice {
             console.error("DMX send error:", err);
         }
 
-        setTimeout(() => this._sendLoop(), 50);
+        const elapsed = performance.now() - this._lastFrame;
+        const delay = Math.max(1, (1000 / FPS_TARGET) - elapsed);
+        this._lastFrame = performance.now();
+        setTimeout(() => this._sendLoop(), delay);
     }
 
     setChannels(channels) {
@@ -70,6 +76,7 @@ class PythonDMXDevice {
         this.ready = new Promise((resolve, reject) => {
             this.proc.stdout.on("data", data => {
                 if (data.toString().trim() === "READY") resolve();
+                console.log("PY:", data.toString().trim());
             });
             this.proc.on("exit", code => {
                 this.dead = true;
