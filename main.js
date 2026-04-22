@@ -10,7 +10,8 @@ import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
 
-const USE_FINE_CONTROL = true;
+const dmx = getDmx();
+const USE_FINE_CONTROL = process.env.DMX_DISABLE_FINE_PANTILT === "true" ? false : true;
 
 const debug = process.env.debug === "true" || process.argv.includes("--debug");
 if (debug) console.log("Debug mode is ON");
@@ -25,6 +26,8 @@ const wss = new WebSocketServer({ server });
 let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
 const primaryMover = movers[0];
 const gamepadMover = movers[1];
+syncAllMoversToUniverse();
+dmx.start();
 
 let joystick1 = { onUpdate() {} };
 
@@ -45,30 +48,22 @@ try {
 }
 
 gamepad1.onUpdate = () => {
-    const panValue = Math.round(gamepad1.x / 255 * 65535);
-    const tiltValue = Math.round(gamepad1.y / 255 * 65535);
-    gamepadMover.setChannels({
+    const channels = {
         [gamepadMover.CHANNELS.Zoom]: Math.round(gamepad1.zoom),
         [gamepadMover.CHANNELS.Dimmer]: Math.round(gamepad1.dimmer),
-        [gamepadMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
-        [gamepadMover.CHANNELS.PanFine]: panValue & 0xFF,
-        [gamepadMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
-        [gamepadMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
-    });
+        ...encodePanTiltChannels(gamepadMover, gamepad1.x, gamepad1.y),
+    };
+    applyMoverChannels(gamepadMover, channels);
     updateState();
 };
 
 joystick1.onUpdate = () => {
-    const panValue = Math.round(joystick1.x / 255 * 65535);
-    const tiltValue = Math.round(joystick1.y / 255 * 65535);
-    primaryMover.setChannels({
+    const channels = {
         [primaryMover.CHANNELS.Zoom]: Math.round(joystick1.zoom),
         [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
-        [primaryMover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
-        [primaryMover.CHANNELS.PanFine]: panValue & 0xFF,
-        [primaryMover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
-        [primaryMover.CHANNELS.TiltFine]: tiltValue & 0xFF,
-    });
+        ...encodePanTiltChannels(primaryMover, joystick1.x, joystick1.y),
+    };
+    applyMoverChannels(primaryMover, channels);
     updateState();
 };
 
@@ -80,6 +75,53 @@ const blockedChannels = new Set([
 function getState() {
     return {
         movers,
+        dmx: debug ? dmx.getStats() : undefined,
+        useFineControl: USE_FINE_CONTROL,
+    };
+}
+
+function encodePanTiltChannels(mover, x, y) {
+    const panValue = Math.round(x / 255 * 65535);
+    const tiltValue = Math.round(y / 255 * 65535);
+    const channels = {
+        [mover.CHANNELS.Pan]: panValue >> 8 & 0xFF,
+        [mover.CHANNELS.Tilt]: tiltValue >> 8 & 0xFF,
+    };
+
+    if (USE_FINE_CONTROL) {
+        channels[mover.CHANNELS.PanFine] = panValue & 0xFF;
+        channels[mover.CHANNELS.TiltFine] = tiltValue & 0xFF;
+    } else {
+        channels[mover.CHANNELS.PanFine] = 0;
+        channels[mover.CHANNELS.TiltFine] = 0;
+    }
+
+    return channels;
+}
+
+function applyMoverChannels(mover, channels) {
+    const normalizedChannels = normalizeMoverChannelsForMode(mover, channels);
+    mover.setChannels(normalizedChannels);
+    dmx.setChannels(normalizedChannels);
+}
+
+function syncAllMoversToUniverse() {
+    for (const mover of movers) {
+        const numericChannels = {};
+        for (const [channel, value] of Object.entries(mover.channelValues)) {
+            if (/^\d+$/.test(channel)) numericChannels[channel] = value;
+        }
+        dmx.setChannels(normalizeMoverChannelsForMode(mover, numericChannels));
+    }
+}
+
+function normalizeMoverChannelsForMode(mover, channels) {
+    if (USE_FINE_CONTROL) return channels;
+
+    return {
+        ...channels,
+        [mover.CHANNELS.PanFine]: 0,
+        [mover.CHANNELS.TiltFine]: 0,
     };
 }
 
@@ -132,7 +174,7 @@ wss.on('connection', (ws) => {
             let data = {};
             let channelsToSet = [1,2,3,4,5];
             channelsToSet.forEach(c => data[c] = intensity);
-            getDmx().setChannels(data);
+            dmx.setChannels(data);
             return;
         }
     });
@@ -171,6 +213,9 @@ wss.on('connection', (ws) => {
                 const newMover = new mlib.Mover(msg.channel, debug, fixtureType);
                 blockMoverChannels(msg.channel, newMover.channelCount);
                 movers.push(newMover);
+                applyMoverChannels(newMover, Object.fromEntries(
+                    Object.entries(newMover.channelValues).filter(([channel]) => /^\d+$/.test(channel))
+                ));
                 updateState();
                 break;
             }
@@ -198,12 +243,12 @@ wss.on('connection', (ws) => {
                         joystick1.zoom = msg.values.Zoom;
                     if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
                         const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
-                        const panFine = msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0);
+                        const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
                         joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
                     }
                     if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
                         const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-                        const tiltFine = msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0);
+                        const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
                         joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
                     }
                 }
@@ -213,17 +258,20 @@ wss.on('connection', (ws) => {
                     if(msg.values.Dimmer !== undefined) gamepad1.dimmer = msg.values.Dimmer;
                     if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
                         const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
-                        const panFine = msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0);
+                        const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
                         gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
                     }
                     if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
                         const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-                        const tiltFine = msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0);
+                        const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
                         gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
                     }
                 }
 
-                mover.set(msg.values);
+                const translatedValues = Object.fromEntries(
+                    Object.entries(msg.values).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
+                );
+                applyMoverChannels(mover, translatedValues);
                 updateState();
                 break;
             }

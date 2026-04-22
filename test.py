@@ -13,9 +13,20 @@ from PyDMXControl.profiles.Generic import Custom
 
 dmx = uDMXController()
 universe = dmx.add_fixture(Custom, start_channel=1, channels=512, name="universe")
+last_universe = [None] * 512
 
 def set_channel(address, value):
     universe.set_channel(address - 1, value)
+
+def apply_universe_delta(values):
+    global last_universe
+
+    for index, value in enumerate(values[:512], start=1):
+        int_value = int(value)
+        if last_universe[index - 1] == int_value:
+            continue
+        set_channel(index, int_value)
+        last_universe[index - 1] = int_value
 
 print("READY", flush=True)
 
@@ -26,9 +37,22 @@ for line in sys.stdin:
     if line == "quit":
         break
     try:
-        channels = json.loads(line)
-        for ch, val in channels.items():
-            set_channel(int(ch), int(val))
+        payload = json.loads(line)
+
+        if isinstance(payload, list):
+            apply_universe_delta(payload)
+            continue
+
+        if isinstance(payload, dict) and isinstance(payload.get("universe"), list):
+            apply_universe_delta(payload["universe"])
+            continue
+
+        for ch, val in payload.items():
+            channel = int(ch)
+            int_value = int(val)
+            set_channel(channel, int_value)
+            if 1 <= channel <= 512:
+                last_universe[channel - 1] = int_value
     except Exception as e:
         print(f"ERROR {e}", flush=True)
 

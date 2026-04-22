@@ -7,7 +7,6 @@
  * Channel value ranges vary between fixtures (see constants below).
  */
 
-import getDmx from "./dmx.js";
 import { getFixtureProfile } from "./fixtures.js";
 
 export class Mover {
@@ -85,7 +84,6 @@ export class Mover {
         for(const [channelName, channel] of Object.entries(this.CHANNELS)) {
             this.channelValues[channelName] = this.channelValues[channel];
         }
-        getDmx().setChannels(channels);
     }
 
     reset() {
