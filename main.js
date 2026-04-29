@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
-import {Client as OSCClient, Server as OSCServer} from "node-osc";
+import { Client as OSCClient, Server as OSCServer } from "node-osc";
 import path from 'path';
 
 import getDmx from './dmx.js';
@@ -29,7 +29,7 @@ const gamepadMover = movers[1];
 syncAllMoversToUniverse();
 dmx.start();
 
-let joystick1 = { onUpdate() {} };
+let joystick1 = { onUpdate() { } };
 
 try {
     joystick1 = new jlib.Joystick(0x046d, 0xc214);
@@ -38,7 +38,7 @@ try {
     console.log("No joystick found");
 }
 
-let gamepad1 = { onUpdate() {} };
+let gamepad1 = { onUpdate() { } };
 
 try {
     gamepad1 = new glib.Gamepad(0);
@@ -148,6 +148,13 @@ function blockMoverChannels(startChannel, count) {
     }
 }
 
+export function sendError(message) {
+    clients.forEach(v => v.send(JSON.stringify({
+        type: "ERROR",
+        message
+    })));
+}
+
 wss.on('connection', (ws) => {
     console.log('Client connected!');
 
@@ -162,17 +169,17 @@ wss.on('connection', (ws) => {
         const path = msg[0].split("/");
         const [_, cmd, pb, cueNumber] = path;
 
-        if(cmd != "pb") return;
-        
-        if(cueNumber) {
-            ws.send(JSON.stringify({type: "OSC", cueNumber: cueNumber}));
+        if (cmd != "pb") return;
+
+        if (cueNumber) {
+            ws.send(JSON.stringify({ type: "OSC", cueNumber: cueNumber }));
             return;
         }
 
-        if(process.argv.includes("--use-quickq-feedback") && pb == 1) {
+        if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
             const intensity = msg[1];
             let data = {};
-            let channelsToSet = [1,2,3,4,5];
+            let channelsToSet = [1, 2, 3, 4, 5];
             channelsToSet.forEach(c => data[c] = intensity);
             dmx.setChannels(data);
             return;
@@ -220,14 +227,14 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'FORGET_MOVER': {
-                if(msg.channel === primaryMover.channel || msg.channel === gamepadMover.channel) {
+                if (msg.channel === primaryMover.channel || msg.channel === gamepadMover.channel) {
                     ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
                     return;
                 }
                 const forgetMover = movers.find(m => m.channel == msg.channel);
                 const forgetCount = forgetMover ? forgetMover.channelCount : 15;
                 movers = movers.filter(m => m.channel != msg.channel);
-                for(let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
+                for (let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
                     blockedChannels.delete(channel);
                 break;
             }
@@ -238,30 +245,30 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
-                if(mover.channel === primaryMover.channel) {
-                    if(msg.values.Zoom !== undefined)
+                if (mover.channel === primaryMover.channel) {
+                    if (msg.values.Zoom !== undefined)
                         joystick1.zoom = msg.values.Zoom;
-                    if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
+                    if (msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
                         const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
                         const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
                         joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
                     }
-                    if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
+                    if (msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
                         const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
                         const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
                         joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
                     }
                 }
 
-                if(mover.channel === gamepadMover.channel) {
-                    if(msg.values.Zoom !== undefined) gamepad1.zoom = msg.values.Zoom;
-                    if(msg.values.Dimmer !== undefined) gamepad1.dimmer = msg.values.Dimmer;
-                    if(msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
+                if (mover.channel === gamepadMover.channel) {
+                    if (msg.values.Zoom !== undefined) gamepad1.zoom = msg.values.Zoom;
+                    if (msg.values.Dimmer !== undefined) gamepad1.dimmer = msg.values.Dimmer;
+                    if (msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
                         const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
                         const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
                         gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
                     }
-                    if(msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
+                    if (msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
                         const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
                         const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
                         gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;

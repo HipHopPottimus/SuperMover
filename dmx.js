@@ -1,18 +1,54 @@
 import { EnttecOpenDMXUSBDevice as EnttecDevice } from "enttec-open-dmx-usb";
-import { spawn } from "child_process";
-import { fileURLToPath } from "url";
-import path from "path";
-import fs from "fs";
 import usb from "usb";
+import WebSocket from "ws";
+import { sendError } from "./main.js";
 
 const DEFAULT_FPS = parsePositiveInt(process.env.DMX_FPS, 30);
-const UNIVERSE_SIZE = 512;
+const UNIVERSE_SIZE = 32;
 const DEBUG_TRANSPORT = process.env.DMX_DEBUG === "true";
 
 class DummyBackend {
     name = "dummy";
 
     async sendUniverse() { }
+}
+
+class QLCPlusWebsocketBackend {
+    name = "qlc-plus-websocket";
+
+    constructor() {
+        this.ws = null;
+        this.device = null;
+        this.ready = this.#init();
+    }
+
+    #init() {
+        return new Promise((res, rej) => {
+            let opened = false;
+            this.ws = new WebSocket("ws://127.0.0.1:9999/qlcplusWS");
+            this.ws.on('open', () => {
+                opened = true;
+                res();
+            })
+            this.ws.on('error', (err) => {
+                rej(err);
+            });
+            this.ws.on('close', () => {
+                if (!opened) return;
+                sendError("Disconnected from QLC+ Backend! Shutting down now.");
+                console.error('ERROR! Disconnected from QLC+ Backend!!!');
+                throw new Error("Disconnect from QLC+ WS!");
+            });
+        })
+    }
+
+    async sendUniverse(universe) {
+        await this.ready;
+        for (let i = 0; i < universe.length; i++) {
+            // CH|{address}|{value} to set value    
+            this.ws.send(`CH|${i + 1}|${universe[i]}`);
+        }
+    }
 }
 
 class EnttecOpenDMXUSBBackend {
@@ -66,45 +102,6 @@ class UDMXBackend {
                 err => (err ? reject(err) : resolve())
             );
         });
-    }
-}
-
-class PythonDMXBackend {
-    name = "python-bridge";
-
-    constructor() {
-        const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-        const venvPython = path.join(scriptDir, ".venv", "Scripts", "python.exe");
-        if (!fs.existsSync(venvPython)) {
-            throw new Error("Python venv not found at " + venvPython);
-        }
-
-        this.dead = false;
-        this.proc = spawn(venvPython, [path.join(scriptDir, "test.py")], { stdio: ["pipe", "pipe", "pipe"] });
-        this.ready = new Promise((resolve, reject) => {
-            this.proc.stdout.on("data", data => {
-                const message = data.toString().trim();
-                if (message === "READY") resolve();
-                if (message) console.log("PY:", message);
-            });
-            this.proc.stderr.on("data", data => {
-                console.error("PY ERR:", data.toString().trim());
-            });
-            this.proc.on("exit", code => {
-                this.dead = true;
-                reject(new Error("Python DMX bridge exited with code " + code));
-            });
-        });
-    }
-
-    async sendUniverse(universe) {
-        if (this.dead) return;
-        await this.ready;
-        try {
-            this.proc.stdin.write(JSON.stringify(Array.from(universe)) + "\n");
-        } catch {
-            this.dead = true;
-        }
     }
 }
 
@@ -311,22 +308,26 @@ async function waitForEnttecReady(device) {
 
 async function createBackend() {
     try {
-        const backend = new EnttecOpenDMXUSBBackend();
+        console.log("Trying QLC+...");
+        const backend = new QLCPlusWebsocketBackend();
         await backend.ready;
-        console.log("Enttec Open DMX USB device found");
+        console.log("Connected to QLC+ backend!");
         return backend;
     } catch {
         try {
-            const backend = new UDMXBackend();
-            console.log("uDMX device found (fallback)");
+            console.log("Failed! Trying EnttecOpenDMX");
+            const backend = new EnttecOpenDMXUSBBackend();
+            await backend.ready;
+            console.log("Enttec Open DMX USB device found");
             return backend;
+
         } catch {
             try {
-                const backend = new PythonDMXBackend();
-                await backend.ready;
-                console.log("Python uDMX bridge started (fallback)");
+                console.log("Failed! Trying uDMX...");
+                const backend = new UDMXBackend();
+                console.log("uDMX device found (fallback)");
                 return backend;
-            } catch (err) {
+            } catch {
                 console.log("No DMX hardware found, using dummy device" + (err?.message ? " (" + err.message + ")" : ""));
                 return new DummyBackend();
             }
