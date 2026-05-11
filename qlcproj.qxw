@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Workspace>
-<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="VC">
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="IOMGR">
  <Creator>
   <Name>Q Light Controller Plus</Name>
   <Version>5.2.1</Version>
@@ -10,7 +10,11 @@
   <InputOutputMap>
    <BeatGenerator BeatType="Internal" BPM="120"/>
    <NetworkServer Type="Web" AutoStart="True"/>
-   <Universe Name="Universe 1" ID="0"/>
+   <Universe Name="Universe 1" ID="0">
+    <Output Plugin="ArtNet" UID="10.0.0.1" Line="0">
+     <PluginParameters outputIP="10.0.0.50" outputUni="1"/>
+    </Output>
+   </Universe>
    <Universe Name="Universe 2" ID="1"/>
    <Universe Name="Universe 3" ID="2"/>
    <Universe Name="Universe 4" ID="3"/>

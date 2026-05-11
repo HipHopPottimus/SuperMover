@@ -1,4 +1,5 @@
 import { EnttecOpenDMXUSBDevice as EnttecDevice } from "enttec-open-dmx-usb";
+import dgram from "node:dgram";
 import usb from "usb";
 import WebSocket from "ws";
 import { sendError } from "./main.js";
@@ -6,6 +7,14 @@ import { sendError } from "./main.js";
 const DEFAULT_FPS = parsePositiveInt(process.env.DMX_FPS, 30);
 const UNIVERSE_SIZE = 32;
 const DEBUG_TRANSPORT = process.env.DMX_DEBUG === "true";
+const ARTNET_PORT = 6454;
+const ARTNET_UNIVERSE = 1;
+const ARTNET_TARGETS = [
+    "10.0.0.50",
+    "192.168.2.50",
+    "192.168.1.50",
+];
+const ARTNET_POLL_TIMEOUT_MS = parsePositiveInt(process.env.DMX_ARTNET_POLL_TIMEOUT_MS, 500);
 
 class DummyBackend {
     name = "dummy";
@@ -51,6 +60,26 @@ class QLCPlusWebsocketBackend {
     }
 }
 
+class ArtNetBackend {
+    name = "artnet";
+
+    constructor(target, options = {}) {
+        this.host = target.host;
+        this.port = target.port ?? ARTNET_PORT;
+        this.universe = target.universe ?? ARTNET_UNIVERSE;
+        this.name = `artnet:${this.host}:u${this.universe}`;
+        this.socket = options.socket ?? dgram.createSocket("udp4");
+        this.sequence = 1;
+        this.ready = Promise.resolve();
+    }
+
+    async sendUniverse(universe) {
+        const packet = createArtDmxPacket(universe, this.universe, this.sequence);
+        this.sequence = this.sequence >= 255 ? 1 : this.sequence + 1;
+        await sendUdp(this.socket, packet, this.port, this.host);
+    }
+}
+
 class EnttecOpenDMXUSBBackend {
     name = "enttec-open-dmx-usb";
 
@@ -70,6 +99,34 @@ class EnttecOpenDMXUSBBackend {
         this.device.setChannels(Buffer.from(universe));
         await this.device._sendUniverse();
     }
+}
+
+function createArtPollPacket() {
+    const packet = Buffer.alloc(14, 0);
+    writeArtNetHeader(packet);
+    packet.writeUInt16LE(0x2000, 8);
+    packet.writeUInt16BE(14, 10);
+    packet.writeUInt8(0, 12);
+    packet.writeUInt8(0, 13);
+    return packet;
+}
+
+function createArtDmxPacket(universe, artNetUniverse, sequence) {
+    const data = Buffer.from(universe);
+    const packet = Buffer.alloc(18 + data.length, 0);
+    writeArtNetHeader(packet);
+    packet.writeUInt16LE(0x5000, 8);
+    packet.writeUInt16BE(14, 10);
+    packet.writeUInt8(sequence, 12);
+    packet.writeUInt8(0, 13);
+    packet.writeUInt16LE(artNetUniverse, 14);
+    packet.writeUInt16BE(data.length, 16);
+    data.copy(packet, 18);
+    return packet;
+}
+
+function writeArtNetHeader(packet) {
+    packet.write("Art-Net\0", 0, "ascii");
 }
 
 class UDMXBackend {
@@ -298,6 +355,74 @@ function round(value, digits) {
     return Math.round(value * scale) / scale;
 }
 
+function sendUdp(socket, packet, port, host) {
+    return new Promise((resolve, reject) => {
+        socket.send(packet, port, host, err => (err ? reject(err) : resolve()));
+    });
+}
+
+async function findArtNetTarget(targets) {
+    const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
+    const pollPacket = createArtPollPacket();
+
+    try {
+        await bindUdp(socket, ARTNET_PORT);
+        const replies = await collectArtNetReplies(socket, pollPacket, targets);
+        return targets.find(target => replies.has(target.host)) ?? null;
+    } finally {
+        socket.close();
+    }
+}
+
+function bindUdp(socket, port = 0) {
+    return new Promise((resolve, reject) => {
+        socket.once("error", reject);
+        socket.bind(port, () => {
+            socket.off("error", reject);
+            resolve();
+        });
+    });
+}
+
+async function collectArtNetReplies(socket, pollPacket, targets) {
+    const targetHosts = new Set(targets.map(target => target.host));
+    const replies = new Set();
+
+    return await new Promise(resolve => {
+        let settled = false;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            socket.off("message", handleMessage);
+            socket.off("error", handleError);
+            resolve(replies);
+        };
+        const handleMessage = (message, remote) => {
+            if (!targetHosts.has(remote.address) || !isArtPollReply(message)) return;
+            replies.add(remote.address);
+            if (replies.size === targetHosts.size) finish();
+        };
+        const handleError = () => finish();
+
+        const timer = setTimeout(finish, ARTNET_POLL_TIMEOUT_MS);
+        if (typeof timer.unref === "function") timer.unref();
+
+        socket.on("message", handleMessage);
+        socket.on("error", handleError);
+
+        for (const target of targets) {
+            socket.send(pollPacket, target.port ?? ARTNET_PORT, target.host, () => { });
+        }
+    });
+}
+
+function isArtPollReply(message) {
+    return message.length >= 10
+        && message.subarray(0, 8).equals(Buffer.from("Art-Net\0", "ascii"))
+        && message.readUInt16LE(8) === 0x2100;
+}
+
 async function waitForEnttecReady(device) {
     if (device.port?.isOpen) return;
     await new Promise((resolve, reject) => {
@@ -307,6 +432,16 @@ async function waitForEnttecReady(device) {
 }
 
 async function createBackend() {
+    try {
+        console.log(`Trying Art-Net (${ARTNET_TARGETS.join(", ")} universe ${ARTNET_UNIVERSE})...`);
+        const target = await findArtNetTarget(ARTNET_TARGETS.map(host => ({ host, universe: ARTNET_UNIVERSE })));
+        if (!target) throw new Error("No Art-Net poll replies");
+        console.log(`Connected to Art-Net backend at ${target.host} universe ${target.universe}!`);
+        return new ArtNetBackend(target);
+    } catch (err) {
+        console.log("Failed! Trying QLC+..." + (err?.message ? " (" + err.message + ")" : ""));
+    }
+
     try {
         console.log("Trying QLC+...");
         const backend = new QLCPlusWebsocketBackend();
@@ -327,7 +462,7 @@ async function createBackend() {
                 const backend = new UDMXBackend();
                 console.log("uDMX device found (fallback)");
                 return backend;
-            } catch {
+            } catch (err) {
                 console.log("No DMX hardware found, using dummy device" + (err?.message ? " (" + err.message + ")" : ""));
                 return new DummyBackend();
             }
