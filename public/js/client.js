@@ -1,4 +1,3 @@
-import cueStorage from "./cueStorage.js";
 import channelValues from "./channelValueUtil.js";
 
 const FIXTURE_PROFILES = {
@@ -32,9 +31,9 @@ function getProfile(type) {
 
 const moverFixtureTypes = {};
 
-const socket = new WebSocket(`ws://${window.location.host}`);
+export const socket = new WebSocket(`ws://${window.location.host}`);
 
-let currentState;
+let currentState, currentCueNumber;
 
 let timeout = setTimeout(() => {
     document.body.innerHTML = "<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p>";
@@ -49,68 +48,54 @@ socket.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     switch (msg.type) {
         case 'STATE': {
-            if (currentState?.movers?.length != msg.state.movers.length) renderCues();
+            const oldState = currentState;
             currentState = msg.state;
-            for (const mover of msg.state.movers)
-                renderMover(mover);
+            if (oldState?.movers?.length != msg.state.movers.length) renderCues();
+
+            for (const mover of msg.state.movers) renderMover(mover);
+
             break;
         }
         case 'ERROR': {
             alert(msg.message);
             break;
         }
-        case "OSC": {
-            if(cueStorage.cueStack[msg.cueNumber]) {
-                for(let [ch, cueName] of Object.entries(cueStorage.cueStack[msg.cueNumber].movers)) {
-                    ch = Number.parseInt(ch);
+        case "GOTO_CUE_NUMBER": {
+            currentCueNumber = msg.cueNumber;
+            for(let [ch, cueName] of Object.entries(cueStorage.cueStack[msg.cueNumber].movers)) {
+                ch = Number.parseInt(ch);
 
-                    const cueToSet = cueStorage.cues[cueName];
+                const cueToSet = cueStorage.cues[cueName];
 
-                    const fadeTime = cueStorage.cueStack[msg.cueNumber].fadeTime * 1000;
+                const fadeTime = cueStorage.cueStack[msg.cueNumber].fadeTime * 1000;
 
-                    document.querySelectorAll(".cue-stack-table p").forEach(r => {
-                        r.style.transition = `background-color ${fadeTime}ms`;
-                        r.classList.remove("cue-stack-active");
-                    });
+                document.querySelectorAll(".cue-stack-table p").forEach(r => {
+                    r.style.transition = `background-color ${fadeTime}ms`;
+                    r.classList.remove("cue-stack-active");
+                });
 
-                    document.querySelectorAll(`.cue-stack-table-${msg.cueNumber}, #cue-stack-fade-time-${msg.cueNumber}, #cue-stack-number-${msg.cueNumber}, #cue-stack-delete-${msg.cueNumber}`).forEach(r => {
-                        r.style.transition = `background-color ${fadeTime}ms`;
-                        r.classList.add("cue-stack-active");
-                    });
-
-                    const transitionableAttributes = ["Focus", "Dimmer", "Zoom"];
-
-                    const nonTransitionableData = {...getCueValues(cueName)};
-                    transitionableAttributes.forEach(a => delete nonTransitionableData[a]);
-                    sendMoverSet(ch, nonTransitionableData)
-
-                    for(const attribute of transitionableAttributes) {
-                        const initialValue = currentState.movers.filter(m => m.channel == ch)[0].channelValues[attribute];
-                        const targetValue = cueToSet[attribute];
-
-                        let value  = initialValue;
-                        const startTime = performance.now();
-                        const intervalId = setInterval(() => {
-                            const elapsedTime = performance.now() - startTime;
-                            value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
-                            //console.log(initialValue, targetValue, elapsedTime, fadeTime, value);
-                            if(elapsedTime >= fadeTime) {
-                                value = targetValue;
-                                clearInterval(intervalId);
-                            }
-                            sendMoverSet(ch, {[attribute]: value});
-                        }, 16.7);
-                    }
-                }
+                document.querySelectorAll(`
+                    .cue-stack-table-${escapeCueName(msg.cueNumber)},
+                    #cue-stack-fade-time-${escapeCueName(msg.cueNumber)},
+                    #cue-stack-number-${escapeCueName(msg.cueNumber)},
+                    #cue-stack-delete-${escapeCueName(msg.cueNumber)}`
+                ).forEach(r => {
+                    r.style.transition = `background-color ${fadeTime}ms`;
+                    r.classList.add("cue-stack-active");
+                });
             }
             break;
         }
-            
+        case "CUE_STORAGE_STATE": {
+            cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
+            renderCues();
+            break;
+        }
         default: {
             console.log("Received unknown message: ", msg);
         }
     }
-};
+}
 
 socket.onerror = (err) => {
     console.error("WebSocket error: ", err, "please refresh the page.");
@@ -506,14 +491,56 @@ function initMoverControls(ch, fixtureType) {
     });
 }
 
-async function setCue(cueName, ch) {
-    const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
-    await cueStorage.setCue(cueName, cueState);
-    await renderCues();
+let unproxiedStorage = {};
+
+function deepProxy(target, callback, propChain = []) {
+    const handler = {
+        get(target, property, receiver) {
+            const value = Reflect.get(target, property, receiver);
+
+            if (value !== null && typeof value === 'object') return deepProxy(value, callback, [property, ...propChain]);
+
+            return value;
+        },
+
+        set(target, property, value, receiver) {
+            const oldValue = target[property];
+            const result = Reflect.set(target, property, value, receiver);
+
+            if (oldValue != value) {
+                callback({
+                    property,
+                    oldValue,
+                    newValue: value,
+                    target
+                });
+            }
+
+            return result;
+        },
+
+        deleteProperty(target, property) {
+            callback({target, property, type: "delete", propChain});
+            return Reflect.deleteProperty(target, property);
+        }
+    };
+
+    return new Proxy(target, handler);
 }
 
-async function deleteCue(cueName) {
-    await cueStorage.deleteCue(cueName);
+let cueStorage;
+
+function onStorageUpdate(change) {
+    socket.send(JSON.stringify({
+        type: 'CUE_STORAGE_UPDATE',
+        cueStorage: cueStorage,
+        change
+    }));
+}
+
+async function setCue(cueName, ch) {
+    const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
+    cueStorage.cues[cueName] = cueState;
     await renderCues();
 }
 
@@ -540,12 +567,12 @@ async function generateCueStackTable() {
 
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
         cueStackTable.innerHTML += `
-            <p contenteditable id="cue-stack-number-${cueNumber}">${cueNumber}</p>
+            <p contenteditable id="cue-stack-number-${escapeCueName(cueNumber)}">${cueNumber}</p>
             ${currentState.movers.map(m => 
-                `<p class="cue-stack-cue cue-stack-table-${cueNumber}" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p>`
+                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p>`
             ).join("")}
-            <p contenteditable class="cue-stack-fade-time" id="cue-stack-fade-time-${cueNumber}">${cue.fadeTime}</p>
-            <p id="cue-stack-delete-${cueNumber}"><img src="imgs/bin.svg" width="15"/></p>
+            <p contenteditable class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}">${cue.fadeTime}</p>
+            <p id="cue-stack-delete-${escapeCueName(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
         `;
     }
 
@@ -553,68 +580,39 @@ async function generateCueStackTable() {
 
     //apply listeners now that table construction is done
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
-        document.getElementById(`cue-stack-number-${cueNumber}`).addEventListener("blur", async e => {
+        document.getElementById(`cue-stack-number-${escapeCueName(cueNumber)}`).addEventListener("blur", async e => {
             const newCueNumber = Number.parseFloat(e.target.innerHTML);
             if(isNaN(newCueNumber) || !newCueNumber) {
                 e.target.innerHTML = cueNumber;
                 return;
             }
-            await cueStorage.changeCueNumber(cueNumber, newCueNumber);
+
+            if(cueNumber == newCueNumber) return;
+
+            cueStorage.cueStack[newCueNumber] = cueStorage.cueStack[cueNumber];
+
+            delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
         
-        document.getElementById(`cue-stack-fade-time-${cueNumber}`).addEventListener("blur", async e => {
+        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("blur", async e => {
             const fadeTime = Number.parseFloat(e.target.innerHTML);
             if(isNaN(fadeTime)) return;
-            await cueStorage.setFadeTime(cueNumber, fadeTime);
+            cueStorage.cueStack[cueNumber].fadeTime = fadeTime;
             e.target.innerHTML = cue.fadeTime;
         });
 
-        document.getElementById(`cue-stack-delete-${cueNumber}`).addEventListener("click", async e => {
+        document.getElementById(`cue-stack-delete-${escapeCueName(cueNumber)}`).addEventListener("click", async e => {
             if(!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
-            await cueStorage.deleteFromCueStack(cueNumber);
+            await delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
     }
 }
 
 async function renderCues() {
-    const cueStorageSaveOptions = document.querySelector(".cue-storage-save-options");
-    let fileHandle = await cueStorage.getFileHandle();
-    if (fileHandle) {
-        cueStorageSaveOptions.innerHTML = `
-            <p>Currently syncing with ${fileHandle.name}</p>
-            <button id="sync-cues">Sync now</button>
-        `;
-        document.getElementById("sync-cues").addEventListener("click", async () => {
-            try {
-                await cueStorage.syncCues();
-                await renderCues();
-                alert(`Sync successful`);
-            }
-            catch (e) {
-                console.error(e);
-                alert("Sync error\n" + e);
-            }
-        });
-    }
-    else {
-        cueStorageSaveOptions.innerHTML = `
-            <button id="open-cue-file">Sync cues with a file on your device</button>
-            <button id="copy-cues-json">Copy cues JSON to clipboard</button>
-        `;
-        document.getElementById("open-cue-file").addEventListener("click", async () => {
-            await cueStorage.openNewFile();
-            await cueStorage.syncCues();
-            renderCues();
-        });
-        document.getElementById("copy-cues-json").addEventListener("click", async () => {
-            await navigator.clipboard.writeText(JSON.stringify({ cues: cueStorage.cues }));
-            alert("Cues JSON copied to clipboard");
-        });
-    }
-
     if (!currentState) return;
+    if (!cueStorage?.cues) return;
 
     const moverList = document.getElementById("mover-list");
     moverList.innerHTML = `<p class="cue-section-header">Movers</p>`;
@@ -661,7 +659,9 @@ async function renderCues() {
             if (event.target.className.includes("cue-table-add")) {
                 const cueName = prompt("Enter new cue name:");
                 if (!cueName) return;
-                await setCue(cueName, event.data);
+                setCue(cueName, event.data);
+
+                renderCues();
             }
             else {
                 if (confirm(`Are you sure you want to overwrite cue ${event.target.innerHTML}?`)) {
@@ -674,35 +674,41 @@ async function renderCues() {
     for (const cueListing of cueList.querySelectorAll(".cue-table-cue")) {
         const cueName = cueListing.innerHTML;
     
+        //update cue mode when cue mode checkboxes selected
         if(cueName != "+") {
             [...document.getElementsByClassName(`cue-table-cue-mode-${escapeCueName(cueName)}`)].forEach(cb => cb.addEventListener("click", e => {
                 cueStorage.cues[cueName].mode = e.target.checked ? e.target.getAttribute("data-mode") : undefined;
-                cueStorage.logChange(cueName, "update");
                 renderCues();
             }));
 
         }
 
         setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue"), async event => {
+            //dragging over delete cue
             if (event.target.classList.contains("cue-table-delete")) {
-                if (confirm(`Are you sure you want to delete cue ${cueName}?`)) await deleteCue(cueName);
+                if (confirm(`Are you sure you want to delete cue ${cueName}?`)) {
+                    delete cueStorage.cues[cueName];
+                    renderCues();
+                }
                 return;
             }
 
             const ch = Number.parseInt(event.target.getAttribute("data-channel"));
             
+            //dragging over cue-stack-add, create a new cue
             if(event.target.classList.contains("cue-stack-add")) {
                 const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
                 if(isNaN(cueNumber) || !cueNumber) return;
-                cueStorage.addToCueStack(cueNumber, {movers: {[ch]: cueName}, fadeTime: 0});
+                cueStorage.cueStack[cueNumber] = {movers: {[ch]: cueName}, fadeTime: 0};
                 renderCues();
                 return;
             }
 
+            //dragging over an existing cue, overwrite its data
             if(event.target.classList.contains("cue-stack-cue")) {
                 const cueNumber = event.target.getAttribute("data-cue-number");
-                cueStorage.updateCueStack(cueNumber, ch, event.data);
-                renderCues();
+                cueStorage.cueStack[cueNumber].movers[ch] = cueName;
+                await renderCues();
                 return;
             }
 
@@ -723,7 +729,7 @@ function getCueValues(cueName) {
 }
 
 function escapeCueName(cueName) {
-    return cueName.replaceAll(" ","-");
+    return cueName.replaceAll(" ","-").replaceAll(".","-");
 }
 
 function setupDragDrop(element, data, targets, onDrop) {
@@ -766,18 +772,31 @@ function setupDragDrop(element, data, targets, onDrop) {
     }
 }
 
-async function load() {
-    try {
-        await cueStorage.syncCues();
-    }
-    catch (e) {
-        console.error(e);
-        alert("Error when syncing cues\n" + e);
-    }
-    renderCues();
+function getCueNumberList() {
+    return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a,b) => a - b).map(x => x.toString());
 }
 
-function clearOSCCue() {
+function moveCueNumber(d) {
+    const cueNumberList = getCueNumberList();
+    let cueIndex = cueNumberList.indexOf(currentCueNumber);
+
+    if(cueIndex == -1 && d < 0) cueIndex = cueNumberList.length;
+
+    if(cueIndex + d < 0 || cueIndex + d > cueNumberList.length - 1) {
+        clearCurrentCue();
+        return;
+    }
+
+    cueIndex += d;
+    
+    socket.send(JSON.stringify({
+        type: "GOTO_CUE_NUMBER",
+        cueNumber: (cueNumberList[cueIndex]).toString()
+    }));
+}
+
+function clearCurrentCue() {
+    currentCueNumber = null;
     document.querySelectorAll(".cue-stack-table p").forEach(r => {
         r.style.transition = `background-color 500ms`;
         r.classList.remove("cue-stack-active");
@@ -790,11 +809,16 @@ function requestISU() {
     }));
 }
 
+function load() {
+    renderCues();
+}
+
 if (document.readyState != "loading") load();
 else document.addEventListener("load", load);
 
 Object.assign(window, {
     addMover,
-    clearOSCCue,
+    moveCueNumber,
+    clearCurrentCue,
     requestISU
 });

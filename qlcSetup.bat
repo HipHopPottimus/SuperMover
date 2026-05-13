@@ -1,0 +1,1 @@
+& "C:\QLC+5\qlcplus-qml.exe" -w -o .\qlcproj.qxw

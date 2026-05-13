@@ -2,13 +2,17 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Client as OSCClient, Server as OSCServer } from "node-osc";
+
 import path from 'path';
+import * as fs from "fs";
 
 import getDmx from './dmx.js';
 
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
+
+import * as util from "./util.js";
 
 const dmx = getDmx();
 const USE_FINE_CONTROL = process.env.DMX_DISABLE_FINE_PANTILT === "true" ? false : true;
@@ -72,6 +76,30 @@ const blockedChannels = new Set([
     ...Array.from({ length: gamepadMover.channelCount }, (_, i) => i + 16),
 ]);
 
+let cueStorage = {};
+
+let cueStorageFile = "cues.json";
+
+const cueFileArgIndex = process.argv.indexOf("--cue-file");
+if (cueFileArgIndex > 0 && process.argv[cueFileArgIndex + 1]) cueStorageFile = process.argv[cueFileArgIndex + 1];
+
+if (process.argv.includes("--force-reset-cues") || !fs.existsSync(cueStorageFile)) {
+    fs.writeFileSync(cueStorageFile, "{}");
+    console.log("Reset cues file", cueStorageFile);
+}
+
+try {
+    cueStorage = JSON.parse(fs.readFileSync(cueStorageFile));
+}
+catch (e) {
+    throw new Error("Error parsing cue file" + e);
+}
+
+if (!cueStorage.cues) cueStorage.cues = {};
+if (!cueStorage.cueStack) cueStorage.cueStack = {};
+
+console.log("Loaded cue storage file", cueStorageFile);
+
 function getState() {
     return {
         movers,
@@ -125,15 +153,63 @@ function normalizeMoverChannelsForMode(mover, channels) {
     };
 }
 
-function updateState() {
-    const state = getState();
-    const message = JSON.stringify({ type: 'STATE', state });
+function moverSet(channel, values) {
+    const mover = movers.find(m => m.channel === channel);
 
-    for (const client of clients) {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
+    if (!mover) {
+        throw new Error(`No mover at channel ${msg.channel}`);
+        return;
+    }
+
+    if (mover.channel === primaryMover.channel) {
+        if (values.Zoom !== undefined)
+            joystick1.zoom = values.Zoom;
+        if (values.Pan !== undefined || values.PanFine !== undefined) {
+            const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
+            const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
+            joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+        }
+        if (values.Tilt !== undefined || values.TiltFine !== undefined) {
+            const tiltCoarse = values.Tilt ?? (mover.channelValues.Tilt ?? 0);
+            const tiltFine = USE_FINE_CONTROL ? (values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
+            joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
         }
     }
+
+    if (mover.channel === gamepadMover.channel) {
+        if (values.Zoom !== undefined) gamepad1.zoom = values.Zoom;
+        if (values.Dimmer !== undefined) gamepad1.dimmer = values.Dimmer;
+        if (values.Pan !== undefined || values.PanFine !== undefined) {
+            const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
+            const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
+            gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+        }
+        if (values.Tilt !== undefined || values.TiltFine !== undefined) {
+            const tiltCoarse = values.Tilt ?? (mover.channelValues.Tilt ?? 0);
+            const tiltFine = USE_FINE_CONTROL ? (values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
+            gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
+        }
+    }
+
+    const translatedValues = Object.fromEntries(
+        Object.entries(values).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
+    );
+    applyMoverChannels(mover, translatedValues);
+    updateState();
+}
+
+function sendToAllClients(message) {
+    const stringifiedMessage = JSON.stringify(message);
+    for (const client of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(stringifiedMessage);
+        }
+    } 
+}
+
+function updateState() {
+    const state = getState();
+    sendToAllClients({ type: 'STATE', state });
 }
 
 const clients = [];
@@ -160,35 +236,14 @@ wss.on('connection', (ws) => {
 
     clients.push(ws);
 
-    const oscClient = new OSCClient("192.168.200.1", 8000);
-    oscClient.send("/feedback/pb+exec");
-
-    const oscServer = new OSCServer(8000, "0.0.0.0");
-    oscServer.on("message", msg => {
-
-        const path = msg[0].split("/");
-        const [_, cmd, pb, cueNumber] = path;
-
-        if (cmd != "pb") return;
-
-        if (cueNumber) {
-            ws.send(JSON.stringify({ type: "OSC", cueNumber: cueNumber }));
-            return;
-        }
-
-        if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
-            const intensity = msg[1];
-            let data = {};
-            let channelsToSet = [1, 2, 3, 4, 5];
-            channelsToSet.forEach(c => data[c] = intensity);
-            dmx.setChannels(data);
-            return;
-        }
-    });
-
     ws.send(JSON.stringify({
         type: 'STATE',
         state: getState(),
+    }));
+
+    ws.send(JSON.stringify({
+        type: 'CUE_STORAGE_STATE',
+        cueStorage,
     }));
 
     ws.on('message', (message) => {
@@ -239,47 +294,12 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'MOVER_SET': {
-                const mover = movers.find(m => m.channel === msg.channel);
-                if (!mover) {
-                    ws.send(JSON.stringify({ type: 'ERROR', message: `No mover at channel ${msg.channel}` }));
-                    return;
+                try {
+                    moverSet(msg.channel, msg.values);
                 }
-
-                if (mover.channel === primaryMover.channel) {
-                    if (msg.values.Zoom !== undefined)
-                        joystick1.zoom = msg.values.Zoom;
-                    if (msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
-                        const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
-                        const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
-                        joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
-                    }
-                    if (msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
-                        const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-                        const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
-                        joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
-                    }
+                catch(e) {
+                    ws.send(JSON.stringify({ type: 'ERROR', e}));
                 }
-
-                if (mover.channel === gamepadMover.channel) {
-                    if (msg.values.Zoom !== undefined) gamepad1.zoom = msg.values.Zoom;
-                    if (msg.values.Dimmer !== undefined) gamepad1.dimmer = msg.values.Dimmer;
-                    if (msg.values.Pan !== undefined || msg.values.PanFine !== undefined) {
-                        const panCoarse = msg.values.Pan ?? (mover.channelValues.Pan ?? 0);
-                        const panFine = USE_FINE_CONTROL ? (msg.values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
-                        gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
-                    }
-                    if (msg.values.Tilt !== undefined || msg.values.TiltFine !== undefined) {
-                        const tiltCoarse = msg.values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-                        const tiltFine = USE_FINE_CONTROL ? (msg.values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
-                        gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
-                    }
-                }
-
-                const translatedValues = Object.fromEntries(
-                    Object.entries(msg.values).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
-                );
-                applyMoverChannels(mover, translatedValues);
-                updateState();
                 break;
             }
             case 'GET_STATE': {
@@ -287,6 +307,40 @@ wss.on('connection', (ws) => {
                     type: 'STATE',
                     state: getState(),
                 }));
+                ws.send(JSON.stringify({
+                    type: 'CUE_STORAGE_STATE',
+                    cueStorage,
+                }));
+                break;
+            }
+            case "GOTO_CUE_NUMBER": {
+                if(isNaN(msg.cueNumber) || !cueStorage.cueStack[msg.cueNumber]) {
+                    ws.send(JSON.stringify({
+                        type: 'ERROR',
+                        message: `Invalid cue number ${msg.cueNumber}`
+                    }));
+                    return;
+                }
+                goToCueNumber(msg.cueNumber);
+                break;
+            }
+            case 'CUE_STORAGE_UPDATE': {
+                cueStorage = util.deepMerge(cueStorage, msg.cueStorage);
+
+                if(msg.change.type == "delete") {
+                    let valueToDelete = cueStorage;
+                    for(const prop of msg.change.propChain) {
+                        valueToDelete = valueToDelete[prop];
+                    }
+
+                    delete valueToDelete[msg.change.property];
+                }
+
+                sendToAllClients({
+                    type: 'CUE_STORAGE_STATE',
+                    cueStorage
+                });
+                fs.writeFile(cueStorageFile, JSON.stringify(cueStorage, null, 2), () => {});
                 break;
             }
             default: {
@@ -302,6 +356,87 @@ wss.on('connection', (ws) => {
             clients.splice(index, 1);
         }
     });
+});
+
+const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
+
+function getCueValues(cueName) {
+    let values = cueStorage.cues[cueName];
+    if (values.mode === "pos") {
+        values = Object.fromEntries(Object.entries(values).filter(([k]) => POS_KEYS.has(k)));
+    }
+    else if (values.mode === "no-pos") {
+        values = Object.fromEntries(Object.entries(values).filter(([k]) => !POS_KEYS.has(k)));
+    }
+    return values;
+}
+
+let activeCueTweens = [];
+
+function goToCueNumber(cueNumber) {
+    sendToAllClients({type: "GOTO_CUE_NUMBER", cueNumber});
+
+    for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
+        ch = Number.parseInt(ch);
+
+        const cueToSet = cueStorage.cues[cueName];
+
+        const fadeTime = cueStorage.cueStack[cueNumber].fadeTime * 1000;
+
+        const tweenableAttributes = ["Focus", "Dimmer", "Zoom", "Pan", "Tilt"];
+
+        const nonTweenableData = {...getCueValues(cueName)};
+        tweenableAttributes.forEach(a => delete nonTweenableData[a]);
+        moverSet(ch, nonTweenableData)
+
+        activeCueTweens.forEach(tId => clearInterval(tId));
+
+        activeCueTweens = [];
+
+        for(const attribute of tweenableAttributes) {
+            const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
+            const targetValue = cueToSet[attribute];
+
+            let value  = initialValue;
+            const startTime = performance.now();
+            const intervalId = setInterval(() => {
+                const elapsedTime = performance.now() - startTime;
+                value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
+                if(elapsedTime >= fadeTime) {
+                    value = targetValue;
+                    clearInterval(intervalId);
+                }
+                moverSet(ch, {[attribute]: value});
+            }, 16.7);
+
+            activeCueTweens.push(intervalId);
+        }
+    }
+}
+
+// const oscClient = new OSCClient("192.168.200.1", 8000);
+// oscClient.send("/feedback/pb+exec");
+
+const oscServer = new OSCServer(8000, "0.0.0.0");
+oscServer.on("message", msg => {
+    if(debug) console.log("RECEIVED OSC", osc);
+    const path = msg[0].split("/");
+    const [_, cmd, pb, cueNumber] = path;
+
+    if (cmd != "pb" || !cueNumber || !cueStorage.cueStack[cueNumber]) return;
+
+    goToCueNumber(cueNumber);
+
+
+    // if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
+    //     const intensity = msg[1];
+    //     console.log(pb, msg[1]);
+    //     let data = {};
+    //     let channelsToSet = [1, 2, 3, 4, 5];
+    //     channelsToSet.forEach(c => data[c] = intensity);
+    //     getDmx().setChannels(data);
+    //     return;
+    // }
 });
 
 server.listen(port, () => {

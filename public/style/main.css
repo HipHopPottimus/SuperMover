@@ -121,7 +121,6 @@ footer img {
 .cue-table p:not(.cue-table-header) {
     padding: 1px 3px;
     margin: 2px 5px;
-    border-radius: 10px;
     transition: 0.5s all;
 }
 
@@ -171,6 +170,10 @@ footer img {
 
 .cue-table-mover, .cue-table-cue,  .cue-table-delete,  .cue-table-add {
     transition: 100ms all;
+}
+
+.drag-active {
+    border-radius: 10px;
 }
 
 .cue-table-mover.drag-active {
@@ -280,7 +283,6 @@ footer img {
 }
 
 .cue-stack-active {
-    border-radius: 0px !important;
     background-color: #90c4ff;
 }
 

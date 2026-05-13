@@ -30,12 +30,13 @@
                 <div id="cue-list"></div>
                 <div id="cue-stack-container"></div>
             </div>
-            <button onclick="clearOSCCue()">Clear current cue</button>
+            <button onclick="moveCueNumber(-1)">Previous cue</button>
+            <button onclick="clearCurrentCue()">Clear cue</button>
+            <button onclick="moveCueNumber(1)">Next cue</button>
             <div class="instructions">
                 <p>Drag a mover over to the cues list to save its state as a cue</p>
                 <p>Drag a cue to a mover to recall it</p>
             </div>
-            <div class="cue-storage-save-options"></div>
         </div>
     </div>
     <div id="mover-template" class="noSee">
