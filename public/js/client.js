@@ -38,6 +38,9 @@ const CUE_APPLY_GROUPS = [
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
+const SPECIAL_CUE_STAGE = "SPC:STG";
+const SPECIAL_CUE_RESET = "SPC:RST";
+const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
 
 function getProfile(type) {
     return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
@@ -576,6 +579,8 @@ function onStorageUpdate(change) {
 }
 
 function getCueFadeTime(cue, groupId) {
+    if (cue?.special === "stage" || Object.values(cue?.movers || {}).includes(SPECIAL_CUE_STAGE)) return 0;
+
     const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
     if (!Number.isNaN(groupFade)) return groupFade;
 
@@ -647,6 +652,8 @@ async function setCue(cueName, ch) {
 }
 
 function moveSavedCueToIndex(cueName, targetIndex) {
+    if (isSpecialCueName(cueName) || targetIndex < SPECIAL_CUE_NAMES.length) return;
+
     const cueNames = Object.keys(cueStorage.cues);
     const currentIndex = cueNames.indexOf(cueName);
 
@@ -654,7 +661,7 @@ function moveSavedCueToIndex(cueName, targetIndex) {
 
     cueNames.splice(currentIndex, 1);
     const insertIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex;
-    cueNames.splice(insertIndex, 0, cueName);
+    cueNames.splice(Math.max(insertIndex, SPECIAL_CUE_NAMES.length), 0, cueName);
 
     cueStorage.cues = Object.fromEntries(cueNames.map(name => [name, cueStorage.cues[name]]));
     renderCues();
@@ -698,14 +705,27 @@ async function generateCueStackTable() {
 
     //apply listeners now that table construction is done
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
-        document.getElementById(`cue-stack-number-${escapeCueName(cueNumber)}`).addEventListener("blur", async e => {
-            const newCueNumber = Number.parseFloat(e.target.innerHTML);
+        const cueNumberCell = document.getElementById(`cue-stack-number-${escapeCueName(cueNumber)}`);
+        cueNumberCell.addEventListener("keydown", e => {
+            if (e.key !== "Enter") return;
+
+            e.preventDefault();
+            e.target.blur();
+        });
+
+        cueNumberCell.addEventListener("blur", async e => {
+            const newCueNumber = Number.parseFloat(e.target.textContent);
             if(isNaN(newCueNumber) || !newCueNumber) {
-                e.target.innerHTML = cueNumber;
+                rejectCueNumberEdit(e.target, cueNumber);
                 return;
             }
 
             if(cueNumber == newCueNumber) return;
+
+            if(cueStorage.cueStack[newCueNumber]) {
+                rejectCueNumberEdit(e.target, cueNumber);
+                return;
+            }
 
             cueStorage.cueStack[newCueNumber] = cueStorage.cueStack[cueNumber];
 
@@ -721,6 +741,13 @@ async function generateCueStackTable() {
 
         document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => openFadeMatrix(cueNumber));
     }
+}
+
+function rejectCueNumberEdit(cell, originalCueNumber) {
+    cell.textContent = originalCueNumber;
+    cell.classList.remove("cue-stack-number-error");
+    void cell.offsetWidth;
+    cell.classList.add("cue-stack-number-error");
 }
 
 function openFadeMatrix(selectedCueNumber) {
@@ -858,9 +885,10 @@ async function renderCues() {
     const cueNames = Object.keys(cueStorage.cues);
     for (const [cueIndex, cueName] of cueNames.entries()) {
         const applyState = getCueApplyState(cueStorage.cues[cueName]);
+        const isSpecialCue = isSpecialCueName(cueName);
         cueTableCues.innerHTML += `
             <span class="cue-table-cue-drop" data-cue-index="${cueIndex}"></span>
-            <p class="cue-table-cue" id="cue-table-cue-${cueName}">${cueName}</p>
+            <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${cueName}">${cueName}</p>
             ${CUE_APPLY_GROUPS.map(group => `
                 <span>
                     <input
@@ -869,6 +897,7 @@ async function renderCues() {
                         data-group="${group.id}"
                         title="${groupTitle(group.id)}"
                         ${applyState[group.id] ? "checked" : ""}
+                        ${isSpecialCue ? "disabled" : ""}
                     />
                 </span>
             `).join("")}
@@ -886,12 +915,13 @@ async function renderCues() {
         setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.getElementsByClassName("cue-table-cue"), async event => {
             if (event.target.className.includes("cue-table-add")) {
                 const cueName = prompt("Enter new cue name:");
-                if (!cueName) return;
+                if (!cueName || isSpecialCueName(cueName)) return;
                 setCue(cueName, event.data);
 
                 renderCues();
             }
             else {
+                if (isSpecialCueName(event.target.innerHTML)) return;
                 if (confirm(`Are you sure you want to overwrite cue ${event.target.innerHTML}?`)) {
                     await setCue(event.target.innerHTML, event.data);
                 }
@@ -914,6 +944,7 @@ async function renderCues() {
         setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop"), async event => {
             //dragging over delete cue
             if (event.target.classList.contains("cue-table-delete")) {
+                if (isSpecialCueName(cueName)) return;
                 if (confirm(`Are you sure you want to delete cue ${cueName}?`)) {
                     delete cueStorage.cues[cueName];
                     renderCues();
@@ -929,6 +960,7 @@ async function renderCues() {
             }
 
             if (event.target.classList.contains("cue-table-cue") && !event.target.classList.contains("cue-table-add")) {
+                if (isSpecialCueName(event.target.innerHTML)) return;
                 moveSavedCueToIndex(cueName, Object.keys(cueStorage.cues).indexOf(event.target.innerHTML));
                 return;
             }
@@ -959,6 +991,8 @@ async function renderCues() {
 
 function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
+    if (!cue) return {};
+
     const applyState = getCueApplyState(cue);
     return Object.fromEntries(Object.entries(cue).filter(([key]) => {
         const group = CUE_APPLY_KEYS.get(key);
@@ -1004,6 +1038,10 @@ function escapeCueName(cueName) {
 
 function cssSafeCueNumber(cueNumber) {
     return String(cueNumber).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+function isSpecialCueName(cueName) {
+    return SPECIAL_CUE_NAMES.includes(cueName);
 }
 
 function setupDragDrop(element, data, targets, onDrop) {

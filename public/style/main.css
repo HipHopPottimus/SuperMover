@@ -561,6 +561,22 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     color: #ffffff;
 }
 
+.cue-stack-number-error {
+    animation: cue-stack-number-error-flash 0.45s ease-in-out;
+}
+
+@keyframes cue-stack-number-error-flash {
+    0%, 100% {
+        background-color: inherit;
+        color: inherit;
+    }
+
+    35%, 70% {
+        background-color: #b3261e;
+        color: #ffffff;
+    }
+}
+
 .instructions p {
     margin: 2px;
 }
