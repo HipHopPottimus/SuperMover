@@ -16,6 +16,21 @@
       "13": 0,
       "14": 0,
       "15": 0,
+      "16": 127,
+      "17": 127,
+      "18": 127,
+      "19": 127,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 0,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 0,
       "Pan": 127,
       "PanFine": 127,
       "Tilt": 127,
@@ -41,7 +56,7 @@
         "ROT": true,
         "PS": true,
         "SH": true,
-        "FN": true
+        "FN": false
       }
     },
     "On": {
@@ -78,9 +93,9 @@
       "undefined": 0,
       "apply": {
         "POS": false,
-        "SPD": true,
+        "SPD": false,
         "DM": true,
-        "FZ": true,
+        "FZ": false,
         "CO": true,
         "GB": true,
         "ROT": true,
@@ -120,12 +135,23 @@
       "Function": 0,
       "MovementMacros": 0,
       "Zoom": 0,
-      "mode": "no-pos"
+      "apply": {
+        "POS": false,
+        "SPD": false,
+        "DM": true,
+        "FZ": false,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     },
     "#1 Bed": {
-      "1": 183,
+      "1": 127,
       "2": 151,
-      "3": 16,
+      "3": 127,
       "4": 19,
       "5": 0,
       "6": 0,
@@ -133,14 +159,14 @@
       "8": 0,
       "9": 0,
       "10": 0,
-      "11": 255,
+      "11": 198,
       "12": 4,
       "13": 0,
       "14": 0,
       "15": 0,
-      "Pan": 183,
+      "Pan": 127,
       "PanFine": 151,
-      "Tilt": 16,
+      "Tilt": 127,
       "TiltFine": 19,
       "PTSpeed": 0,
       "ColorWheel": 0,
@@ -148,12 +174,24 @@
       "GoboRotation": 0,
       "Prism": 0,
       "Focus": 0,
-      "Dimmer": 255,
+      "Dimmer": 198,
       "Shutter": 4,
       "Function": 0,
       "MovementMacros": 0,
       "Zoom": 0,
-      "undefined": 0
+      "undefined": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     },
     "#16 Priya": {
       "16": 158,
@@ -228,13 +266,24 @@
         "1": "#1 Bed",
         "16": "#16 Priya"
       },
-      "fadeTime": 0.5
+      "fadeTime": 0,
+      "fadeTimes": {
+        "POS": 0,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0
+      }
     },
     "0.04": {
       "movers": {
         "1": "#1 Middle"
       },
-      "fadeTime": 0.5
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0,
+        "FZ": 0,
+        "DM": 0.5
+      }
     },
     "0.01": {
       "movers": {
