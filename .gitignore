@@ -3,3 +3,4 @@ bun.lock
 package-lock.json
 .venv
 qlcproj.qxw
+cues.json.bak
