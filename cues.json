@@ -239,7 +239,19 @@
       "Function": 0,
       "MovementMacros": 0,
       "Zoom": 46,
-      "undefined": "no-pos"
+      "undefined": "no-pos",
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     },
     "#1 Middle": {
       "1": 171,
@@ -272,14 +284,26 @@
       "Function": 0,
       "MovementMacros": 0,
       "Zoom": 31,
-      "undefined": "no-pos"
+      "undefined": "no-pos",
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     }
   },
   "cueStack": {
     "0.01": {
       "movers": {
-        "1": "SPC:RST",
-        "16": "SPC:RST"
+        "1": "SPC:STG",
+        "16": "SPC:STG"
       },
       "fadeTime": 0
     },
@@ -311,7 +335,14 @@
       "movers": {
         "1": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0,
+      "delayTime": 0.1,
+      "delayTimes": {
+        "POS": 0.1,
+        "SPD": 0.1,
+        "DM": 0,
+        "FZ": 0.1
+      }
     }
   }
 }
