@@ -417,9 +417,9 @@ function goToCueNumber(cueNumber) {
 // const oscClient = new OSCClient("192.168.200.1", 8000);
 // oscClient.send("/feedback/pb+exec");
 
-const oscServer = new OSCServer(8000, "0.0.0.0");
+const oscServer = new OSCServer(8001, "0.0.0.0");
 oscServer.on("message", msg => {
-    if(debug) console.log("RECEIVED OSC", osc);
+    if(debug) console.log("RECEIVED OSC", msg);
     const path = msg[0].split("/");
     const [_, cmd, pb, cueNumber] = path;
 
