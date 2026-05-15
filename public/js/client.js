@@ -80,30 +80,9 @@ socket.onmessage = (event) => {
             alert(msg.message);
             break;
         }
-        case "GOTO_CUE_NUMBER": {
-            currentCueNumber = msg.cueNumber;
-            for(let [ch, cueName] of Object.entries(cueStorage.cueStack[msg.cueNumber].movers)) {
-                ch = Number.parseInt(ch);
-
-                const cueToSet = cueStorage.cues[cueName];
-
-                const fadeTime = getCueMaxFadeTime(cueStorage.cueStack[msg.cueNumber]) * 1000;
-
-                document.querySelectorAll(".cue-stack-table p").forEach(r => {
-                    r.style.transition = `background-color ${fadeTime}ms`;
-                    r.classList.remove("cue-stack-active");
-                });
-
-                document.querySelectorAll(`
-                    .cue-stack-table-${escapeCueName(msg.cueNumber)},
-                    #cue-stack-fade-time-${escapeCueName(msg.cueNumber)},
-                    #cue-stack-number-${escapeCueName(msg.cueNumber)},
-                    #cue-stack-delete-${escapeCueName(msg.cueNumber)}`
-                ).forEach(r => {
-                    r.style.transition = `background-color ${fadeTime}ms`;
-                    r.classList.add("cue-stack-active");
-                });
-            }
+        case "GOTO_CUE_NUMBER":
+        case "CUE_STATE": {
+            applyCueState(msg.cueNumber);
             break;
         }
         case "CUE_STORAGE_STATE": {
@@ -111,6 +90,7 @@ socket.onmessage = (event) => {
 
             cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
             renderCues();
+            applyCueState(currentCueNumber, 0);
             break;
         }
         default: {
@@ -555,7 +535,8 @@ function deepProxy(target, callback, propChain = []) {
                     property,
                     oldValue,
                     newValue: value,
-                    target
+                    target,
+                    propChain
                 });
             }
 
@@ -573,10 +554,35 @@ function deepProxy(target, callback, propChain = []) {
 
 let cueStorage;
 
+function applyCueState(cueNumber, transitionMs) {
+    currentCueNumber = cueNumber ? cueNumber.toString() : null;
+
+    const cue = currentCueNumber && cueStorage?.cueStack?.[currentCueNumber];
+    const fadeTime = transitionMs ?? (cue ? getCueMaxFadeTime(cue) * 1000 : 500);
+
+    document.querySelectorAll(".cue-stack-table p").forEach(r => {
+        r.style.transition = `background-color ${fadeTime}ms`;
+        r.classList.remove("cue-stack-active");
+    });
+
+    if (!cue) return;
+
+    document.querySelectorAll(`
+        .cue-stack-table-${escapeCueName(currentCueNumber)},
+        #cue-stack-fade-time-${escapeCueName(currentCueNumber)},
+        #cue-stack-number-${escapeCueName(currentCueNumber)},
+        #cue-stack-delete-${escapeCueName(currentCueNumber)}`
+    ).forEach(r => {
+        r.style.transition = `background-color ${fadeTime}ms`;
+        r.classList.add("cue-stack-active");
+    });
+}
+
 function onStorageUpdate(change) {
     if (suppressCueStorageUpdates) return;
 
     if (change.property === "cues") change.type = "replace";
+    if (change.propChain?.[0] === "cues") change.type = "replace";
 
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
@@ -724,10 +730,14 @@ window.addEventListener("pointerup", () => {
 });
 
 async function setCue(cueName, ch) {
-    const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
+    const mover = currentState.movers.filter(m => m.channel == ch)[0];
+    if (!mover) return;
+
+    const cueState = mover.channelValues;
+    const existingCue = cueStorage.cues[cueName];
     cueStorage.cues[cueName] = {
         ...cueState,
-        apply: getDefaultCueApplyState(),
+        apply: existingCue ? getCueApplyState(existingCue) : getDefaultCueApplyState(),
     };
     await renderCues();
 }
@@ -773,7 +783,7 @@ async function generateCueStackTable() {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCueName(cueNumber)}">${cueNumber}</p>
             ${currentState.movers.map(m => 
-                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p>`
+                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${cue.movers[m.channel] || ""}</p>`
             ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p id="cue-stack-delete-${escapeCueName(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
@@ -822,6 +832,19 @@ async function generateCueStackTable() {
 
         document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => openFadeMatrix(cueNumber));
     }
+
+    cueStackTable.querySelectorAll(".cue-stack-cue").forEach(cell => {
+        cell.addEventListener("click", e => {
+            if (!e.ctrlKey) return;
+
+            const cueNumber = e.currentTarget.getAttribute("data-cue-number");
+            const channel = e.currentTarget.getAttribute("data-channel");
+            if (!cueStorage.cueStack[cueNumber]?.movers?.[channel]) return;
+
+            delete cueStorage.cueStack[cueNumber].movers[channel];
+            renderCues();
+        });
+    });
 }
 
 function rejectCueNumberEdit(cell, originalCueNumber) {
@@ -1064,6 +1087,8 @@ async function renderCues() {
             sendMoverSet(ch, getCueValues(cueName));
         });
     }
+
+    applyCueState(currentCueNumber, 0);
 }
 
 function getCueValues(cueName) {
@@ -1185,11 +1210,9 @@ function moveCueNumber(d) {
 }
 
 function clearCurrentCue() {
-    currentCueNumber = null;
-    document.querySelectorAll(".cue-stack-table p").forEach(r => {
-        r.style.transition = `background-color 500ms`;
-        r.classList.remove("cue-stack-active");
-    });
+    socket.send(JSON.stringify({
+        type: "CLEAR_CUE"
+    }));
 }
 
 function requestISU() {

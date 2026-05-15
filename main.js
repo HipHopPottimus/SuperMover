@@ -78,6 +78,7 @@ const blockedChannels = new Set([
 ]);
 
 let cueStorage = {};
+let currentCueNumber = null;
 
 let cueStorageFile = "cues.json";
 
@@ -149,6 +150,12 @@ function normalizeSpecialCues() {
         }
     }
 
+    for (const cue of Object.values(cueStorage.cueStack)) {
+        for (const [ch, cueName] of Object.entries(cue?.movers || {})) {
+            if (!cueStorage.cues[cueName]) delete cue.movers[ch];
+        }
+    }
+
     const orderedCues = {};
     for (const cueName of SPECIAL_CUE_NAMES) orderedCues[cueName] = cueStorage.cues[cueName];
     for (const [cueName, cue] of Object.entries(cueStorage.cues)) {
@@ -186,6 +193,16 @@ function getDeleteTarget(storage, propChain, property) {
     if (reversedParent) return reversedParent;
 
     return undefined;
+}
+
+function replaceStorageValue(storage, propChain, property, sourceStorage) {
+    const targetParent = getStoragePathParent(storage, propChain);
+    const sourceParent = getStoragePathParent(sourceStorage, propChain);
+
+    if (!targetParent || !sourceParent || !(property in sourceParent)) return false;
+
+    targetParent[property] = sourceParent[property];
+    return true;
 }
 
 function saveCueStorage() {
@@ -319,6 +336,13 @@ function updateState() {
     sendToAllClients({ type: 'STATE', state });
 }
 
+function sendCueState(ws) {
+    ws.send(JSON.stringify({
+        type: 'CUE_STATE',
+        cueNumber: currentCueNumber,
+    }));
+}
+
 const clients = [];
 
 function isChannelBlocked(channel) {
@@ -352,6 +376,8 @@ wss.on('connection', (ws) => {
         type: 'CUE_STORAGE_STATE',
         cueStorage,
     }));
+
+    sendCueState(ws);
 
     ws.on('message', (message) => {
         let msg;
@@ -420,6 +446,7 @@ wss.on('connection', (ws) => {
                     type: 'CUE_STORAGE_STATE',
                     cueStorage,
                 }));
+                sendCueState(ws);
                 break;
             }
             case "GOTO_CUE_NUMBER": {
@@ -431,6 +458,10 @@ wss.on('connection', (ws) => {
                     return;
                 }
                 goToCueNumber(msg.cueNumber);
+                break;
+            }
+            case "CLEAR_CUE": {
+                clearCurrentCue();
                 break;
             }
             case 'CUE_STORAGE_UPDATE': {
@@ -458,7 +489,15 @@ wss.on('connection', (ws) => {
                     delete valueToDelete[msg.change.property];
                 }
                 else if (msg.change.type == "replace") {
-                    cueStorage[msg.change.property] = msg.cueStorage[msg.change.property];
+                    if (Array.isArray(msg.change.propChain) && msg.change.propChain.length) {
+                        if (!replaceStorageValue(cueStorage, msg.change.propChain, msg.change.property, msg.cueStorage)) {
+                            sendClientError(ws, `Invalid cue storage replace path: ${msg.change.propChain.join(".")}.${msg.change.property}`);
+                            return;
+                        }
+                    }
+                    else {
+                        cueStorage[msg.change.property] = msg.cueStorage[msg.change.property];
+                    }
                 }
                 else {
                     cueStorage = util.deepMerge(cueStorage, msg.cueStorage);
@@ -471,11 +510,15 @@ wss.on('connection', (ws) => {
                     [SPECIAL_CUE_STAGE]: getSpecialStageCue(),
                 };
                 normalizeSpecialCues();
+                if (currentCueNumber && !cueStorage.cueStack[currentCueNumber]) {
+                    currentCueNumber = null;
+                }
 
                 sendToAllClients({
                     type: 'CUE_STORAGE_STATE',
                     cueStorage
                 });
+                sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
                 saveCueStorage();
                 break;
             }
@@ -560,18 +603,23 @@ function getCueNumberList() {
     return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a, b) => a - b).map(x => x.toString());
 }
 
-function getNextCueNumber(cueNumber) {
+function getNextCueNameForMover(cueNumber, ch) {
     const cueNumberList = getCueNumberList();
     const cueIndex = cueNumberList.indexOf(cueNumber.toString());
-    if (cueIndex === -1 || cueIndex + 1 > cueNumberList.length - 1) return undefined;
-    return cueNumberList[cueIndex + 1];
+    if (cueIndex === -1) return undefined;
+
+    for (const nextCueNumber of cueNumberList.slice(cueIndex + 1)) {
+        const nextCueName = cueStorage.cueStack[nextCueNumber]?.movers?.[ch];
+        if (nextCueName && nextCueName !== SPECIAL_CUE_STAGE) return nextCueName;
+    }
+
+    return undefined;
 }
 
 function getCueValuesForStackEntry(cueNumber, ch, cueName) {
     if (cueName !== SPECIAL_CUE_STAGE) return getCueValues(cueName);
 
-    const nextCueNumber = getNextCueNumber(cueNumber);
-    const nextCueName = nextCueNumber ? cueStorage.cueStack[nextCueNumber]?.movers?.[ch] : undefined;
+    const nextCueName = getNextCueNameForMover(cueNumber, ch);
     const nextCueValues = nextCueName && nextCueName !== SPECIAL_CUE_STAGE ? getCueValues(nextCueName) : {};
     return {
         ...nextCueValues,
@@ -580,7 +628,8 @@ function getCueValuesForStackEntry(cueNumber, ch, cueName) {
 }
 
 function goToCueNumber(cueNumber) {
-    sendToAllClients({type: "GOTO_CUE_NUMBER", cueNumber});
+    currentCueNumber = cueNumber.toString();
+    sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
 
     activeCueTweens.forEach(tId => clearInterval(tId));
     activeCueTweens = [];
@@ -621,6 +670,11 @@ function goToCueNumber(cueNumber) {
             activeCueTweens.push(intervalId);
         }
     }
+}
+
+function clearCurrentCue() {
+    currentCueNumber = null;
+    sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
 }
 
 // const oscClient = new OSCClient("192.168.200.1", 8000);
