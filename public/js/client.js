@@ -571,6 +571,7 @@ function applyCueState(cueNumber, transitionMs) {
         .cue-stack-table-${escapeCueName(currentCueNumber)},
         #cue-stack-fade-time-${escapeCueName(currentCueNumber)},
         #cue-stack-number-${escapeCueName(currentCueNumber)},
+        #cue-stack-go-${escapeCueName(currentCueNumber)},
         #cue-stack-delete-${escapeCueName(currentCueNumber)}`
     ).forEach(r => {
         r.style.transition = `background-color ${fadeTime}ms`;
@@ -771,11 +772,12 @@ async function generateCueStackTable() {
 
     const cueStackTable = document.getElementById("cue-stack-table");
 
-    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 3}, max-content)`;
+    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 4}, max-content)`;
 
     cueStackTable.innerHTML += `<p class="cue-table-header">Cue number</p>
         ${currentState.movers.map(m => `<p class="cue-table-header">Mover #${m.channel}</p>`).join("")}
         <p class="cue-table-header">Fade time</p>
+        <p class="cue-table-header">Go</p>
         <p class="cue-table-header">Delete</p>
     `;
 
@@ -786,11 +788,16 @@ async function generateCueStackTable() {
                 `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${cue.movers[m.channel] || ""}</p>`
             ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
+            <p class="cue-stack-go" id="cue-stack-go-${escapeCueName(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
             <p id="cue-stack-delete-${escapeCueName(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
         `;
     }
 
-    cueStackTable.innerHTML += `<p class="cue-stack-add-header">Add a cue</p>` + currentState.movers.map(m => `<p class="cue-stack-add" data-channel="${m.channel}">+</p>`).join("");
+    cueStackTable.innerHTML += `<p class="cue-stack-add-header">Add a cue</p>` + currentState.movers.map(m => `<p class="cue-stack-add" data-channel="${m.channel}">+</p>`).join("") + `
+        <p class="cue-stack-add-header"></p>
+        <p class="cue-stack-add-header"></p>
+        <p class="cue-stack-add-header"></p>
+    `;
 
     document.getElementById("cue-stack-fade-matrix-open")?.addEventListener("click", openFadeMatrix);
 
@@ -829,6 +836,8 @@ async function generateCueStackTable() {
             await delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
+
+        document.getElementById(`cue-stack-go-${escapeCueName(cueNumber)}`).addEventListener("click", () => goToCueNumber(cueNumber));
 
         document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => openFadeMatrix(cueNumber));
     }
@@ -1206,6 +1215,16 @@ function moveCueNumber(d) {
     socket.send(JSON.stringify({
         type: "GOTO_CUE_NUMBER",
         cueNumber: (cueNumberList[cueIndex]).toString()
+    }));
+}
+
+function goToCueNumber(cueNumber) {
+    const normalizedCueNumber = cueNumber?.toString().trim();
+    if (!normalizedCueNumber) return;
+
+    socket.send(JSON.stringify({
+        type: "GOTO_CUE_NUMBER",
+        cueNumber: normalizedCueNumber
     }));
 }
 

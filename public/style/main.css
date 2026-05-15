@@ -474,9 +474,15 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     /* outline: 2px solid #aa0000; */
 }
 
-#cue-stack-table p[id^="cue-stack-delete-"] {
+#cue-stack-table p[id^="cue-stack-delete-"],
+#cue-stack-table p[id^="cue-stack-go-"] {
     text-align: center;
     cursor: pointer;
+}
+
+#cue-stack-table p[id^="cue-stack-go-"]:hover,
+#cue-stack-table p[id^="cue-stack-go-"].cue-stack-active:hover {
+    background-color: #2f6f43;
 }
 
 #cue-stack-table p[id^="cue-stack-delete-"]:hover,
