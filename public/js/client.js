@@ -120,6 +120,15 @@ socket.onclose = () => {
     document.body.innerHTML = "<h1>Connection closed</h1><p>Please refresh the page.</p>";
 }
 
+function updateRangeFill(slider) {
+    if (!slider) return;
+    const min = Number(slider.min || 0);
+    const max = Number(slider.max || 100);
+    const value = Number(slider.value);
+    const percent = max === min ? 0 : ((value - min) / (max - min)) * 100;
+    slider.style.setProperty('--range-value', `${percent}%`);
+}
+
 function addMover() {
     const moverCh = parseInt(document.getElementById("moverCh").value);
     const fixtureType = document.getElementById("moverType").value;
@@ -194,6 +203,7 @@ function setSlider(ch, id, val) {
     const el = document.getElementById(`${ch}-${id}`);
     if (!el) return;
     el.value = val;
+    updateRangeFill(el);
     const labelEl = document.getElementById(`${ch}-${id}-label`);
     if (!labelEl) return;
     switch (id) {
@@ -233,7 +243,10 @@ function setSelectSpeed(ch, suffix, sel, spd) {
     if (spd !== undefined) {
         const pct = Math.round(spd * 100);
         const spdEl = document.getElementById(`${ch}-${suffix}-speed`);
-        if (spdEl) spdEl.value = pct;
+        if (spdEl) {
+            spdEl.value = pct;
+            updateRangeFill(spdEl);
+        }
         const lbl = document.getElementById(`${ch}-${suffix}-speed-label`);
         if (lbl) lbl.textContent = pct + '%';
         if (wrap) wrap.classList.remove('noSee');
@@ -364,7 +377,9 @@ function initMoverControls(ch, fixtureType) {
         const slider = document.getElementById(`${ch}-${id}`);
         const label = document.getElementById(`${ch}-${id}-label`);
         if (!slider) continue;
+        updateRangeFill(slider);
         slider.addEventListener('input', () => {
+            updateRangeFill(slider);
             switch (id) {
                 case 'zoom':
                     let deg = 28 + (10 - 28) * (slider.value / 255);
@@ -403,6 +418,7 @@ function initMoverControls(ch, fixtureType) {
         sendMoverSet(ch, { ColorWheel: channelValues.computeColorValue(ch) });
     });
     colorSpeed.addEventListener('input', () => {
+        updateRangeFill(colorSpeed);
         colorSpeedLbl.textContent = colorSpeed.value + '%';
         sendMoverSet(ch, { ColorWheel: channelValues.computeColorValue(ch) });
     });
@@ -418,6 +434,7 @@ function initMoverControls(ch, fixtureType) {
         sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
     goboSpeed.addEventListener('input', () => {
+        updateRangeFill(goboSpeed);
         goboSpeedLbl.textContent = goboSpeed.value + '%';
         sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
@@ -433,6 +450,7 @@ function initMoverControls(ch, fixtureType) {
         sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
     goboRotSpeed.addEventListener('input', () => {
+        updateRangeFill(goboRotSpeed);
         goboRotSpeedLbl.textContent = goboRotSpeed.value + '%';
         sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
@@ -450,6 +468,7 @@ function initMoverControls(ch, fixtureType) {
                 sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
             });
             sgSpeed.addEventListener('input', () => {
+                updateRangeFill(sgSpeed);
                 sgSpeedLbl.textContent = sgSpeed.value + '%';
                 sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
             });
@@ -468,6 +487,7 @@ function initMoverControls(ch, fixtureType) {
         sendMoverSet(ch, { Prism: channelValues.computePrismValue(ch) });
     });
     prismSpeed.addEventListener('input', () => {
+        updateRangeFill(prismSpeed);
         prismSpeedLbl.textContent = prismSpeed.value + '%';
         sendMoverSet(ch, { Prism: channelValues.computePrismValue(ch) });
     });
@@ -483,6 +503,7 @@ function initMoverControls(ch, fixtureType) {
         sendMoverSet(ch, { Shutter: channelValues.computeShutterValue(ch) });
     });
     shutterSpeed.addEventListener('input', () => {
+        updateRangeFill(shutterSpeed);
         shutterSpeedLbl.textContent = shutterSpeed.value + '%';
         sendMoverSet(ch, { Shutter: channelValues.computeShutterValue(ch) });
     });
