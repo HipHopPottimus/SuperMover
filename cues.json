@@ -1,5 +1,49 @@
 {
   "cues": {
+    "RESET": {
+      "1": 127,
+      "2": 127,
+      "3": 127,
+      "4": 127,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 127,
+      "PanFine": 127,
+      "Tilt": 127,
+      "TiltFine": 127,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 0,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": true
+      }
+    },
     "On": {
       "1": 127,
       "2": 127,
@@ -32,7 +76,18 @@
       "MovementMacros": 0,
       "Zoom": 0,
       "undefined": 0,
-      "mode": "no-pos"
+      "apply": {
+        "POS": false,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     },
     "Off": {
       "16": 127,
@@ -168,30 +223,25 @@
     }
   },
   "cueStack": {
-    "3": {
-      "movers": {
-        "1": "On"
-      },
-      "fadeTime": 3
-    },
-    "4": {
-      "movers": {
-        "1": "Off"
-      },
-      "fadeTime": 3
-    },
-    "0.01": {
+    "0.03": {
       "movers": {
         "1": "#1 Bed",
         "16": "#16 Priya"
       },
       "fadeTime": 0.5
     },
-    "0.02": {
+    "0.04": {
       "movers": {
         "1": "#1 Middle"
       },
       "fadeTime": 0.5
+    },
+    "0.01": {
+      "movers": {
+        "1": "RESET",
+        "16": "RESET"
+      },
+      "fadeTime": 0
     }
   }
 }

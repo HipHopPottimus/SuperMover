@@ -23,7 +23,20 @@ const FIXTURE_PROFILES = {
     }
 };
 
-const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
+const CUE_APPLY_GROUPS = [
+    { id: 'POS', label: 'POS', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
+    { id: 'SPD', label: 'SPD', keys: ['PTSpeed'], defaultOn: true },
+    { id: 'DM', label: 'DM', keys: ['Dimmer'], defaultOn: true },
+    { id: 'FZ', label: 'FZ', keys: ['Focus', 'Zoom'], defaultOn: true },
+    { id: 'CO', label: 'CO', keys: ['ColorWheel'], defaultOn: true },
+    { id: 'GB', label: 'GB', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
+    { id: 'ROT', label: 'ROT', keys: ['GoboRotation'], defaultOn: true },
+    { id: 'PS', label: 'PS', keys: ['Prism'], defaultOn: true },
+    { id: 'SH', label: 'SH', keys: ['Shutter'], defaultOn: true },
+    { id: 'FN', label: 'FN', keys: ['Function', 'MovementMacros'], defaultOn: false },
+];
+
+const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 
 function getProfile(type) {
     return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
@@ -498,7 +511,7 @@ function deepProxy(target, callback, propChain = []) {
         get(target, property, receiver) {
             const value = Reflect.get(target, property, receiver);
 
-            if (value !== null && typeof value === 'object') return deepProxy(value, callback, [property, ...propChain]);
+            if (value !== null && typeof value === 'object') return deepProxy(value, callback, [...propChain, property]);
 
             return value;
         },
@@ -531,6 +544,8 @@ function deepProxy(target, callback, propChain = []) {
 let cueStorage;
 
 function onStorageUpdate(change) {
+    if (change.property === "cues") change.type = "replace";
+
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
         cueStorage: cueStorage,
@@ -540,8 +555,25 @@ function onStorageUpdate(change) {
 
 async function setCue(cueName, ch) {
     const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
-    cueStorage.cues[cueName] = cueState;
+    cueStorage.cues[cueName] = {
+        ...cueState,
+        apply: getDefaultCueApplyState(),
+    };
     await renderCues();
+}
+
+function moveSavedCueToIndex(cueName, targetIndex) {
+    const cueNames = Object.keys(cueStorage.cues);
+    const currentIndex = cueNames.indexOf(cueName);
+
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex > cueNames.length) return;
+
+    cueNames.splice(currentIndex, 1);
+    const insertIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    cueNames.splice(insertIndex, 0, cueName);
+
+    cueStorage.cues = Object.fromEntries(cueNames.map(name => [name, cueStorage.cues[name]]));
+    renderCues();
 }
 
 async function generateCueStackTable() {
@@ -635,18 +667,29 @@ async function renderCues() {
     const cueTableCues = document.getElementById("cue-table-cues");
     cueTableCues.innerHTML = `
         <p class="cue-table-header">Cue name</p>
-        <p class="cue-table-header">Pos</p>
-        <p class="cue-table-header">No pos</p>
+        ${CUE_APPLY_GROUPS.map(group => `<p class="cue-table-header" title="${groupTitle(group.id)}">${group.label}</p>`).join("")}
     `;
 
     const cueNames = Object.keys(cueStorage.cues);
-    for (let cueName of cueNames) {
+    for (const [cueIndex, cueName] of cueNames.entries()) {
+        const applyState = getCueApplyState(cueStorage.cues[cueName]);
         cueTableCues.innerHTML += `
+            <span class="cue-table-cue-drop" data-cue-index="${cueIndex}"></span>
             <p class="cue-table-cue" id="cue-table-cue-${cueName}">${cueName}</p>
-            <span><input type="checkbox" class="cue-table-cue-mode-${escapeCueName(cueName)}" data-mode="pos" ${cueStorage.cues[cueName].mode == "pos" ? "checked" : ""}/></span>
-            <span><input type="checkbox" class="cue-table-cue-mode-${escapeCueName(cueName)}" data-mode="no-pos" ${cueStorage.cues[cueName].mode == "no-pos" ? "checked" : ""}/></span>
+            ${CUE_APPLY_GROUPS.map(group => `
+                <span>
+                    <input
+                        type="checkbox"
+                        class="cue-table-cue-apply-${escapeCueName(cueName)}"
+                        data-group="${group.id}"
+                        title="${groupTitle(group.id)}"
+                        ${applyState[group.id] ? "checked" : ""}
+                    />
+                </span>
+            `).join("")}
         `;
     }
+    cueTableCues.innerHTML += `<span class="cue-table-cue-drop" data-cue-index="${cueNames.length}"></span>`;
 
     if (!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
@@ -674,22 +717,34 @@ async function renderCues() {
     for (const cueListing of cueList.querySelectorAll(".cue-table-cue")) {
         const cueName = cueListing.innerHTML;
     
-        //update cue mode when cue mode checkboxes selected
-        if(cueName != "+") {
-            [...document.getElementsByClassName(`cue-table-cue-mode-${escapeCueName(cueName)}`)].forEach(cb => cb.addEventListener("click", e => {
-                cueStorage.cues[cueName].mode = e.target.checked ? e.target.getAttribute("data-mode") : undefined;
-                renderCues();
-            }));
+        if (cueName === "+") continue;
 
-        }
+        [...document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`)].forEach(cb => cb.addEventListener("click", e => {
+            cueStorage.cues[cueName].apply = getCueApplyState(cueStorage.cues[cueName]);
+            cueStorage.cues[cueName].apply[e.target.getAttribute("data-group")] = e.target.checked;
+            delete cueStorage.cues[cueName].mode;
+            renderCues();
+        }));
 
-        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue"), async event => {
+        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop"), async event => {
             //dragging over delete cue
             if (event.target.classList.contains("cue-table-delete")) {
                 if (confirm(`Are you sure you want to delete cue ${cueName}?`)) {
                     delete cueStorage.cues[cueName];
                     renderCues();
                 }
+                return;
+            }
+
+            if (event.target.classList.contains("cue-table-add")) return;
+
+            if (event.target.classList.contains("cue-table-cue-drop")) {
+                moveSavedCueToIndex(cueName, Number.parseInt(event.target.getAttribute("data-cue-index")));
+                return;
+            }
+
+            if (event.target.classList.contains("cue-table-cue") && !event.target.classList.contains("cue-table-add")) {
+                moveSavedCueToIndex(cueName, Object.keys(cueStorage.cues).indexOf(event.target.innerHTML));
                 return;
             }
 
@@ -718,14 +773,44 @@ async function renderCues() {
 }
 
 function getCueValues(cueName) {
-    let values = cueStorage.cues[cueName];
-    if (values.mode === "pos") {
-        values = Object.fromEntries(Object.entries(values).filter(([k]) => POS_KEYS.has(k)));
+    const cue = cueStorage.cues[cueName];
+    const applyState = getCueApplyState(cue);
+    return Object.fromEntries(Object.entries(cue).filter(([key]) => {
+        const group = CUE_APPLY_KEYS.get(key);
+        return group && applyState[group];
+    }));
+}
+
+function getDefaultCueApplyState() {
+    return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
+}
+
+function getCueApplyState(cue) {
+    if (cue?.apply) return {...getDefaultCueApplyState(), ...cue.apply};
+
+    const applyState = getDefaultCueApplyState();
+    if (cue?.mode === "pos") {
+        for (const group of CUE_APPLY_GROUPS) applyState[group.id] = group.id === "POS";
     }
-    else if (values.mode === "no-pos") {
-        values = Object.fromEntries(Object.entries(values).filter(([k]) => !POS_KEYS.has(k)));
+    else if (cue?.mode === "no-pos") {
+        applyState.POS = false;
     }
-    return values;
+    return applyState;
+}
+
+function groupTitle(groupId) {
+    return {
+        POS: "Position",
+        SPD: "Mover speed",
+        DM: "Dimmer",
+        FZ: "Focus and zoom",
+        CO: "Colour",
+        GB: "Gobo",
+        ROT: "Gobo rotation",
+        PS: "Prism",
+        SH: "Shutter",
+        FN: "Function",
+    }[groupId] || groupId;
 }
 
 function escapeCueName(cueName) {

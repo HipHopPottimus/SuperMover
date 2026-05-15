@@ -89,7 +89,8 @@ if (process.argv.includes("--force-reset-cues") || !fs.existsSync(cueStorageFile
 }
 
 try {
-    cueStorage = JSON.parse(fs.readFileSync(cueStorageFile));
+    const cueStorageFileContents = fs.readFileSync(cueStorageFile, "utf8").trim();
+    cueStorage = cueStorageFileContents ? JSON.parse(cueStorageFileContents) : {};
 }
 catch (e) {
     throw new Error("Error parsing cue file" + e);
@@ -99,6 +100,48 @@ if (!cueStorage.cues) cueStorage.cues = {};
 if (!cueStorage.cueStack) cueStorage.cueStack = {};
 
 console.log("Loaded cue storage file", cueStorageFile);
+
+function sendClientError(ws, message) {
+    ws.send(JSON.stringify({
+        type: 'ERROR',
+        message
+    }));
+}
+
+function getStoragePathParent(storage, propChain) {
+    if (!Array.isArray(propChain)) return undefined;
+
+    let parent = storage;
+    for (const prop of propChain) {
+        if (!util.isObject(parent) || !(prop in parent)) return undefined;
+        parent = parent[prop];
+    }
+
+    return util.isObject(parent) ? parent : undefined;
+}
+
+function getDeleteTarget(storage, propChain, property) {
+    const parent = getStoragePathParent(storage, propChain);
+    if (parent) return parent;
+
+    const reversedParent = getStoragePathParent(storage, [...propChain].reverse());
+    if (reversedParent) return reversedParent;
+
+    return undefined;
+}
+
+function saveCueStorage() {
+    try {
+        if (fs.existsSync(cueStorageFile) && fs.statSync(cueStorageFile).size > 0) {
+            fs.copyFileSync(cueStorageFile, `${cueStorageFile}.bak`);
+        }
+
+        fs.writeFileSync(cueStorageFile, JSON.stringify(cueStorage, null, 2));
+    }
+    catch (e) {
+        console.error("Error writing cue storage file", e);
+    }
+}
 
 function getState() {
     return {
@@ -325,22 +368,32 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'CUE_STORAGE_UPDATE': {
-                cueStorage = util.deepMerge(cueStorage, msg.cueStorage);
+                if (!msg.change || !msg.cueStorage) {
+                    sendClientError(ws, "Invalid cue storage update");
+                    return;
+                }
 
-                if(msg.change.type == "delete") {
-                    let valueToDelete = cueStorage;
-                    for(const prop of msg.change.propChain) {
-                        valueToDelete = valueToDelete[prop];
+                if (msg.change.type == "delete") {
+                    const valueToDelete = getDeleteTarget(cueStorage, msg.change.propChain, msg.change.property);
+                    if (!valueToDelete) {
+                        sendClientError(ws, `Invalid cue storage delete path: ${(msg.change.propChain || []).join(".")}.${msg.change.property}`);
+                        return;
                     }
 
                     delete valueToDelete[msg.change.property];
+                }
+                else if (msg.change.type == "replace") {
+                    cueStorage[msg.change.property] = msg.cueStorage[msg.change.property];
+                }
+                else {
+                    cueStorage = util.deepMerge(cueStorage, msg.cueStorage);
                 }
 
                 sendToAllClients({
                     type: 'CUE_STORAGE_STATE',
                     cueStorage
                 });
-                fs.writeFile(cueStorageFile, JSON.stringify(cueStorage, null, 2), () => {});
+                saveCueStorage();
                 break;
             }
             default: {
@@ -358,17 +411,45 @@ wss.on('connection', (ws) => {
     });
 });
 
-const POS_KEYS = new Set(['Pan', 'PanFine', 'Tilt', 'TiltFine']);
+const CUE_APPLY_GROUPS = [
+    { id: 'POS', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
+    { id: 'SPD', keys: ['PTSpeed'], defaultOn: true },
+    { id: 'DM', keys: ['Dimmer'], defaultOn: true },
+    { id: 'FZ', keys: ['Focus', 'Zoom'], defaultOn: true },
+    { id: 'CO', keys: ['ColorWheel'], defaultOn: true },
+    { id: 'GB', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
+    { id: 'ROT', keys: ['GoboRotation'], defaultOn: true },
+    { id: 'PS', keys: ['Prism'], defaultOn: true },
+    { id: 'SH', keys: ['Shutter'], defaultOn: true },
+    { id: 'FN', keys: ['Function', 'MovementMacros'], defaultOn: false },
+];
+
+const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 
 function getCueValues(cueName) {
-    let values = cueStorage.cues[cueName];
-    if (values.mode === "pos") {
-        values = Object.fromEntries(Object.entries(values).filter(([k]) => POS_KEYS.has(k)));
+    const cue = cueStorage.cues[cueName];
+    const applyState = getCueApplyState(cue);
+    return Object.fromEntries(Object.entries(cue).filter(([key]) => {
+        const group = CUE_APPLY_KEYS.get(key);
+        return group && applyState[group];
+    }));
+}
+
+function getDefaultCueApplyState() {
+    return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
+}
+
+function getCueApplyState(cue) {
+    if (cue?.apply) return {...getDefaultCueApplyState(), ...cue.apply};
+
+    const applyState = getDefaultCueApplyState();
+    if (cue?.mode === "pos") {
+        for (const group of CUE_APPLY_GROUPS) applyState[group.id] = group.id === "POS";
     }
-    else if (values.mode === "no-pos") {
-        values = Object.fromEntries(Object.entries(values).filter(([k]) => !POS_KEYS.has(k)));
+    else if (cue?.mode === "no-pos") {
+        applyState.POS = false;
     }
-    return values;
+    return applyState;
 }
 
 let activeCueTweens = [];
@@ -379,13 +460,13 @@ function goToCueNumber(cueNumber) {
     for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
-        const cueToSet = cueStorage.cues[cueName];
+        const cueToSet = getCueValues(cueName);
 
         const fadeTime = cueStorage.cueStack[cueNumber].fadeTime * 1000;
 
         const tweenableAttributes = ["Focus", "Dimmer", "Zoom", "Pan", "Tilt"];
 
-        const nonTweenableData = {...getCueValues(cueName)};
+        const nonTweenableData = {...cueToSet};
         tweenableAttributes.forEach(a => delete nonTweenableData[a]);
         moverSet(ch, nonTweenableData)
 
@@ -396,6 +477,7 @@ function goToCueNumber(cueNumber) {
         for(const attribute of tweenableAttributes) {
             const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
             const targetValue = cueToSet[attribute];
+            if (targetValue === undefined) continue;
 
             let value  = initialValue;
             const startTime = performance.now();
