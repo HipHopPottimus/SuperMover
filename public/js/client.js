@@ -37,6 +37,7 @@ const CUE_APPLY_GROUPS = [
 ];
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
+const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
 
 function getProfile(type) {
     return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
@@ -80,7 +81,7 @@ socket.onmessage = (event) => {
 
                 const cueToSet = cueStorage.cues[cueName];
 
-                const fadeTime = cueStorage.cueStack[msg.cueNumber].fadeTime * 1000;
+                const fadeTime = getCueMaxFadeTime(cueStorage.cueStack[msg.cueNumber]) * 1000;
 
                 document.querySelectorAll(".cue-stack-table p").forEach(r => {
                     r.style.transition = `background-color ${fadeTime}ms`;
@@ -553,6 +554,68 @@ function onStorageUpdate(change) {
     }));
 }
 
+function getCueFadeTime(cue, groupId) {
+    const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
+    if (!Number.isNaN(groupFade)) return groupFade;
+
+    const defaultFade = Number.parseFloat(cue?.fadeTime);
+    return Number.isNaN(defaultFade) ? 0 : defaultFade;
+}
+
+function setCueFadeTime(cueNumber, groupId, value) {
+    const fadeTime = Math.max(0, Number.parseFloat(value));
+    if (Number.isNaN(fadeTime)) return false;
+
+    if (!cueStorage.cueStack[cueNumber].fadeTimes) cueStorage.cueStack[cueNumber].fadeTimes = {};
+    cueStorage.cueStack[cueNumber].fadeTimes[groupId] = fadeTime;
+    return true;
+}
+
+function getCueFadeSummary(cue) {
+    const values = CUE_FADE_GROUPS
+        .filter(group => cueStackAppliesGroup(cue, group.id))
+        .map(group => getCueFadeTime(cue, group.id));
+    const uniqueValues = [...new Set(values.map(value => value.toString()))];
+    if (!uniqueValues.length) return "Fade...";
+    if (uniqueValues.length === 1) return `${uniqueValues[0]}s`;
+    return `${Math.min(...values)}-${Math.max(...values)}s`;
+}
+
+function getCueMaxFadeTime(cue) {
+    const values = CUE_FADE_GROUPS
+        .filter(group => cueStackAppliesGroup(cue, group.id))
+        .map(group => getCueFadeTime(cue, group.id));
+    return Math.max(...values, 0);
+}
+
+function cueStackAppliesGroup(cueStackEntry, groupId) {
+    return Object.values(cueStackEntry?.movers || {}).some(cueName => {
+        const cue = cueStorage.cues[cueName];
+        return cue && getCueApplyState(cue)[groupId];
+    });
+}
+
+function getCueFadeApplyAllValue(cue) {
+    const values = CUE_FADE_GROUPS
+        .filter(group => cueStackAppliesGroup(cue, group.id))
+        .map(group => getCueFadeTime(cue, group.id));
+    if (!values.length) return "";
+    return values.every(value => value === values[0]) ? values[0] : "";
+}
+
+function setAllCueFadeTimes(cueNumber, value) {
+    const fadeTime = Math.max(0, Number.parseFloat(value));
+    if (Number.isNaN(fadeTime)) return false;
+
+    const cue = cueStorage.cueStack[cueNumber];
+    cue.fadeTime = fadeTime;
+    if (!cue.fadeTimes) cue.fadeTimes = {};
+    for (const group of CUE_FADE_GROUPS) {
+        if (cueStackAppliesGroup(cue, group.id)) cue.fadeTimes[group.id] = fadeTime;
+    }
+    return true;
+}
+
 async function setCue(cueName, ch) {
     const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
     cueStorage.cues[cueName] = {
@@ -579,7 +642,7 @@ function moveSavedCueToIndex(cueName, targetIndex) {
 async function generateCueStackTable() {
     const cueStackContainer = document.getElementById("cue-stack-container");
     cueStackContainer.innerHTML = `
-        <p class="cue-section-header">Cue stack</p>
+        <p class="cue-section-header">Cue stack <button type="button" id="cue-stack-fade-matrix-open">Fade matrix</button></p>
         <div id="cue-stack-table" class="cue-stack-table"></div>
     `;
     
@@ -589,7 +652,7 @@ async function generateCueStackTable() {
 
     const cueStackTable = document.getElementById("cue-stack-table");
 
-    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 3}, 1fr)`;
+    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 3}, max-content)`;
 
     cueStackTable.innerHTML += `<p class="cue-table-header">Cue number</p>
         ${currentState.movers.map(m => `<p class="cue-table-header">Mover #${m.channel}</p>`).join("")}
@@ -603,12 +666,14 @@ async function generateCueStackTable() {
             ${currentState.movers.map(m => 
                 `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}">${cue.movers[m.channel] || ""}</p>`
             ).join("")}
-            <p contenteditable class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}">${cue.fadeTime}</p>
+            <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p id="cue-stack-delete-${escapeCueName(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
         `;
     }
 
     cueStackTable.innerHTML += `<p class="cue-stack-add-header">Add a cue</p>` + currentState.movers.map(m => `<p class="cue-stack-add" data-channel="${m.channel}">+</p>`).join("");
+
+    document.getElementById("cue-stack-fade-matrix-open")?.addEventListener("click", openFadeMatrix);
 
     //apply listeners now that table construction is done
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
@@ -627,18 +692,117 @@ async function generateCueStackTable() {
             renderCues();
         });
         
-        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("blur", async e => {
-            const fadeTime = Number.parseFloat(e.target.innerHTML);
-            if(isNaN(fadeTime)) return;
-            cueStorage.cueStack[cueNumber].fadeTime = fadeTime;
-            e.target.innerHTML = cue.fadeTime;
-        });
-
         document.getElementById(`cue-stack-delete-${escapeCueName(cueNumber)}`).addEventListener("click", async e => {
             if(!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
             await delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
+
+        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => openFadeMatrix(cueNumber));
+    }
+}
+
+function openFadeMatrix(selectedCueNumber) {
+    let dialog = document.getElementById("fade-matrix-dialog");
+    if (!dialog) {
+        dialog = document.createElement("dialog");
+        dialog.id = "fade-matrix-dialog";
+        document.body.appendChild(dialog);
+    }
+
+    const cueRows = Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]));
+    dialog.innerHTML = `
+        <form method="dialog" class="fade-matrix">
+            <div class="fade-matrix-header">
+                <div>
+                    <h3>Fade time matrix</h3>
+                </div>
+                <button type="submit" aria-label="Close fade editor">Close</button>
+            </div>
+            <div class="fade-matrix-scroller">
+                <table class="fade-matrix-table">
+                    <thead>
+                        <tr>
+                            <th>Cue</th>
+                            <th>Apply all</th>
+                            ${CUE_FADE_GROUPS.map(group => `<th title="${groupTitle(group.id)}">${group.label}</th>`).join("")}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${cueRows.map(([cueNumber, cue]) => `
+                            <tr data-cue-number="${cueNumber}" class="${selectedCueNumber == cueNumber ? "fade-matrix-selected-row" : ""}">
+                                <th scope="row">${cueNumber}</th>
+                                <td>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        data-cue-number="${cueNumber}"
+                                        data-apply-all="true"
+                                        value="${getCueFadeApplyAllValue(cue)}"
+                                        aria-label="Apply all fades for cue ${cueNumber}"
+                                    >
+                                </td>
+                                ${CUE_FADE_GROUPS.map(group => `
+                                    <td>
+                                        ${cueStackAppliesGroup(cue, group.id) ? `
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                data-cue-number="${cueNumber}"
+                                                data-group="${group.id}"
+                                                value="${getCueFadeTime(cue, group.id)}"
+                                                aria-label="${groupTitle(group.id)} fade for cue ${cueNumber}"
+                                            >
+                                        ` : ""}
+                                    </td>
+                                `).join("")}
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    `;
+
+    dialog.querySelectorAll(".fade-matrix-table input").forEach(input => {
+        input.addEventListener("change", e => {
+            const cueNumber = e.target.getAttribute("data-cue-number");
+            const cue = cueStorage.cueStack[cueNumber];
+            const fadeTime = Math.max(0, Number.parseFloat(e.target.value));
+            if (Number.isNaN(fadeTime)) {
+                e.target.value = e.target.hasAttribute("data-apply-all") ? getCueFadeApplyAllValue(cue) : getCueFadeTime(cue, e.target.getAttribute("data-group"));
+                return;
+            }
+
+            if (e.target.hasAttribute("data-apply-all")) {
+                setAllCueFadeTimes(cueNumber, fadeTime);
+                dialog.querySelectorAll("input[data-group]").forEach(groupInput => {
+                    if (groupInput.getAttribute("data-cue-number") === cueNumber) groupInput.value = fadeTime;
+                });
+            }
+            else {
+                setCueFadeTime(cueNumber, e.target.getAttribute("data-group"), fadeTime);
+                dialog.querySelectorAll("input[data-apply-all]").forEach(applyAllInput => {
+                    if (applyAllInput.getAttribute("data-cue-number") === cueNumber) {
+                        applyAllInput.value = getCueFadeApplyAllValue(cue);
+                    }
+                });
+            }
+            renderCues();
+        });
+    });
+
+    dialog.showModal();
+
+    if (selectedCueNumber !== undefined) {
+        const selectedRow = dialog.querySelector(`tr[data-cue-number="${cssSafeCueNumber(selectedCueNumber)}"]`);
+        if (selectedRow) {
+            selectedRow.scrollIntoView({block: "center", inline: "nearest"});
+            selectedRow.classList.remove("fade-matrix-flash-row");
+            requestAnimationFrame(() => selectedRow.classList.add("fade-matrix-flash-row"));
+        }
     }
 }
 
@@ -815,6 +979,10 @@ function groupTitle(groupId) {
 
 function escapeCueName(cueName) {
     return cueName.replaceAll(" ","-").replaceAll(".","-");
+}
+
+function cssSafeCueNumber(cueNumber) {
+    return String(cueNumber).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function setupDragDrop(element, data, targets, onDrop) {

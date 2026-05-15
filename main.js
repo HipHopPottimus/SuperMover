@@ -425,6 +425,10 @@ const CUE_APPLY_GROUPS = [
 ];
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
+const CUE_FADE_GROUP_IDS = new Set(["POS", "SPD", "DM", "FZ"]);
+const TWEENABLE_ATTRIBUTES = CUE_APPLY_GROUPS
+    .filter(group => CUE_FADE_GROUP_IDS.has(group.id))
+    .flatMap(group => group.keys);
 
 function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
@@ -454,30 +458,41 @@ function getCueApplyState(cue) {
 
 let activeCueTweens = [];
 
+function getCueFadeTime(cue, attribute) {
+    const groupId = CUE_APPLY_KEYS.get(attribute);
+    const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
+    if (!Number.isNaN(groupFade)) return groupFade;
+
+    const defaultFade = Number.parseFloat(cue?.fadeTime);
+    return Number.isNaN(defaultFade) ? 0 : defaultFade;
+}
+
 function goToCueNumber(cueNumber) {
     sendToAllClients({type: "GOTO_CUE_NUMBER", cueNumber});
+
+    activeCueTweens.forEach(tId => clearInterval(tId));
+    activeCueTweens = [];
 
     for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
         const cueToSet = getCueValues(cueName);
-
-        const fadeTime = cueStorage.cueStack[cueNumber].fadeTime * 1000;
-
-        const tweenableAttributes = ["Focus", "Dimmer", "Zoom", "Pan", "Tilt"];
+        const cueStackEntry = cueStorage.cueStack[cueNumber];
 
         const nonTweenableData = {...cueToSet};
-        tweenableAttributes.forEach(a => delete nonTweenableData[a]);
+        TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
         moverSet(ch, nonTweenableData)
 
-        activeCueTweens.forEach(tId => clearInterval(tId));
-
-        activeCueTweens = [];
-
-        for(const attribute of tweenableAttributes) {
+        for(const attribute of TWEENABLE_ATTRIBUTES) {
             const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
             const targetValue = cueToSet[attribute];
             if (targetValue === undefined) continue;
+
+            const fadeTime = getCueFadeTime(cueStackEntry, attribute) * 1000;
+            if (fadeTime <= 0 || initialValue === undefined) {
+                moverSet(ch, {[attribute]: targetValue});
+                continue;
+            }
 
             let value  = initialValue;
             const startTime = performance.now();
