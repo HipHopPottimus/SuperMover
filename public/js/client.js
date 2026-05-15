@@ -51,6 +51,9 @@ const moverFixtureTypes = {};
 export const socket = new WebSocket(`ws://${window.location.host}`);
 
 let currentState, currentCueNumber;
+let cueApplyDragState = null;
+let suppressCueApplyClick = new WeakSet();
+let suppressCueStorageUpdates = false;
 
 let timeout = setTimeout(() => {
     document.body.innerHTML = "<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p>";
@@ -104,6 +107,8 @@ socket.onmessage = (event) => {
             break;
         }
         case "CUE_STORAGE_STATE": {
+            if (cueApplyDragState) break;
+
             cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
             renderCues();
             break;
@@ -569,8 +574,18 @@ function deepProxy(target, callback, propChain = []) {
 let cueStorage;
 
 function onStorageUpdate(change) {
+    if (suppressCueStorageUpdates) return;
+
     if (change.property === "cues") change.type = "replace";
 
+    socket.send(JSON.stringify({
+        type: 'CUE_STORAGE_UPDATE',
+        cueStorage: cueStorage,
+        change
+    }));
+}
+
+function sendCueStorageUpdate(change) {
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
         cueStorage: cueStorage,
@@ -641,6 +656,72 @@ function setAllCueFadeTimes(cueNumber, value) {
     }
     return true;
 }
+
+function setCueApplyCheckbox(cb, checked) {
+    const cueName = cb.getAttribute("data-cue-name");
+    const groupId = cb.getAttribute("data-group");
+    if (!cueName || !groupId || !cueStorage.cues[cueName] || cb.disabled) return;
+
+    suppressCueStorageUpdates = true;
+    try {
+        cueStorage.cues[cueName].apply = getCueApplyState(cueStorage.cues[cueName]);
+        cueStorage.cues[cueName].apply[groupId] = checked;
+        delete cueStorage.cues[cueName].mode;
+    }
+    finally {
+        suppressCueStorageUpdates = false;
+    }
+    cb.checked = checked;
+}
+
+function setupCueApplyDrag(checkboxes) {
+    for (const cb of checkboxes) {
+        cb.addEventListener("pointerdown", e => {
+            if (e.button !== 0 || cb.disabled) return;
+
+            e.preventDefault();
+            cueApplyDragState = {
+                checked: !cb.checked,
+                touched: new WeakSet(),
+            };
+            suppressCueApplyClick.add(cb);
+            setCueApplyCheckbox(cb, cueApplyDragState.checked);
+            cueApplyDragState.touched.add(cb);
+        });
+
+        cb.addEventListener("pointerenter", () => {
+            if (!cueApplyDragState || cueApplyDragState.touched.has(cb)) return;
+
+            setCueApplyCheckbox(cb, cueApplyDragState.checked);
+            cueApplyDragState.touched.add(cb);
+        });
+
+        cb.addEventListener("click", e => {
+            if (suppressCueApplyClick.has(cb)) {
+                e.preventDefault();
+                suppressCueApplyClick.delete(cb);
+                return;
+            }
+
+            setCueApplyCheckbox(cb, e.target.checked);
+            sendCueStorageUpdate({
+                type: "replace",
+                propChain: ["cues"],
+                property: cb.getAttribute("data-cue-name")
+            });
+        });
+    }
+}
+
+window.addEventListener("pointerup", () => {
+    if (!cueApplyDragState) return;
+
+    cueApplyDragState = null;
+    sendCueStorageUpdate({
+        type: "replace",
+        property: "cues"
+    });
+});
 
 async function setCue(cueName, ch) {
     const cueState = currentState.movers.filter(m => m.channel == ch)[0].channelValues;
@@ -894,6 +975,7 @@ async function renderCues() {
                     <input
                         type="checkbox"
                         class="cue-table-cue-apply-${escapeCueName(cueName)}"
+                        data-cue-name="${cueName}"
                         data-group="${group.id}"
                         title="${groupTitle(group.id)}"
                         ${applyState[group.id] ? "checked" : ""}
@@ -934,12 +1016,7 @@ async function renderCues() {
     
         if (cueName === "+") continue;
 
-        [...document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`)].forEach(cb => cb.addEventListener("click", e => {
-            cueStorage.cues[cueName].apply = getCueApplyState(cueStorage.cues[cueName]);
-            cueStorage.cues[cueName].apply[e.target.getAttribute("data-group")] = e.target.checked;
-            delete cueStorage.cues[cueName].mode;
-            renderCues();
-        }));
+        setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`));
 
         setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop"), async event => {
             //dragging over delete cue
