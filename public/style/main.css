@@ -2,8 +2,74 @@ body {
     min-height: 100vh;
     padding-bottom: 200px;
 
-    /* Fix transparency issues */
-    background: white;
+    color-scheme: dark;
+    background: #0b0d10;
+    color: #e8edf2;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select {
+    color: #e8edf2;
+    background-color: #171b21;
+    border: 1px solid #3b4652;
+    border-radius: 4px;
+}
+
+button,
+input[type="submit"] {
+    cursor: pointer;
+}
+
+select,
+input[type="checkbox"],
+label[for] {
+    cursor: pointer;
+}
+
+input[type="text"],
+[contenteditable] {
+    cursor: text;
+}
+
+input[type="range"] {
+    cursor: grab;
+}
+
+input[type="range"]:active {
+    cursor: grabbing;
+}
+
+button:hover,
+input[type="submit"]:hover {
+    background-color: #222933;
+    border-color: #627084;
+}
+
+button:active,
+input[type="submit"]:active {
+    background-color: #2b3440;
+}
+
+input[type="range"] {
+    accent-color: #6ea8ff;
+}
+
+select:hover,
+input[type="text"]:hover,
+input[type="range"]:hover {
+    background-color: #222933;
+    border-color: #627084;
+}
+
+input[type="checkbox"]:hover {
+    outline: 1px solid #6ea8ff;
+}
+
+[contenteditable]:hover {
+    background-color: #222933;
+    outline: 1px solid #627084;
 }
 
 footer {
@@ -13,6 +79,7 @@ footer {
     /* transform: translateX(-50%); */
     text-align: right;
     font-size: min(2vw, 2vh);
+    color: #9aa6b2;
 }
 
 footer img {
@@ -114,8 +181,8 @@ footer img {
 }
 
 .cue-table > div {
-    outline: 1px solid #777777;
-    overflow-y: scroll;
+    background-color: #11151a;
+    outline: 1px solid #33404d;
 }
 
 .cue-table p:not(.cue-table-header) {
@@ -124,12 +191,17 @@ footer img {
     transition: 0.5s all;
 }
 
+.cue-table p:not(.cue-table-header):hover,
+#cue-stack-table p:not(.cue-table-header):hover {
+    background-color: #222933;
+}
+
 .cue-section-header {
     text-decoration: underline;
 }
 
 .empty-message {
-    color: #575757;
+    color: #8d98a5;
 }
 
 .cue-save-options {
@@ -139,9 +211,10 @@ footer img {
 }
 
 .cue-table-add, .cue-stack-add {
-    color: grey;
+    color: #a8b3bf;
     font-weight: bolder;
     text-align: center;
+    cursor: copy;
 }
 
 .cue-table-add {
@@ -155,21 +228,50 @@ footer img {
     opacity: 0;
     height: 0;
     overflow: hidden;
+    cursor: not-allowed;
 }
 
 #cue-table-cues {
     display: grid;
     margin-left: 7px;
     margin-bottom: 5px;
-    grid-template-columns: repeat(3, max-content);
+    grid-template-columns: repeat(11, max-content);
+    align-items: center;
+    column-gap: 4px;
 }
 
 #cue-table-cues span:has(input[type="checkbox"]) {
-    width: max-content;
+    display: flex;
+    justify-content: center;
+    min-width: 34px;
 }
 
-.cue-table-mover, .cue-table-cue,  .cue-table-delete,  .cue-table-add {
+.cue-table-mover, .cue-table-cue, .cue-table-cue-drop, .cue-table-delete,  .cue-table-add {
     transition: 100ms all;
+}
+
+.cue-table-cue:not(.cue-table-add) {
+    cursor: grab;
+}
+
+.cue-table-cue:not(.cue-table-add):active {
+    cursor: grabbing;
+}
+
+.cue-table-cue-drop {
+    grid-column: 1 / -1;
+    height: 6px;
+    margin: -2px 5px;
+    cursor: row-resize;
+}
+
+.cue-table-cue-drop.drag-active {
+    background-color: transparent;
+}
+
+.cue-table-cue-drop.drag-hover {
+    background-color: #bbbbbb;
+    border-radius: 10px;
 }
 
 .drag-active {
@@ -177,15 +279,16 @@ footer img {
 }
 
 .cue-table-mover.drag-active {
-    background-color: #d6e9ff;
+    background-color: #18324f;
+    cursor: copy;
 }
 
 .cue-table-cue.drag-active, .cue-stack-cue.drag-active {
-    background-color: #eeeeee;
+    background-color: #252c35;
 }
 
 .cue-table-add.drag-active, .cue-stack-add.drag-active {
-    background-color: lightgray;
+    background-color: #2d3742;
 }
 
 .cue-table-add.drag-active {
@@ -196,55 +299,83 @@ footer img {
 .cue-table-delete.drag-active {
     opacity: 1;
     height: auto;
-    background-color: #ffd6d6;
+    background-color: #4a1f23;
+    cursor: no-drop;
 }
 
 /* Individual hover highlights */
 .cue-table-mover[data-mode="all"].drag-hover {
-    background-color: #4a9eff;
+    background-color: #256fd0;
     /* outline: 2px solid #0060cc; */
     color: white;
 }
 
 .cue-table-mover[data-mode="pos"].drag-hover {
-    background-color: #5cc85c;
+    background-color: #2d8d45;
     /* outline: 2px solid #2a7a2a; */
     color: white;
 }
 
 .cue-table-mover[data-mode="nopos"].drag-hover {
-    background-color: #ffaa33;
+    background-color: #b86d12;
     /* outline: 2px solid #cc6600; */
     color: white;
 }
 
 .cue-table-cue.drag-hover {
-    background-color: #bbbbbb;
+    background-color: #46515f;
     /* outline: 2px solid #666; */
 }
 
 .cue-table-add.drag-hover {
-    background-color: #aaaaaa;
+    background-color: #586575;
     /* outline: 2px solid #444; */
 }
 
 .cue-table-delete.drag-hover {
-    background-color: #ff7979;
+    background-color: #9f323a;
     /* outline: 2px solid #aa0000; */
 }
 
+#cue-stack-table p[id^="cue-stack-delete-"] {
+    text-align: center;
+    cursor: pointer;
+}
+
+#cue-stack-table p[id^="cue-stack-delete-"]:hover,
+#cue-stack-table p[id^="cue-stack-delete-"].cue-stack-active:hover {
+    background-color: #9f323a;
+}
+
+#cue-stack-table p[id^="cue-stack-delete-"] img,
+.cue-table-delete img {
+    pointer-events: none;
+}
+
+.cue-stack-cue {
+    cursor: copy;
+}
+
+.cue-stack-cue:not(:empty) {
+    cursor: pointer;
+}
+
+.cue-stack-add.drag-active {
+    cursor: copy;
+}
+
 .cue-table-cue.drag-hover, .cue-stack-cue.drag-hover{
-    background-color: #bbbbbb;
+    background-color: #46515f;
     /* outline: 2px solid #666; */
 }
 
 .cue-table-add.drag-hover, .cue-stack-add.drag-hover {
-    background-color: #aaaaaa;
+    background-color: #586575;
     /* outline: 2px solid #444; */
 }
 
 .cue-table-delete.drag-hover {
-    background-color: #ff7979;
+    background-color: #9f323a;
     /* outline: 2px solid #aa0000; */
 }
 
@@ -271,7 +402,9 @@ footer img {
     padding-left: 3px;
     margin-top: 0;
     margin-bottom: 0;
-    border-bottom: 1px solid #b3b3b3;
+    color: #f3f6f8;
+    background-color: #171d24;
+    border-bottom: 1px solid #3b4652;
 }
 
 .cue-stack-add:not(.drag-active), .cue-stack-add-header {
@@ -283,7 +416,8 @@ footer img {
 }
 
 .cue-stack-active {
-    background-color: #90c4ff;
+    background-color: #1e5f9f;
+    color: #ffffff;
 }
 
 .instructions p {
@@ -304,7 +438,9 @@ dialog {
     top: 30vh;
     transform: translate(-50%, -50%);
     margin: 0;
-    border: 1px solid black;
+    color: #e8edf2;
+    background-color: #11151a;
+    border: 1px solid #3b4652;
 }
 
 .logo {
