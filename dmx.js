@@ -96,7 +96,7 @@ class EnttecOpenDMXUSBBackend {
 
     async sendUniverse(universe) {
         await this.ready;
-        this.device.setChannels(Buffer.from(universe));
+        this.device.buffer = Buffer.concat([Buffer.from([0]), Buffer.from(universe)]);
         await this.device._sendUniverse();
     }
 }
@@ -169,6 +169,8 @@ class DMXUniverseManager {
         this.intervalMs = Math.max(1, Math.round(1000 / this.fps));
         this.debug = options.debug ?? DEBUG_TRANSPORT;
         this.universe = Buffer.alloc(UNIVERSE_SIZE, 0);
+        this.configuredChannels = new Set();
+        this.outputChannelCount = 0;
         this.pendingFrame = false;
         this.writeInFlight = false;
         this.writeQueued = false;
@@ -206,6 +208,29 @@ class DMXUniverseManager {
 
     getUniverse() {
         return Buffer.from(this.universe);
+    }
+
+    setConfiguredChannels(channels) {
+        const configuredChannels = new Set();
+
+        for (const channel of channels ?? []) {
+            const sanitizedChannel = sanitizeChannel(channel);
+            if (sanitizedChannel !== null) configuredChannels.add(sanitizedChannel);
+        }
+
+        const nextOutputChannelCount = configuredChannels.size > 0
+            ? Math.max(...configuredChannels)
+            : 0;
+
+        const didChange = nextOutputChannelCount !== this.outputChannelCount
+            || configuredChannels.size !== this.configuredChannels.size
+            || [...configuredChannels].some(channel => !this.configuredChannels.has(channel));
+
+        this.configuredChannels = configuredChannels;
+        this.outputChannelCount = nextOutputChannelCount;
+
+        if (didChange) this.pendingFrame = true;
+        return this.outputChannelCount;
     }
 
     setChannel(channel, value) {
@@ -258,6 +283,8 @@ class DMXUniverseManager {
             writeDurationMs: this.stats.writeDurationMs,
             avgWriteDurationMs: this.stats.avgWriteDurationMs,
             lastChangedChannels: [...this.lastChangedChannels],
+            configuredChannels: [...this.configuredChannels].sort((a, b) => a - b),
+            outputChannelCount: this.outputChannelCount,
             writeInFlight: this.writeInFlight,
             pendingFrame: this.pendingFrame,
         };
@@ -276,7 +303,7 @@ class DMXUniverseManager {
         this.pendingFrame = false;
         this.writeQueued = false;
         this.stats.lastWriteStartedAt = Date.now();
-        const frame = Buffer.from(this.universe);
+        const frame = Buffer.from(this.universe.subarray(0, this.outputChannelCount));
         const started = performance.now();
 
         try {
@@ -322,6 +349,7 @@ class DMXUniverseManager {
             writeDurationMs: round(stats.writeDurationMs, 2),
             avgWriteDurationMs: round(stats.avgWriteDurationMs, 2),
             lastChangedChannels: stats.lastChangedChannels,
+            outputChannelCount: stats.outputChannelCount,
             writeInFlight: stats.writeInFlight,
             pendingFrame: stats.pendingFrame,
         }));

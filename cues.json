@@ -1,6 +1,21 @@
 {
   "cues": {
-    "RESET": {
+    "SPC:STG": {
+      "special": "stage",
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "SPC:RST": {
       "1": 127,
       "2": 127,
       "3": 127,
@@ -261,7 +276,14 @@
     }
   },
   "cueStack": {
-    "0.03": {
+    "0.01": {
+      "movers": {
+        "1": "SPC:RST",
+        "16": "SPC:RST"
+      },
+      "fadeTime": 0
+    },
+    "0.04": {
       "movers": {
         "1": "#1 Bed",
         "16": "#16 Priya"
@@ -274,7 +296,7 @@
         "FZ": 0
       }
     },
-    "0.04": {
+    "0.11": {
       "movers": {
         "1": "#1 Middle"
       },
@@ -285,10 +307,9 @@
         "DM": 0.5
       }
     },
-    "0.01": {
+    "0.07": {
       "movers": {
-        "1": "RESET",
-        "16": "RESET"
+        "1": "SPC:STG"
       },
       "fadeTime": 0
     }

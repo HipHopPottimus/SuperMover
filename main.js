@@ -30,6 +30,7 @@ const wss = new WebSocketServer({ server });
 let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
 const primaryMover = movers[0];
 const gamepadMover = movers[1];
+syncConfiguredDmxChannels();
 syncAllMoversToUniverse();
 dmx.start();
 
@@ -98,6 +99,63 @@ catch (e) {
 
 if (!cueStorage.cues) cueStorage.cues = {};
 if (!cueStorage.cueStack) cueStorage.cueStack = {};
+
+const SPECIAL_CUE_STAGE = "SPC:STG";
+const SPECIAL_CUE_RESET = "SPC:RST";
+const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
+
+function getSpecialStageCue() {
+    return {
+        special: "stage",
+        apply: getDefaultCueApplyState(),
+    };
+}
+
+function normalizeSpecialCues() {
+    if (!cueStorage.cues) cueStorage.cues = {};
+    if (!cueStorage.cueStack) cueStorage.cueStack = {};
+
+    if (cueStorage.cues.RESET && !cueStorage.cues[SPECIAL_CUE_RESET]) {
+        cueStorage.cues[SPECIAL_CUE_RESET] = cueStorage.cues.RESET;
+    }
+
+    delete cueStorage.cues.RESET;
+    cueStorage.cues[SPECIAL_CUE_STAGE] = getSpecialStageCue();
+
+    if (!cueStorage.cues[SPECIAL_CUE_RESET]) {
+        cueStorage.cues[SPECIAL_CUE_RESET] = {
+            Pan: 127,
+            PanFine: 127,
+            Tilt: 127,
+            TiltFine: 127,
+            PTSpeed: 0,
+            ColorWheel: 0,
+            GoboWheel: 0,
+            GoboRotation: 0,
+            Prism: 0,
+            Focus: 0,
+            Dimmer: 0,
+            Shutter: 4,
+            Function: 0,
+            MovementMacros: 0,
+            Zoom: 0,
+            apply: getDefaultCueApplyState(),
+        };
+    }
+
+    for (const cue of Object.values(cueStorage.cueStack)) {
+        for (const [ch, cueName] of Object.entries(cue?.movers || {})) {
+            if (cueName === "RESET") cue.movers[ch] = SPECIAL_CUE_RESET;
+        }
+    }
+
+    const orderedCues = {};
+    for (const cueName of SPECIAL_CUE_NAMES) orderedCues[cueName] = cueStorage.cues[cueName];
+    for (const [cueName, cue] of Object.entries(cueStorage.cues)) {
+        if (!SPECIAL_CUE_NAMES.includes(cueName)) orderedCues[cueName] = cue;
+    }
+    cueStorage.cues = orderedCues;
+}
 
 console.log("Loaded cue storage file", cueStorageFile);
 
@@ -184,6 +242,12 @@ function syncAllMoversToUniverse() {
         }
         dmx.setChannels(normalizeMoverChannelsForMode(mover, numericChannels));
     }
+}
+
+function syncConfiguredDmxChannels() {
+    dmx.setConfiguredChannels(movers.flatMap(mover =>
+        Array.from({ length: mover.channelCount }, (_, i) => mover.channel + i)
+    ));
 }
 
 function normalizeMoverChannelsForMode(mover, channels) {
@@ -318,6 +382,7 @@ wss.on('connection', (ws) => {
                 const newMover = new mlib.Mover(msg.channel, debug, fixtureType);
                 blockMoverChannels(msg.channel, newMover.channelCount);
                 movers.push(newMover);
+                syncConfiguredDmxChannels();
                 applyMoverChannels(newMover, Object.fromEntries(
                     Object.entries(newMover.channelValues).filter(([channel]) => /^\d+$/.test(channel))
                 ));
@@ -334,6 +399,7 @@ wss.on('connection', (ws) => {
                 movers = movers.filter(m => m.channel != msg.channel);
                 for (let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
                     blockedChannels.delete(channel);
+                syncConfiguredDmxChannels();
                 break;
             }
             case 'MOVER_SET': {
@@ -373,7 +439,16 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
+                const specialCues = Object.fromEntries(SPECIAL_CUE_NAMES
+                    .filter(cueName => cueStorage.cues[cueName])
+                    .map(cueName => [cueName, cueStorage.cues[cueName]]));
+
                 if (msg.change.type == "delete") {
+                    if (msg.change.propChain?.[0] === "cues" && SPECIAL_CUE_NAMES.includes(msg.change.property)) {
+                        sendClientError(ws, `Cannot delete special cue ${msg.change.property}`);
+                        return;
+                    }
+
                     const valueToDelete = getDeleteTarget(cueStorage, msg.change.propChain, msg.change.property);
                     if (!valueToDelete) {
                         sendClientError(ws, `Invalid cue storage delete path: ${(msg.change.propChain || []).join(".")}.${msg.change.property}`);
@@ -388,6 +463,14 @@ wss.on('connection', (ws) => {
                 else {
                     cueStorage = util.deepMerge(cueStorage, msg.cueStorage);
                 }
+
+                normalizeSpecialCues();
+                cueStorage.cues = {
+                    ...cueStorage.cues,
+                    ...specialCues,
+                    [SPECIAL_CUE_STAGE]: getSpecialStageCue(),
+                };
+                normalizeSpecialCues();
 
                 sendToAllClients({
                     type: 'CUE_STORAGE_STATE',
@@ -430,8 +513,12 @@ const TWEENABLE_ATTRIBUTES = CUE_APPLY_GROUPS
     .filter(group => CUE_FADE_GROUP_IDS.has(group.id))
     .flatMap(group => group.keys);
 
+normalizeSpecialCues();
+
 function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
+    if (!cue) return {};
+
     const applyState = getCueApplyState(cue);
     return Object.fromEntries(Object.entries(cue).filter(([key]) => {
         const group = CUE_APPLY_KEYS.get(key);
@@ -459,12 +546,37 @@ function getCueApplyState(cue) {
 let activeCueTweens = [];
 
 function getCueFadeTime(cue, attribute) {
+    if (cue?.special === "stage") return 0;
+
     const groupId = CUE_APPLY_KEYS.get(attribute);
     const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
     if (!Number.isNaN(groupFade)) return groupFade;
 
     const defaultFade = Number.parseFloat(cue?.fadeTime);
     return Number.isNaN(defaultFade) ? 0 : defaultFade;
+}
+
+function getCueNumberList() {
+    return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a, b) => a - b).map(x => x.toString());
+}
+
+function getNextCueNumber(cueNumber) {
+    const cueNumberList = getCueNumberList();
+    const cueIndex = cueNumberList.indexOf(cueNumber.toString());
+    if (cueIndex === -1 || cueIndex + 1 > cueNumberList.length - 1) return undefined;
+    return cueNumberList[cueIndex + 1];
+}
+
+function getCueValuesForStackEntry(cueNumber, ch, cueName) {
+    if (cueName !== SPECIAL_CUE_STAGE) return getCueValues(cueName);
+
+    const nextCueNumber = getNextCueNumber(cueNumber);
+    const nextCueName = nextCueNumber ? cueStorage.cueStack[nextCueNumber]?.movers?.[ch] : undefined;
+    const nextCueValues = nextCueName && nextCueName !== SPECIAL_CUE_STAGE ? getCueValues(nextCueName) : {};
+    return {
+        ...nextCueValues,
+        Dimmer: 0,
+    };
 }
 
 function goToCueNumber(cueNumber) {
@@ -476,8 +588,8 @@ function goToCueNumber(cueNumber) {
     for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
-        const cueToSet = getCueValues(cueName);
-        const cueStackEntry = cueStorage.cueStack[cueNumber];
+        const cueToSet = getCueValuesForStackEntry(cueNumber, ch, cueName);
+        const cueStackEntry = cueName === SPECIAL_CUE_STAGE ? getSpecialStageCue() : cueStorage.cueStack[cueNumber];
 
         const nonTweenableData = {...cueToSet};
         TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
