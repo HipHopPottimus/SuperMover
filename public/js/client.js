@@ -24,16 +24,16 @@ const FIXTURE_PROFILES = {
 };
 
 const CUE_APPLY_GROUPS = [
-    { id: 'POS', label: 'POS', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
-    { id: 'SPD', label: 'SPD', keys: ['PTSpeed'], defaultOn: true },
-    { id: 'DM', label: 'DM', keys: ['Dimmer'], defaultOn: true },
-    { id: 'FZ', label: 'FZ', keys: ['Focus', 'Zoom'], defaultOn: true },
-    { id: 'CO', label: 'CO', keys: ['ColorWheel'], defaultOn: true },
-    { id: 'GB', label: 'GB', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
-    { id: 'ROT', label: 'ROT', keys: ['GoboRotation'], defaultOn: true },
-    { id: 'PS', label: 'PS', keys: ['Prism'], defaultOn: true },
-    { id: 'SH', label: 'SH', keys: ['Shutter'], defaultOn: true },
-    { id: 'FN', label: 'FN', keys: ['Function', 'MovementMacros'], defaultOn: false },
+    { id: 'POS', label: 'POS', title: 'Position', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
+    { id: 'SPD', label: 'SPD', title: 'Mover speed', keys: ['PTSpeed'], defaultOn: true },
+    { id: 'DM', label: 'DM', title: 'Dimmer', keys: ['Dimmer'], defaultOn: true },
+    { id: 'FZ', label: 'FZ', title: 'Focus and zoom', keys: ['Focus', 'Zoom'], defaultOn: true },
+    { id: 'CO', label: 'CO', title: 'Colour', keys: ['ColorWheel'], defaultOn: true },
+    { id: 'GB', label: 'GB', title: 'Gobo', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
+    { id: 'ROT', label: 'ROT', title: 'Gobo rotation', keys: ['GoboRotation'], defaultOn: true },
+    { id: 'PS', label: 'PS', title: 'Prism', keys: ['Prism'], defaultOn: true },
+    { id: 'SH', label: 'SH', title: 'Shutter', keys: ['Shutter'], defaultOn: true },
+    { id: 'FN', label: 'FN', title: 'Function', keys: ['Function', 'MovementMacros'], defaultOn: false },
 ];
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
@@ -636,11 +636,11 @@ function applyCueStackState(cueNumber, transitionMs) {
     if (!cue) return;
 
     document.querySelectorAll(`
-        .cue-stack-table-${escapeCueName(currentCueNumber)},
-        #cue-stack-fade-time-${escapeCueName(currentCueNumber)},
-        #cue-stack-number-${escapeCueName(currentCueNumber)},
-        #cue-stack-go-${escapeCueName(currentCueNumber)},
-        #cue-stack-delete-${escapeCueName(currentCueNumber)}`
+        .cue-stack-table-${escapeCss(currentCueNumber)},
+        #cue-stack-fade-time-${escapeCss(currentCueNumber)},
+        #cue-stack-number-${escapeCss(currentCueNumber)},
+        #cue-stack-go-${escapeCss(currentCueNumber)},
+        #cue-stack-delete-${escapeCss(currentCueNumber)}`
     ).forEach(r => {
         r.style.transition = `background-color ${fadeTime}ms`;
         r.classList.add("cue-stack-active");
@@ -679,7 +679,7 @@ function sendCueStorageUpdate(change) {
  * @param {*} groupId the apply property id to get the fade time for
  */
 function getCueFadeTime(cueStackEntry, groupId) {
-    if (cueStackEntry?.special === "stage" || Object.values(cueStackEntry?.movers || {}).includes(SPECIAL_CUE_STAGE)) return 0;
+    if (cueStackEntry?.special === "stage") return 0;
 
     const groupFade = Number.parseFloat(cueStackEntry?.fadeTimes?.[groupId]);
     if (!Number.isNaN(groupFade)) return groupFade;
@@ -1110,13 +1110,13 @@ async function generateCueStackTable() {
 
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
         cueStackTable.innerHTML += `
-            <p contenteditable id="cue-stack-number-${escapeCueName(cueNumber)}">${cueNumber}</p>
+            <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${cueNumber}</p>
             ${currentState.movers.map(m =>
-                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
+                `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
             ).join("")}
-            <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
-            <p class="cue-stack-go" id="cue-stack-go-${escapeCueName(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
-            <p id="cue-stack-delete-${escapeCueName(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
+            <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCss(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
+            <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
+            <p id="cue-stack-delete-${escapeCss(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
         `;
     }
 
@@ -1130,7 +1130,7 @@ async function generateCueStackTable() {
 
     //apply listeners now that table construction is done
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
-        const cueNumberCell = document.getElementById(`cue-stack-number-${escapeCueName(cueNumber)}`);
+        const cueNumberCell = document.getElementById(`cue-stack-number-${escapeCss(cueNumber)}`);
         cueNumberCell.addEventListener("keydown", e => {
             if (e.key !== "Enter") return;
 
@@ -1158,17 +1158,17 @@ async function generateCueStackTable() {
             renderCues();
         });
 
-        document.getElementById(`cue-stack-delete-${escapeCueName(cueNumber)}`).addEventListener("click", async e => {
+        document.getElementById(`cue-stack-delete-${escapeCss(cueNumber)}`).addEventListener("click", async e => {
             if(!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
             await delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
 
-        document.getElementById(`cue-stack-go-${escapeCueName(cueNumber)}`).addEventListener("click", () => {
+        document.getElementById(`cue-stack-go-${escapeCss(cueNumber)}`).addEventListener("click", () => {
             goToCueNumber(cueNumber);
         });
 
-        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => {
+        document.getElementById(`cue-stack-fade-time-${escapeCss(cueNumber)}`).addEventListener("click", () => {
             openFadeMatrix(cueNumber);
         });
     }
@@ -1227,12 +1227,12 @@ function openFadeMatrix(selectedCueNumber) {
                         <tr>
                             <th>Cue</th>
                             <th>Apply all</th>
-                            ${CUE_FADE_GROUPS.map(group => `<th title="${groupTitle(group.id)}">${group.label}</th>`).join("")}
+                            ${CUE_FADE_GROUPS.map(group => `<th title="${group.title}">${group.label}</th>`).join("")}
                         </tr>
                     </thead>
                     <tbody>
                         ${cueRows.map(([cueNumber, cue]) => `
-                            <tr data-cue-number="${cueNumber}" class="${selectedCueNumber == cueNumber ? "fade-matrix-selected-row" : ""}">
+                            <tr data-cue-number="${cueNumber}" data-cue-key="${escapeCss(cueNumber)}" class="${selectedCueNumber == cueNumber ? "fade-matrix-selected-row" : ""}">
                                 <th scope="row">${cueNumber}</th>
                                 <td>
                                     <input
@@ -1255,7 +1255,7 @@ function openFadeMatrix(selectedCueNumber) {
                                                 data-cue-number="${cueNumber}"
                                                 data-group="${group.id}"
                                                 value="${getCueFadeTime(cue, group.id)}"
-                                                aria-label="${groupTitle(group.id)} fade for cue ${cueNumber}"
+                                                aria-label="${group.title} fade for cue ${cueNumber}"
                                             >
                                         ` : ""}
                                     </td>
@@ -1299,7 +1299,7 @@ function openFadeMatrix(selectedCueNumber) {
     if (!dialog.open) dialog.showModal();
 
     if (selectedCueNumber !== undefined) {
-        const selectedRow = dialog.querySelector(`tr[data-cue-number="${cssSafeCueNumber(selectedCueNumber)}"]`);
+        const selectedRow = dialog.querySelector(`tr[data-cue-key="${escapeCss(selectedCueNumber)}"]`);
         if (selectedRow) {
             selectedRow.scrollIntoView({block: "center", inline: "nearest"});
             selectedRow.classList.remove("fade-matrix-flash-row");
@@ -1334,7 +1334,7 @@ function openChaseFadeMatrix(chaseName, selectedStepIndex) {
                             <th>Step</th>
                             <th>Cue</th>
                             <th>Apply all</th>
-                            ${CUE_FADE_GROUPS.map(group => `<th title="${groupTitle(group.id)}">${group.label}</th>`).join("")}
+                            ${CUE_FADE_GROUPS.map(group => `<th title="${group.title}">${group.label}</th>`).join("")}
                         </tr>
                     </thead>
                     <tbody>
@@ -1363,7 +1363,7 @@ function openChaseFadeMatrix(chaseName, selectedStepIndex) {
                                                 data-step-index="${index}"
                                                 data-group="${group.id}"
                                                 value="${getChaseStepFadeTime(step, group.id)}"
-                                                aria-label="${groupTitle(group.id)} fade for ${chaseName} step ${index + 1}"
+                                                aria-label="${group.title} fade for ${chaseName} step ${index + 1}"
                                             >
                                         ` : ""}
                                     </td>
@@ -1436,7 +1436,7 @@ function renderChases(cueList) {
         const chase = cueStorage.chases[chaseName];
         const expanded = expandedChases.has(chaseName);
         chaseTable.innerHTML += `
-            <div class="chase-row" id="chase-row-${escapeCueName(chaseName)}" data-chase-name="${escapeAttr(chaseName)}">
+            <div class="chase-row" id="chase-row-${escapeCss(chaseName)}" data-chase-name="${escapeAttr(chaseName)}">
                 <span class="chase-row-name">${expanded ? "▼" : "▶"} ${escapeHtml(chaseName)}</span>
                 <button type="button" class="chase-edit" data-chase-name="${escapeAttr(chaseName)}">${expanded ? "Close" : "Edit"}</button>
                 <button type="button" class="chase-fade-matrix-open" data-chase-name="${escapeAttr(chaseName)}">Fade matrix</button>
@@ -1605,7 +1605,7 @@ async function renderCues() {
     const cueTableCues = document.getElementById("cue-table-cues");
     cueTableCues.innerHTML = `
         <p class="cue-table-header">Cue name</p>
-        ${CUE_APPLY_GROUPS.map(group => `<p class="cue-table-header" title="${groupTitle(group.id)}">${group.label}</p>`).join("")}
+        ${CUE_APPLY_GROUPS.map(group => `<p class="cue-table-header" title="${group.title}">${group.label}</p>`).join("")}
         <p class="cue-table-header">Edit</p>
     `;
 
@@ -1620,10 +1620,10 @@ async function renderCues() {
                 <span>
                     <input
                         type="checkbox"
-                        class="cue-table-cue-apply-${escapeCueName(cueName)}"
+                        class="cue-table-cue-apply-${escapeCss(cueName)}"
                         data-cue-name="${cueName}"
                         data-group="${group.id}"
-                        title="${groupTitle(group.id)}"
+                        title="${group.title}"
                         ${applyState[group.id] ? "checked" : ""}
                         ${isSpecialCue ? "disabled" : ""}
                     />
@@ -1683,9 +1683,9 @@ async function renderCues() {
 
         if (cueName === "+") continue;
 
-        setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`));
+        setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCss(cueName)}`));
 
-        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
+        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue:not(.cue-table-add), .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
                 openCueEditor(cueName);
                 return;
@@ -1838,30 +1838,15 @@ function getCueApplyState(cue) {
 }
 
 /**
- * Returns the title for a apply group id
- * @param {*} groupId
+ * Escapes cue names and cue numbers for use in CSS selectors, ids, and classes
+ * @param {*} value the value to escape
  */
-function groupTitle(groupId) {
-    return {
-        POS: "Position",
-        SPD: "Mover speed",
-        DM: "Dimmer",
-        FZ: "Focus and zoom",
-        CO: "Colour",
-        GB: "Gobo",
-        ROT: "Gobo rotation",
-        PS: "Prism",
-        SH: "Shutter",
-        FN: "Function",
-    }[groupId] || groupId;
-}
-
-function escapeCueName(cueName) {
-    return cueName.toString().replaceAll(" ","-").replaceAll(".","-");
-}
-
-function cssSafeCueNumber(cueNumber) {
-    return String(cueNumber).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+function escapeCss(value) {
+    return String(value)
+        .replaceAll("\\", "\\\\")
+        .replaceAll('"', '\\"')
+        .replaceAll(" ", "-")
+        .replaceAll(".", "-");
 }
 
 function escapeHtml(value) {
@@ -1991,18 +1976,6 @@ function goToCueNumber(cueNumber) {
 function clearCurrentCue() {
     socket.send(JSON.stringify({
         type: "CLEAR_CUE"
-    }));
-}
-
-function resetAllMovers() {
-    socket.send(JSON.stringify({
-        type: "RESET_ALL"
-    }));
-}
-
-function blackoutAllMovers() {
-    socket.send(JSON.stringify({
-        type: "BLACKOUT_ALL"
     }));
 }
 

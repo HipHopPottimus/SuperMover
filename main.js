@@ -768,6 +768,15 @@ function getCueStackEntryForPlayback(cueStackEntry, stepOptions = {}) {
     };
 }
 
+function getCueStackEntryForMoverPlayback(cueRef, cueStackEntry) {
+    if (cueRef !== SPECIAL_CUE_STAGE) return cueStackEntry;
+    return {
+        ...cueStackEntry,
+        fadeTime: 0,
+        fadeTimes: {},
+    };
+}
+
 function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
     return TWEENABLE_ATTRIBUTES.reduce((duration, attribute) => {
         if (cueToSet[attribute] === undefined) return duration;
@@ -779,7 +788,10 @@ function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
 }
 
 function getCuePlaybackDuration(cueNumber, ch, cueRef, cueStackEntry) {
-    return getCuePlaybackDurationForValues(getCueValuesForStackEntry(cueNumber, ch, cueRef), cueStackEntry);
+    return getCuePlaybackDurationForValues(
+        getCueValuesForStackEntry(cueNumber, ch, cueRef),
+        getCueStackEntryForMoverPlayback(cueRef, cueStackEntry)
+    );
 }
 
 function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
@@ -904,7 +916,7 @@ function goToCueNumber(cueNumber, stepOptions = {}) {
             continue;
         }
 
-        const cueStackEntry = cueRef === SPECIAL_CUE_STAGE ? getSpecialStageCue() : playbackCueStackEntry;
+        const cueStackEntry = getCueStackEntryForMoverPlayback(cueRef, playbackCueStackEntry);
         applyCueRefToMover(ch, cueNumber, cueRef, cueStackEntry);
     }
 }
