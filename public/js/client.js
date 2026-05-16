@@ -1629,8 +1629,7 @@ function renderChases(cueList) {
                             <p><button type="button" class="chase-step-delete" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">🗑</button></p>
                         `}).join("")}
                     </div>
-                    ${(chase.steps || []).length ? "" : `<p class="chase-empty-message">No steps yet - drag movers or saved cues here</p>`}
-                    <button type="button" class="chase-step-add" data-chase-name="${escapeAttr(chaseName)}">+ Add step / Drag movers or saved cues here</button>
+                    <button type="button" class="chase-step-add" data-chase-name="${escapeAttr(chaseName)}">+ Add step</button>
                 </div>
             ` : ""}
         `;

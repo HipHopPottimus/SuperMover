@@ -227,11 +227,7 @@
     },
     "0.1": {
       "movers": {
-        "1": "#1 Middle",
-        "16": {
-          "type": "chase",
-          "name": "test"
-        }
+        "1": "#1 Middle"
       },
       "fadeTime": 0.5,
       "fadeTimes": {
@@ -242,98 +238,10 @@
     }
   },
   "chases": {
-    "test": {
+    "New chase": {
       "loop": true,
       "restartOnEnter": true,
-      "steps": [
-        {
-          "name": "Left/on",
-          "values": {
-            "Pan": 255,
-            "PanFine": 127,
-            "Tilt": 127,
-            "TiltFine": 127,
-            "PTSpeed": 0,
-            "Dimmer": 255,
-            "Focus": 0,
-            "Zoom": 0,
-            "ColorWheel": 0,
-            "GoboWheel": 0,
-            "StaticGoboWheel": 0,
-            "GoboRotation": 0,
-            "Prism": 0,
-            "Shutter": 4,
-            "Function": 0,
-            "MovementMacros": 0
-          },
-          "fadeTime": 0,
-          "fadeTimes": {
-            "POS": 0,
-            "SPD": 0,
-            "DM": 0,
-            "FZ": 0
-          },
-          "waitAfterFade": 0.2
-        },
-        {
-          "name": "Right/on",
-          "values": {
-            "Pan": 0,
-            "PanFine": 127,
-            "Tilt": 127,
-            "TiltFine": 127,
-            "PTSpeed": 0,
-            "Dimmer": 255,
-            "Focus": 0,
-            "Zoom": 0,
-            "ColorWheel": 0,
-            "GoboWheel": 0,
-            "StaticGoboWheel": 0,
-            "GoboRotation": 0,
-            "Prism": 0,
-            "Shutter": 4,
-            "Function": 0,
-            "MovementMacros": 0
-          },
-          "fadeTime": 5,
-          "fadeTimes": {
-            "POS": 5,
-            "SPD": 5,
-            "DM": 5,
-            "FZ": 5
-          },
-          "waitAfterFade": 0.2
-        },
-        {
-          "name": "Left/off",
-          "values": {
-            "Pan": 255,
-            "PanFine": 127,
-            "Tilt": 127,
-            "TiltFine": 127,
-            "PTSpeed": 0,
-            "Dimmer": 0,
-            "Focus": 0,
-            "Zoom": 0,
-            "ColorWheel": 0,
-            "GoboWheel": 0,
-            "StaticGoboWheel": 0,
-            "GoboRotation": 0,
-            "Prism": 0,
-            "Shutter": 4,
-            "Function": 0,
-            "MovementMacros": 0
-          },
-          "fadeTime": 0,
-          "fadeTimes": {
-            "POS": 0,
-            "SPD": 0,
-            "DM": 0,
-            "FZ": 0
-          },
-          "waitAfterFade": 1.5
-        }
-      ]
+      "steps": []
     }
   }
 }
