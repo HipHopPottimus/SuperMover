@@ -100,6 +100,7 @@ catch (e) {
 
 if (!cueStorage.cues) cueStorage.cues = {};
 if (!cueStorage.cueStack) cueStorage.cueStack = {};
+if (!cueStorage.chases) cueStorage.chases = {};
 
 const SPECIAL_CUE_STAGE = "SPC:STG";
 const SPECIAL_CUE_RESET = "SPC:RST";
@@ -115,6 +116,7 @@ function getSpecialStageCue() {
 function normalizeSpecialCues() {
     if (!cueStorage.cues) cueStorage.cues = {};
     if (!cueStorage.cueStack) cueStorage.cueStack = {};
+    if (!cueStorage.chases) cueStorage.chases = {};
 
     if (cueStorage.cues.RESET && !cueStorage.cues[SPECIAL_CUE_RESET]) {
         cueStorage.cues[SPECIAL_CUE_RESET] = cueStorage.cues.RESET;
@@ -145,23 +147,51 @@ function normalizeSpecialCues() {
     }
 
     for (const cue of Object.values(cueStorage.cueStack)) {
-        for (const [ch, cueName] of Object.entries(cue?.movers || {})) {
-            if (cueName === "RESET") cue.movers[ch] = SPECIAL_CUE_RESET;
+        for (const [ch, cueRef] of Object.entries(cue?.movers || {})) {
+            if (cueRef === "RESET") cue.movers[ch] = SPECIAL_CUE_RESET;
         }
     }
 
     for (const cue of Object.values(cueStorage.cueStack)) {
-        for (const [ch, cueName] of Object.entries(cue?.movers || {})) {
-            if (!cueStorage.cues[cueName]) delete cue.movers[ch];
+        for (const [ch, cueRef] of Object.entries(cue?.movers || {})) {
+            if (isChaseRef(cueRef)) {
+                if (!cueStorage.chases[cueRef.name]) continue;
+            }
+            else if (!cueStorage.cues[cueRef]) delete cue.movers[ch];
         }
     }
 
     const legacySequenceEntryProperty = "cha" + "seName";
-    const legacySequenceStorageProperty = "cha" + "ses";
     for (const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
         if (cue?.[legacySequenceEntryProperty]) delete cueStorage.cueStack[cueNumber];
     }
-    delete cueStorage[legacySequenceStorageProperty];
+
+    for (const [chaseName, chase] of Object.entries(cueStorage.chases)) {
+        if (!util.isObject(chase)) {
+            delete cueStorage.chases[chaseName];
+            continue;
+        }
+
+        chase.loop = chase.loop !== false;
+        chase.restartOnEnter = chase.restartOnEnter !== false;
+        if (!Array.isArray(chase.steps)) chase.steps = [];
+        chase.steps = chase.steps
+            .filter(step => util.isObject(step) && !SPECIAL_CUE_NAMES.includes(step.cue))
+            .map(step => ({
+                cue: step.cue,
+                name: typeof step.name === "string" ? step.name : undefined,
+                values: util.isObject(step.values)
+                    ? Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_APPLY_KEYS.has(key)))
+                    : undefined,
+                fadeTime: Math.max(0, Number.parseFloat(step.fadeTime) || 0),
+                fadeTimes: util.isObject(step.fadeTimes)
+                    ? Object.fromEntries(Object.entries(step.fadeTimes)
+                        .filter(([groupId]) => CUE_FADE_GROUP_IDS.has(groupId))
+                        .map(([groupId, value]) => [groupId, Math.max(0, Number.parseFloat(value) || 0)]))
+                    : {},
+                waitAfterFade: Math.max(0, Number.parseFloat(step.waitAfterFade) || 0),
+            }));
+    }
 
     const orderedCues = {};
     for (const cueName of SPECIAL_CUE_NAMES) orderedCues[cueName] = cueStorage.cues[cueName];
@@ -185,11 +215,11 @@ function getStoragePathParent(storage, propChain) {
 
     let parent = storage;
     for (const prop of propChain) {
-        if (!util.isObject(parent) || !(prop in parent)) return undefined;
+        if ((!util.isObject(parent) && !Array.isArray(parent)) || !(prop in parent)) return undefined;
         parent = parent[prop];
     }
 
-    return util.isObject(parent) ? parent : undefined;
+    return util.isObject(parent) || Array.isArray(parent) ? parent : undefined;
 }
 
 function getDeleteTarget(storage, propChain, property) {
@@ -200,6 +230,10 @@ function getDeleteTarget(storage, propChain, property) {
     if (reversedParent) return reversedParent;
 
     return undefined;
+}
+
+function isChaseRef(value) {
+    return util.isObject(value) && value.type === "chase" && typeof value.name === "string";
 }
 
 function replaceStorageValue(storage, propChain, property, sourceStorage) {
@@ -284,12 +318,14 @@ function normalizeMoverChannelsForMode(mover, channels) {
     };
 }
 
-function moverSet(channel, values) {
+function moverSet(channel, values, options = {}) {
     const mover = movers.find(m => m.channel === channel);
 
     if (!mover) {
         throw new Error(`No mover at channel ${channel}`);
     }
+
+    if (!options.fromChase) stopChase(channel);
 
     if (mover.channel === primaryMover.channel) {
         if (values.Zoom !== undefined)
@@ -622,6 +658,15 @@ function getCueValues(cueName) {
     }));
 }
 
+function getChaseStepValues(step) {
+    if (step?.values && typeof step.values === "object") {
+        return Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_APPLY_KEYS.has(key)));
+    }
+
+    if (!step?.cue || SPECIAL_CUE_NAMES.includes(step.cue) || !cueStorage.cues[step.cue]) return null;
+    return getCueValues(step.cue);
+}
+
 function getDefaultCueApplyState() {
     return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
 }
@@ -640,10 +685,29 @@ function getCueApplyState(cue) {
 }
 
 let activeCueTweens = [];
+const activeChases = new Map();
+const MIN_CHASE_STEP_MS = 50;
 
 function stopCueTweens() {
     activeCueTweens.forEach(tId => clearInterval(tId));
     activeCueTweens = [];
+}
+
+function stopChase(ch) {
+    const channel = Number.parseInt(ch);
+    const active = activeChases.get(channel);
+    if (!active) return;
+
+    active.timers.forEach(timerId => clearTimeout(timerId));
+    active.tweens.forEach(timerId => clearInterval(timerId));
+    activeChases.delete(channel);
+}
+
+function stopChasesExcept(assignmentsToKeep = new Map()) {
+    for (const [ch, active] of [...activeChases.entries()]) {
+        if (assignmentsToKeep.get(ch) === active.name) continue;
+        stopChase(ch);
+    }
 }
 
 function getCueFadeTime(cue, attribute) {
@@ -683,11 +747,11 @@ function getCueDelayTime(cue, attribute) {
     return Number.isNaN(defaultDelay) ? 0 : defaultDelay;
 }
 
-function getCueValuesForStackEntry(cueNumber, ch, cueName) {
-    if (cueName !== SPECIAL_CUE_STAGE) return getCueValues(cueName);
+function getCueValuesForStackEntry(cueNumber, ch, cueRef) {
+    if (cueRef !== SPECIAL_CUE_STAGE) return getCueValues(cueRef);
 
-    const nextCueName = getNextCueNameForMover(cueNumber, ch);
-    const nextCueValues = nextCueName && nextCueName !== SPECIAL_CUE_STAGE ? getCueValues(nextCueName) : {};
+    const nextCueRef = getNextCueNameForMover(cueNumber, ch);
+    const nextCueValues = nextCueRef && nextCueRef !== SPECIAL_CUE_STAGE && !isChaseRef(nextCueRef) ? getCueValues(nextCueRef) : {};
     return {
         ...nextCueValues,
         Dimmer: 0,
@@ -704,61 +768,151 @@ function getCueStackEntryForPlayback(cueStackEntry, stepOptions = {}) {
     };
 }
 
+function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
+    return TWEENABLE_ATTRIBUTES.reduce((duration, attribute) => {
+        if (cueToSet[attribute] === undefined) return duration;
+        return Math.max(
+            duration,
+            getCueDelayTime(cueStackEntry, attribute) + getCueFadeTime(cueStackEntry, attribute)
+        );
+    }, 0);
+}
+
+function getCuePlaybackDuration(cueNumber, ch, cueRef, cueStackEntry) {
+    return getCuePlaybackDurationForValues(getCueValuesForStackEntry(cueNumber, ch, cueRef), cueStackEntry);
+}
+
+function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
+    const nonTweenableData = {...cueToSet};
+    TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
+    moverSet(ch, nonTweenableData, options);
+
+    const tweenIds = [];
+    for(const attribute of TWEENABLE_ATTRIBUTES) {
+        const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
+        const targetValue = cueToSet[attribute];
+        if (targetValue === undefined) continue;
+
+        const fadeTime = getCueFadeTime(cueStackEntry, attribute) * 1000;
+        const delayTime = getCueDelayTime(cueStackEntry, attribute) * 1000;
+        if (fadeTime <= 0 || initialValue === undefined) {
+            if (delayTime > 0) {
+                const timeoutId = setTimeout(() => moverSet(ch, {[attribute]: targetValue}, options), delayTime);
+                tweenIds.push(timeoutId);
+            }
+            else {
+                moverSet(ch, {[attribute]: targetValue}, options);
+            }
+            continue;
+        }
+
+        let value  = initialValue;
+        const startTime = performance.now() + delayTime;
+        const intervalId = setInterval(() => {
+            const elapsedTime = performance.now() - startTime;
+            if (elapsedTime < 0) return;
+            value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
+            if(elapsedTime >= fadeTime) {
+                value = targetValue;
+                clearInterval(intervalId);
+            }
+            moverSet(ch, {[attribute]: value}, options);
+        }, 16.7);
+
+        tweenIds.push(intervalId);
+    }
+
+    if (options.collectTweens) options.collectTweens(tweenIds);
+    else activeCueTweens.push(...tweenIds);
+}
+
+function applyCueRefToMover(ch, cueNumber, cueRef, cueStackEntry, options = {}) {
+    applyCueValuesToMover(ch, getCueValuesForStackEntry(cueNumber, ch, cueRef), cueStackEntry, options);
+}
+
+function startChaseForMover(ch, chaseName) {
+    const chase = cueStorage.chases[chaseName];
+    if (!chase?.steps?.length) return;
+
+    stopChase(ch);
+    const active = { name: chaseName, timers: [], tweens: [] };
+    activeChases.set(ch, active);
+
+    const runStep = stepIndex => {
+        if (activeChases.get(ch) !== active) return;
+
+        active.tweens.forEach(timerId => clearInterval(timerId));
+        active.tweens = [];
+        const currentChase = cueStorage.chases[chaseName];
+        const steps = currentChase?.steps || [];
+        if (!steps.length) {
+            stopChase(ch);
+            return;
+        }
+
+        const step = steps[stepIndex % steps.length];
+        const stepValues = getChaseStepValues(step);
+        if (!stepValues) {
+            const timerId = setTimeout(() => runStep(stepIndex + 1), MIN_CHASE_STEP_MS);
+            active.timers.push(timerId);
+            return;
+        }
+
+        const fallbackFadeTime = Math.max(0, Number.parseFloat(step.fadeTime) || 0);
+        const waitAfterFade = Math.max(0, Number.parseFloat(step.waitAfterFade) || 0);
+        const chaseStepStackEntry = getCueStackEntryForPlayback({
+            fadeTime: fallbackFadeTime,
+            fadeTimes: step.fadeTimes || {},
+            movers: {[ch]: step.name || step.cue || ""},
+        });
+
+        applyCueValuesToMover(ch, stepValues, chaseStepStackEntry, {
+            fromChase: true,
+            collectTweens: tweenIds => active.tweens.push(...tweenIds),
+        });
+
+        const nextStep = stepIndex + 1;
+        if (currentChase.loop !== false || nextStep < steps.length) {
+            const stepDuration = getCuePlaybackDurationForValues(stepValues, chaseStepStackEntry);
+            const timerId = setTimeout(() => runStep(nextStep), Math.max(MIN_CHASE_STEP_MS, (stepDuration + waitAfterFade) * 1000));
+            active.timers.push(timerId);
+        }
+    };
+
+    runStep(0);
+}
+
 function goToCueNumber(cueNumber, stepOptions = {}) {
     currentCueNumber = cueNumber.toString();
     sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
 
     stopCueTweens();
     const playbackCueStackEntry = getCueStackEntryForPlayback(cueStorage.cueStack[cueNumber], stepOptions);
+    const chasesToKeep = new Map();
+    for (const [chText, cueRef] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
+        if (isChaseRef(cueRef)) chasesToKeep.set(Number.parseInt(chText), cueRef.name);
+    }
+    stopChasesExcept(chasesToKeep);
 
-    for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
+    for(let [ch, cueRef] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
-        const cueToSet = getCueValuesForStackEntry(cueNumber, ch, cueName);
-        const cueStackEntry = cueName === SPECIAL_CUE_STAGE ? getSpecialStageCue() : playbackCueStackEntry;
-
-        const nonTweenableData = {...cueToSet};
-        TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
-        moverSet(ch, nonTweenableData)
-
-        for(const attribute of TWEENABLE_ATTRIBUTES) {
-            const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
-            const targetValue = cueToSet[attribute];
-            if (targetValue === undefined) continue;
-
-            const fadeTime = getCueFadeTime(cueStackEntry, attribute) * 1000;
-            const delayTime = getCueDelayTime(cueStackEntry, attribute) * 1000;
-            if (fadeTime <= 0 || initialValue === undefined) {
-                if (delayTime > 0) {
-                    const timeoutId = setTimeout(() => moverSet(ch, {[attribute]: targetValue}), delayTime);
-                    activeCueTweens.push(timeoutId);
-                }
-                else {
-                    moverSet(ch, {[attribute]: targetValue});
-                }
-                continue;
-            }
-
-            let value  = initialValue;
-            const startTime = performance.now() + delayTime;
-            const intervalId = setInterval(() => {
-                const elapsedTime = performance.now() - startTime;
-                if (elapsedTime < 0) return;
-                value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
-                if(elapsedTime >= fadeTime) {
-                    value = targetValue;
-                    clearInterval(intervalId);
-                }
-                moverSet(ch, {[attribute]: value});
-            }, 16.7);
-
-            activeCueTweens.push(intervalId);
+        if (isChaseRef(cueRef)) {
+            const active = activeChases.get(ch);
+            if (active?.name === cueRef.name) continue;
+            startChaseForMover(ch, cueRef.name);
+            continue;
         }
+
+        const cueStackEntry = cueRef === SPECIAL_CUE_STAGE ? getSpecialStageCue() : playbackCueStackEntry;
+        applyCueRefToMover(ch, cueNumber, cueRef, cueStackEntry);
     }
 }
 
 function clearCurrentCue() {
     currentCueNumber = null;
+    stopCueTweens();
+    stopChasesExcept();
     sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
 }
 

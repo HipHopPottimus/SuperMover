@@ -344,5 +344,23 @@
         "FZ": 0.1
       }
     }
+  },
+  "chases": {
+    "test": {
+      "loop": true,
+      "restartOnEnter": true,
+      "steps": [
+        {
+          "cue": "On",
+          "fadeTime": 0.7,
+          "waitAfterFade": 0.2
+        },
+        {
+          "cue": "Off",
+          "fadeTime": 0.7,
+          "waitAfterFade": 0.2
+        }
+      ]
+    }
   }
 }

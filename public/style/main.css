@@ -538,6 +538,88 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     /* outline: 2px solid #aa0000; */
 }
 
+.chase-list {
+    margin-top: 10px;
+}
+
+.chase-row {
+    display: grid;
+    grid-template-columns: minmax(130px, max-content) repeat(3, max-content);
+    column-gap: 6px;
+    align-items: center;
+    margin-left: 7px;
+    margin-bottom: 3px;
+    cursor: grab;
+}
+
+.chase-row:active {
+    cursor: grabbing;
+}
+
+.chase-row-name,
+.chase-ref {
+    color: #9bd2ff;
+}
+
+.chase-expanded {
+    margin: 0 0 8px 7px;
+    padding: 6px;
+    border-left: 2px solid #3b4652;
+    background-color: #151b22;
+}
+
+.chase-step-table {
+    display: grid;
+    grid-template-columns: max-content minmax(130px, max-content) repeat(4, max-content);
+    column-gap: 4px;
+    row-gap: 2px;
+    align-items: center;
+}
+
+.chase-step-table p {
+    margin: 0;
+}
+
+.chase-step-table input {
+    width: 4.5rem;
+}
+
+.chase-step-cue,
+.chase-step-add {
+    transition: 100ms all;
+}
+
+.chase-step-cue {
+    cursor: copy;
+}
+
+.chase-step-add {
+    margin-top: 6px;
+}
+
+.chase-expanded.drag-active,
+.chase-step-cue.drag-active,
+.chase-step-add.drag-active,
+.chase-row.drag-active {
+    background-color: #252c35;
+}
+
+.chase-expanded.drag-hover,
+.chase-step-cue.drag-hover,
+.chase-step-add.drag-hover,
+.chase-row.drag-hover {
+    background-color: #46515f;
+}
+
+.chase-empty-message {
+    margin: 6px 0;
+    color: #b9c3cf;
+}
+
+.broken-ref {
+    color: #ffb86b;
+}
+
 #cue-stack-table p[id^="cue-stack-delete-"],
 #cue-stack-table p[id^="cue-stack-go-"] {
     text-align: center;

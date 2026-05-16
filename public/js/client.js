@@ -55,6 +55,7 @@ let currentState, currentCueNumber;
 let cueApplyDragState = null;
 let suppressCueApplyClick = new WeakSet();
 let suppressCueStorageUpdates = false;
+const expandedChases = new Set();
 
 let connectionEstablished = false;
 let timeout = setTimeout(() => {
@@ -602,7 +603,9 @@ function onStorageUpdate(change) {
     if (suppressCueStorageUpdates) return;
 
     if (change.property === "cues") change.type = "replace";
+    if (change.property === "chases") change.type = "replace";
     if (change.type !== "delete" && change.propChain?.[0] === "cues") change.type = "replace";
+    if (change.type !== "delete" && change.propChain?.[0] === "chases") change.type = "replace";
 
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
@@ -656,8 +659,18 @@ function getCueMaxFadeTime(cue) {
 }
 
 function cueStackAppliesGroup(cueStackEntry, groupId) {
-    return Object.values(cueStackEntry?.movers || {}).some(cueName => {
-        const cue = cueStorage.cues[cueName];
+    return Object.values(cueStackEntry?.movers || {}).some(cueRef => {
+        if (isChaseRef(cueRef)) {
+            return (cueStorage.chases?.[cueRef.name]?.steps || []).some(step => {
+                if (hasChaseStepValues(step)) {
+                    return Object.keys(step.values).some(key => CUE_APPLY_KEYS.get(key) === groupId);
+                }
+                const cue = cueStorage.cues[step.cue];
+                return cue && getCueApplyState(cue)[groupId];
+            });
+        }
+
+        const cue = cueStorage.cues[cueRef];
         return cue && getCueApplyState(cue)[groupId];
     });
 }
@@ -681,6 +694,191 @@ function setAllCueFadeTimes(cueNumber, value) {
         if (cueStackAppliesGroup(cue, group.id)) cue.fadeTimes[group.id] = fadeTime;
     }
     return true;
+}
+
+function chaseStepAppliesGroup(step, groupId) {
+    if (hasChaseStepValues(step)) {
+        return Object.keys(step.values).some(key => CUE_APPLY_KEYS.get(key) === groupId);
+    }
+
+    const cue = cueStorage.cues?.[step?.cue];
+    return !!cue && getCueApplyState(cue)[groupId];
+}
+
+function getChaseStepFadeTime(step, groupId) {
+    const groupFade = Number.parseFloat(step?.fadeTimes?.[groupId]);
+    if (!Number.isNaN(groupFade)) return groupFade;
+
+    const defaultFade = Number.parseFloat(step?.fadeTime);
+    return Number.isNaN(defaultFade) ? 0 : defaultFade;
+}
+
+function setChaseStepFadeTime(chaseName, stepIndex, groupId, value) {
+    const fadeTime = Math.max(0, Number.parseFloat(value));
+    if (Number.isNaN(fadeTime)) return false;
+
+    const step = cueStorage.chases?.[chaseName]?.steps?.[stepIndex];
+    if (!step) return false;
+    if (!step.fadeTimes) step.fadeTimes = {};
+    step.fadeTimes[groupId] = fadeTime;
+    return true;
+}
+
+function setAllChaseStepFadeTimes(chaseName, stepIndex, value) {
+    const fadeTime = Math.max(0, Number.parseFloat(value));
+    if (Number.isNaN(fadeTime)) return false;
+
+    const step = cueStorage.chases?.[chaseName]?.steps?.[stepIndex];
+    if (!step) return false;
+    step.fadeTime = fadeTime;
+    if (!step.fadeTimes) step.fadeTimes = {};
+    for (const group of CUE_FADE_GROUPS) {
+        if (chaseStepAppliesGroup(step, group.id)) step.fadeTimes[group.id] = fadeTime;
+    }
+    return true;
+}
+
+function getChaseStepFadeSummary(step) {
+    const values = CUE_FADE_GROUPS
+        .filter(group => chaseStepAppliesGroup(step, group.id))
+        .map(group => getChaseStepFadeTime(step, group.id));
+    const uniqueValues = [...new Set(values.map(value => value.toString()))];
+    if (!uniqueValues.length) return "Fade...";
+    if (uniqueValues.length === 1) return `${uniqueValues[0]}s`;
+    return `${Math.min(...values)}-${Math.max(...values)}s`;
+}
+
+function getChaseStepFadeApplyAllValue(step) {
+    const values = CUE_FADE_GROUPS
+        .filter(group => chaseStepAppliesGroup(step, group.id))
+        .map(group => getChaseStepFadeTime(step, group.id));
+    if (!values.length) return "";
+    return values.every(value => value === values[0]) ? values[0] : "";
+}
+
+function ensureChaseStorage() {
+    if (!cueStorage.chases) cueStorage.chases = {};
+}
+
+function isChaseRef(value) {
+    return value && typeof value === "object" && value.type === "chase" && typeof value.name === "string";
+}
+
+function getCueStackCellClass(cueRef) {
+    if (!isChaseRef(cueRef)) return "";
+    return cueStorage.chases?.[cueRef.name] ? "chase-ref" : "chase-ref broken-ref";
+}
+
+function formatCueStackCell(cueRef) {
+    if (!cueRef) return "";
+    if (isChaseRef(cueRef)) {
+        const label = cueStorage.chases?.[cueRef.name] ? `▶ ${cueRef.name}` : `⚠ ${cueRef.name}`;
+        return escapeHtml(label);
+    }
+    if (!cueStorage.cues?.[cueRef]) return `<span class="broken-ref">⚠ ${escapeHtml(cueRef)}</span>`;
+    return escapeHtml(cueRef);
+}
+
+function createChaseRef(chaseName) {
+    return { type: "chase", name: chaseName };
+}
+
+function isCueUsedInChases(cueName) {
+    return Object.values(cueStorage.chases || {}).some(chase =>
+        (chase.steps || []).some(step => step.cue === cueName)
+    );
+}
+
+function isChaseUsedInCueStack(chaseName) {
+    return Object.values(cueStorage.cueStack || {}).some(cue =>
+        Object.values(cue.movers || {}).some(ref => isChaseRef(ref) && ref.name === chaseName)
+    );
+}
+
+function getUniqueChaseName(baseName = "New chase") {
+    ensureChaseStorage();
+    if (!cueStorage.chases[baseName]) return baseName;
+    let suffix = 2;
+    while (cueStorage.chases[`${baseName} ${suffix}`]) suffix++;
+    return `${baseName} ${suffix}`;
+}
+
+function addStepToChase(chaseName, cueName, index) {
+    if (isSpecialCueName(cueName) || !cueStorage.cues?.[cueName]) return;
+    const chase = cueStorage.chases[chaseName];
+    if (!chase) return;
+    const step = { cue: cueName, fadeTime: 0.7, waitAfterFade: 0.2 };
+    if (!Array.isArray(chase.steps)) chase.steps = [];
+    if (index === undefined || index < 0 || index > chase.steps.length) chase.steps.push(step);
+    else chase.steps.splice(index, 0, step);
+}
+
+function getMoverStateForChaseStep(channel) {
+    const mover = currentState.movers.find(m => m.channel == channel);
+    if (!mover) return null;
+
+    return Object.fromEntries(CUE_VALUE_KEYS.map(key => [key, clampDmx(mover.channelValues[key] ?? 0)]));
+}
+
+function getChaseStepLabel(step) {
+    if (step?.name) return step.name;
+    if (step?.cue) return step.cue;
+    return "";
+}
+
+function hasChaseStepValues(step) {
+    return step?.values && typeof step.values === "object";
+}
+
+function promptAddStepToChase(chaseName) {
+    const cueNames = Object.keys(cueStorage.cues || {}).filter(cueName => !isSpecialCueName(cueName));
+    if (!cueNames.length) {
+        alert("Create a normal saved cue first, then add it to the chase.");
+        return;
+    }
+
+    const cueName = prompt(`Cue name for new chase step:\n${cueNames.join("\n")}`, cueNames[0]);
+    if (!cueName) return;
+    if (isSpecialCueName(cueName)) {
+        alert("Special cues cannot be used as chase steps.");
+        return;
+    }
+    if (!cueStorage.cues?.[cueName]) {
+        alert(`Cue not found: ${cueName}`);
+        return;
+    }
+
+    addStepToChase(chaseName, cueName);
+    renderCues();
+}
+
+function addMoverStateToChase(chaseName, channel, stepIndex) {
+    const stepName = prompt("Name this chase step:");
+    if (!stepName || isSpecialCueName(stepName)) return;
+
+    const values = getMoverStateForChaseStep(channel);
+    if (!values) return;
+
+    const step = { name: stepName, values, fadeTime: 0.7, waitAfterFade: 0.2 };
+    const chase = cueStorage.chases[chaseName];
+    if (!chase) return;
+    if (!Array.isArray(chase.steps)) chase.steps = [];
+
+    if (stepIndex === undefined) chase.steps.push(step);
+    else chase.steps[stepIndex] = {
+        ...chase.steps[stepIndex],
+        name: stepName,
+        values,
+        cue: undefined,
+    };
+    renderCues();
+}
+
+function moveChaseStep(chaseName, fromIndex, toIndex) {
+    const steps = cueStorage.chases?.[chaseName]?.steps;
+    if (!steps || toIndex < 0 || toIndex >= steps.length) return;
+    const [step] = steps.splice(fromIndex, 1);
+    steps.splice(toIndex, 0, step);
 }
 
 function setCueApplyCheckbox(cb, checked) {
@@ -938,7 +1136,7 @@ async function generateCueStackTable() {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCueName(cueNumber)}">${cueNumber}</p>
             ${currentState.movers.map(m =>
-                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${cue.movers?.[m.channel] || ""}</p>`
+                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
             ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p class="cue-stack-go" id="cue-stack-go-${escapeCueName(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
@@ -1124,9 +1322,278 @@ function openFadeMatrix(selectedCueNumber) {
     }
 }
 
+function openChaseFadeMatrix(chaseName, selectedStepIndex) {
+    const chase = cueStorage.chases?.[chaseName];
+    if (!chase) return;
+
+    let dialog = document.getElementById("chase-fade-matrix-dialog");
+    if (!dialog) {
+        dialog = document.createElement("dialog");
+        dialog.id = "chase-fade-matrix-dialog";
+        document.body.appendChild(dialog);
+    }
+
+    dialog.innerHTML = `
+        <form method="dialog" class="fade-matrix">
+            <div class="fade-matrix-header">
+                <div>
+                    <h3>${escapeHtml(chaseName)} fade matrix</h3>
+                </div>
+                <button type="submit" aria-label="Close chase fade editor">Close</button>
+            </div>
+            <div class="fade-matrix-scroller">
+                <table class="fade-matrix-table">
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Cue</th>
+                            <th>Apply all</th>
+                            ${CUE_FADE_GROUPS.map(group => `<th title="${groupTitle(group.id)}">${group.label}</th>`).join("")}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(chase.steps || []).map((step, index) => `
+                            <tr data-step-index="${index}" class="${selectedStepIndex == index ? "fade-matrix-selected-row" : ""}">
+                                <th scope="row">${index + 1}</th>
+                                <td>${escapeHtml(getChaseStepLabel(step))}</td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.1"
+                                        data-step-index="${index}"
+                                        data-apply-all="true"
+                                        value="${getChaseStepFadeApplyAllValue(step)}"
+                                        aria-label="Apply all fades for ${chaseName} step ${index + 1}"
+                                    >
+                                </td>
+                                ${CUE_FADE_GROUPS.map(group => `
+                                    <td>
+                                        ${chaseStepAppliesGroup(step, group.id) ? `
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.1"
+                                                data-step-index="${index}"
+                                                data-group="${group.id}"
+                                                value="${getChaseStepFadeTime(step, group.id)}"
+                                                aria-label="${groupTitle(group.id)} fade for ${chaseName} step ${index + 1}"
+                                            >
+                                        ` : ""}
+                                    </td>
+                                `).join("")}
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    `;
+
+    dialog.querySelectorAll(".fade-matrix-table input").forEach(input => {
+        input.addEventListener("change", e => {
+            const stepIndex = Number.parseInt(e.target.getAttribute("data-step-index"));
+            const step = cueStorage.chases[chaseName]?.steps?.[stepIndex];
+            const fadeTime = Math.max(0, Number.parseFloat(e.target.value));
+            if (Number.isNaN(fadeTime)) {
+                e.target.value = e.target.hasAttribute("data-apply-all") ? getChaseStepFadeApplyAllValue(step) : getChaseStepFadeTime(step, e.target.getAttribute("data-group"));
+                return;
+            }
+
+            if (e.target.hasAttribute("data-apply-all")) {
+                setAllChaseStepFadeTimes(chaseName, stepIndex, fadeTime);
+                dialog.querySelectorAll("input[data-group]").forEach(groupInput => {
+                    if (Number.parseInt(groupInput.getAttribute("data-step-index")) === stepIndex) groupInput.value = fadeTime;
+                });
+            }
+            else {
+                setChaseStepFadeTime(chaseName, stepIndex, e.target.getAttribute("data-group"), fadeTime);
+                dialog.querySelectorAll("input[data-apply-all]").forEach(applyAllInput => {
+                    if (Number.parseInt(applyAllInput.getAttribute("data-step-index")) === stepIndex) {
+                        applyAllInput.value = getChaseStepFadeApplyAllValue(cueStorage.chases[chaseName].steps[stepIndex]);
+                    }
+                });
+            }
+
+            renderCues();
+            openChaseFadeMatrix(chaseName, stepIndex);
+        });
+    });
+
+    if (!dialog.open) dialog.showModal();
+
+    if (selectedStepIndex !== undefined) {
+        const selectedRow = dialog.querySelector(`tr[data-step-index="${Number.parseInt(selectedStepIndex)}"]`);
+        selectedRow?.scrollIntoView({block: "center", inline: "nearest"});
+        if (selectedRow) {
+            selectedRow.classList.remove("fade-matrix-flash-row");
+            requestAnimationFrame(() => selectedRow.classList.add("fade-matrix-flash-row"));
+        }
+    }
+}
+
+function renderChases(cueList) {
+    ensureChaseStorage();
+    const chaseNames = Object.keys(cueStorage.chases);
+    cueList.innerHTML += `
+        <div class="chase-list" id="chase-list">
+            <p class="cue-section-header">Chases</p>
+            <div id="chase-table"></div>
+            <button type="button" id="chase-add" class="chase-add-button">+ New chase</button>
+        </div>
+    `;
+
+    const chaseTable = document.getElementById("chase-table");
+    if (!chaseNames.length) chaseTable.innerHTML = `<p class="empty-message">No chases saved.</p>`;
+
+    for (const chaseName of chaseNames) {
+        const chase = cueStorage.chases[chaseName];
+        const expanded = expandedChases.has(chaseName);
+        chaseTable.innerHTML += `
+            <div class="chase-row" id="chase-row-${escapeCueName(chaseName)}" data-chase-name="${escapeAttr(chaseName)}">
+                <span class="chase-row-name">${expanded ? "▼" : "▶"} ${escapeHtml(chaseName)}</span>
+                <button type="button" class="chase-edit" data-chase-name="${escapeAttr(chaseName)}">${expanded ? "Close" : "Edit"}</button>
+                <button type="button" class="chase-fade-matrix-open" data-chase-name="${escapeAttr(chaseName)}">Fade matrix</button>
+                <button type="button" class="chase-duplicate" data-chase-name="${escapeAttr(chaseName)}">Duplicate</button>
+                <button type="button" class="chase-delete" data-chase-name="${escapeAttr(chaseName)}">Delete</button>
+            </div>
+            ${expanded ? `
+                <div class="chase-expanded" data-chase-name="${escapeAttr(chaseName)}">
+                    <div class="chase-step-table">
+                        <p class="cue-table-header">Step</p>
+                        <p class="cue-table-header">Cue</p>
+                        <p class="cue-table-header">Fade</p>
+                        <p class="cue-table-header">Wait</p>
+                        <p class="cue-table-header">Move</p>
+                        <p class="cue-table-header">Delete</p>
+                        ${(chase.steps || []).map((step, index) => {
+                            const stepLabel = getChaseStepLabel(step);
+                            const hasValues = hasChaseStepValues(step);
+                            const savedCueExists = step?.cue && cueStorage.cues?.[step.cue];
+                            const isMissing = step?.cue && !savedCueExists && !hasValues;
+                            return `
+                            <p>${index + 1}</p>
+                            <p class="chase-step-cue ${isMissing ? "broken-ref" : ""}" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
+                                ${isMissing ? `⚠ Missing cue: ${escapeHtml(step.cue || "")}` : escapeHtml(stepLabel)}
+                            </p>
+                            <p>
+                                <button type="button" class="chase-step-fade-summary" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
+                                    ${getChaseStepFadeSummary(step)}
+                                </button>
+                            </p>
+                            <p><input type="number" min="0" step="0.1" class="chase-step-time" data-field="waitAfterFade" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" value="${Number.parseFloat(step.waitAfterFade) || 0}"></p>
+                            <p>
+                                <button type="button" class="chase-step-up" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" ${index === 0 ? "disabled" : ""}>↑</button>
+                                <button type="button" class="chase-step-down" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" ${index === (chase.steps || []).length - 1 ? "disabled" : ""}>↓</button>
+                            </p>
+                            <p><button type="button" class="chase-step-delete" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">🗑</button></p>
+                        `}).join("")}
+                    </div>
+                    ${(chase.steps || []).length ? "" : `<p class="chase-empty-message">No steps yet — drag movers or saved cues here</p>`}
+                    <button type="button" class="chase-step-add" data-chase-name="${escapeAttr(chaseName)}">+ Add step / Drag movers or saved cues here</button>
+                </div>
+            ` : ""}
+        `;
+    }
+
+    document.getElementById("chase-add")?.addEventListener("click", () => {
+        const requested = prompt("Enter new chase name:", getUniqueChaseName());
+        if (!requested) return;
+        const chaseName = getUniqueChaseName(requested);
+        cueStorage.chases[chaseName] = { loop: true, restartOnEnter: true, steps: [] };
+        expandedChases.add(chaseName);
+        renderCues();
+    });
+
+    chaseTable.querySelectorAll(".chase-row-name, .chase-edit").forEach(el => {
+        el.addEventListener("click", e => {
+            const chaseName = e.currentTarget.closest(".chase-row").getAttribute("data-chase-name");
+            if (expandedChases.has(chaseName)) expandedChases.delete(chaseName);
+            else expandedChases.add(chaseName);
+            renderCues();
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-fade-matrix-open").forEach(button => {
+        button.addEventListener("click", e => {
+            openChaseFadeMatrix(e.currentTarget.getAttribute("data-chase-name"));
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-duplicate").forEach(button => {
+        button.addEventListener("click", e => {
+            const chaseName = e.currentTarget.getAttribute("data-chase-name");
+            const newName = getUniqueChaseName(`${chaseName} copy`);
+            cueStorage.chases[newName] = JSON.parse(JSON.stringify(cueStorage.chases[chaseName]));
+            expandedChases.add(newName);
+            renderCues();
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-delete").forEach(button => {
+        button.addEventListener("click", e => {
+            const chaseName = e.currentTarget.getAttribute("data-chase-name");
+            const warning = isChaseUsedInCueStack(chaseName) ? `\n\nThis chase is used in the cue stack.` : "";
+            if (!confirm(`Are you sure you want to delete chase ${chaseName}?${warning}`)) return;
+            delete cueStorage.chases[chaseName];
+            expandedChases.delete(chaseName);
+            renderCues();
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-time").forEach(input => {
+        input.addEventListener("change", e => {
+            const chaseName = e.currentTarget.getAttribute("data-chase-name");
+            const stepIndex = Number.parseInt(e.currentTarget.getAttribute("data-step-index"));
+            const field = e.currentTarget.getAttribute("data-field");
+            const value = Math.max(0, Number.parseFloat(e.currentTarget.value));
+            if (Number.isNaN(value)) {
+                e.currentTarget.value = cueStorage.chases[chaseName].steps[stepIndex][field] || 0;
+                return;
+            }
+            cueStorage.chases[chaseName].steps[stepIndex][field] = value;
+            renderCues();
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-fade-summary").forEach(button => {
+        button.addEventListener("click", e => {
+            openChaseFadeMatrix(
+                e.currentTarget.getAttribute("data-chase-name"),
+                Number.parseInt(e.currentTarget.getAttribute("data-step-index"))
+            );
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-delete").forEach(button => {
+        button.addEventListener("click", e => {
+            const chaseName = e.currentTarget.getAttribute("data-chase-name");
+            const stepIndex = Number.parseInt(e.currentTarget.getAttribute("data-step-index"));
+            cueStorage.chases[chaseName].steps.splice(stepIndex, 1);
+            renderCues();
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-add").forEach(button => {
+        button.addEventListener("click", e => {
+            promptAddStepToChase(e.currentTarget.getAttribute("data-chase-name"));
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-up, .chase-step-down").forEach(button => {
+        button.addEventListener("click", e => {
+            const chaseName = e.currentTarget.getAttribute("data-chase-name");
+            const stepIndex = Number.parseInt(e.currentTarget.getAttribute("data-step-index"));
+            moveChaseStep(chaseName, stepIndex, e.currentTarget.classList.contains("chase-step-up") ? stepIndex - 1 : stepIndex + 1);
+            renderCues();
+        });
+    });
+}
+
 async function renderCues() {
     if (!currentState) return;
     if (!cueStorage?.cues) return;
+    ensureChaseStorage();
 
     const moverList = document.getElementById("mover-list");
     moverList.innerHTML = `<p class="cue-section-header">Movers</p>`;
@@ -1181,13 +1648,28 @@ async function renderCues() {
     if (!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
     cueList.innerHTML += `<p class="cue-table-delete"><img src="imgs/bin.svg" width="15"/></p>`;
+    renderChases(cueList);
 
     await generateCueStackTable();
 
     for (const moverListing of moverList.querySelectorAll(".cue-table-mover-main")) {
-        setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.querySelectorAll(".cue-table-cue, .cue-editor-mover"), async event => {
+        setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.querySelectorAll(".cue-table-cue, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
                 captureCueEditorFromMover(event.data);
+                return;
+            }
+
+            if (event.target.classList.contains("chase-expanded") || event.target.classList.contains("chase-step-add")) {
+                await addMoverStateToChase(event.target.getAttribute("data-chase-name"), event.data);
+                return;
+            }
+
+            if (event.target.classList.contains("chase-step-cue")) {
+                await addMoverStateToChase(
+                    event.target.getAttribute("data-chase-name"),
+                    event.data,
+                    Number.parseInt(event.target.getAttribute("data-step-index"))
+                );
                 return;
             }
 
@@ -1214,7 +1696,7 @@ async function renderCues() {
 
         setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`));
 
-        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop, .cue-editor-mover"), async event => {
+        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
                 openCueEditor(cueName);
                 return;
@@ -1223,7 +1705,8 @@ async function renderCues() {
             //dragging over delete cue
             if (event.target.classList.contains("cue-table-delete")) {
                 if (isSpecialCueName(cueName)) return;
-                if (confirm(`Are you sure you want to delete cue ${cueName}?`)) {
+                const warning = isCueUsedInChases(cueName) ? `\n\nThis cue is used in one or more chases.` : "";
+                if (confirm(`Are you sure you want to delete cue ${cueName}?${warning}`)) {
                     delete cueStorage.cues[cueName];
                     renderCues();
                 }
@@ -1240,6 +1723,33 @@ async function renderCues() {
             if (event.target.classList.contains("cue-table-cue") && !event.target.classList.contains("cue-table-add")) {
                 if (isSpecialCueName(event.target.innerHTML)) return;
                 moveSavedCueToIndex(cueName, Object.keys(cueStorage.cues).indexOf(event.target.innerHTML));
+                return;
+            }
+
+            if (event.target.classList.contains("chase-expanded") || event.target.classList.contains("chase-step-add")) {
+                if (isSpecialCueName(cueName)) {
+                    alert("Special cues cannot be used as chase steps.");
+                    return;
+                }
+                addStepToChase(event.target.getAttribute("data-chase-name"), cueName);
+                renderCues();
+                return;
+            }
+
+            if (event.target.classList.contains("chase-step-cue")) {
+                if (isSpecialCueName(cueName)) {
+                    alert("Special cues cannot be used as chase steps.");
+                    return;
+                }
+                const chaseName = event.target.getAttribute("data-chase-name");
+                const stepIndex = Number.parseInt(event.target.getAttribute("data-step-index"));
+                cueStorage.chases[chaseName].steps[stepIndex] = {
+                    ...cueStorage.chases[chaseName].steps[stepIndex],
+                    cue: cueName,
+                    name: undefined,
+                    values: undefined,
+                };
+                renderCues();
                 return;
             }
 
@@ -1263,6 +1773,27 @@ async function renderCues() {
             }
 
             sendMoverSet(ch, getCueValues(cueName));
+        });
+    }
+
+    for (const chaseRow of cueList.querySelectorAll(".chase-row")) {
+        const chaseName = chaseRow.getAttribute("data-chase-name");
+        setupDragDrop(chaseRow, createChaseRef(chaseName), document.querySelectorAll(".cue-stack-add, .cue-stack-cue"), async event => {
+            const ch = Number.parseInt(event.target.getAttribute("data-channel"));
+
+            if(event.target.classList.contains("cue-stack-add")) {
+                const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
+                if(isNaN(cueNumber) || !cueNumber) return;
+                cueStorage.cueStack[cueNumber] = {movers: {[ch]: createChaseRef(chaseName)}, fadeTime: 0};
+                renderCues();
+                return;
+            }
+
+            if(event.target.classList.contains("cue-stack-cue")) {
+                const cueNumber = event.target.getAttribute("data-cue-number");
+                cueStorage.cueStack[cueNumber].movers[ch] = createChaseRef(chaseName);
+                await renderCues();
+            }
         });
     }
 
