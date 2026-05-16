@@ -439,7 +439,7 @@ function sendToAllClients(message) {
         if (client.readyState === WebSocket.OPEN) {
             client.send(stringifiedMessage);
         }
-    } 
+    }
 }
 
 function updateState() {
@@ -581,7 +581,7 @@ wss.on('connection', (ws) => {
                 try {
                     moverSet(channel, msg.values);
                 }
-                catch(e) {
+                catch (e) {
                     sendClientError(ws, e.message || String(e));
                 }
                 break;
@@ -612,7 +612,7 @@ wss.on('connection', (ws) => {
                 break;
             }
             case "GOTO_CUE_NUMBER": {
-                if(isNaN(msg.cueNumber) || !cueStorage.cueStack[msg.cueNumber]) {
+                if (isNaN(msg.cueNumber) || !cueStorage.cueStack[msg.cueNumber]) {
                     ws.send(JSON.stringify({
                         type: 'ERROR',
                         message: `Invalid cue number ${msg.cueNumber}`
@@ -688,7 +688,7 @@ wss.on('connection', (ws) => {
                     type: 'CUE_STORAGE_STATE',
                     cueStorage
                 });
-                sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
+                sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
                 saveCueStorage();
                 break;
             }
@@ -760,7 +760,7 @@ function getDefaultCueApplyState() {
 }
 
 function getCueApplyState(cue) {
-    if (cue?.apply) return {...getDefaultCueApplyState(), ...cue.apply};
+    if (cue?.apply) return { ...getDefaultCueApplyState(), ...cue.apply };
 
     const applyState = getDefaultCueApplyState();
     if (cue?.mode === "pos") {
@@ -889,12 +889,12 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
         Object.entries(cueToSet || {}).filter(([attribute]) => attribute in mover.CHANNELS)
     );
 
-    const nonTweenableData = {...cueValuesForMover};
+    const nonTweenableData = { ...cueValuesForMover };
     TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
     moverSet(ch, nonTweenableData, options);
 
     const tweenIds = [];
-    for(const attribute of TWEENABLE_ATTRIBUTES) {
+    for (const attribute of TWEENABLE_ATTRIBUTES) {
         const initialValue = mover.channelValues[attribute];
         const targetValue = cueValuesForMover[attribute];
         if (targetValue === undefined) continue;
@@ -904,17 +904,17 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
         if (fadeTime <= 0 || initialValue === undefined) {
             if (delayTime > 0) {
                 const timeoutId = setTimeout(() => {
-                    if (movers.some(m => m.channel == ch)) moverSet(ch, {[attribute]: targetValue}, options);
+                    if (movers.some(m => m.channel == ch)) moverSet(ch, { [attribute]: targetValue }, options);
                 }, delayTime);
                 tweenIds.push(timeoutId);
             }
             else {
-                moverSet(ch, {[attribute]: targetValue}, options);
+                moverSet(ch, { [attribute]: targetValue }, options);
             }
             continue;
         }
 
-        let value  = initialValue;
+        let value = initialValue;
         const startTime = performance.now() + delayTime;
         const intervalId = setInterval(() => {
             if (!movers.some(m => m.channel == ch)) {
@@ -924,11 +924,11 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
             const elapsedTime = performance.now() - startTime;
             if (elapsedTime < 0) return;
             value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
-            if(elapsedTime >= fadeTime) {
+            if (elapsedTime >= fadeTime) {
                 value = targetValue;
                 clearInterval(intervalId);
             }
-            moverSet(ch, {[attribute]: value}, options);
+            moverSet(ch, { [attribute]: value }, options);
         }, 16.7);
 
         tweenIds.push(intervalId);
@@ -975,7 +975,7 @@ function startChaseForMover(ch, chaseName) {
         const chaseStepStackEntry = getCueStackEntryForPlayback({
             fadeTime: fallbackFadeTime,
             fadeTimes: step.fadeTimes || {},
-            movers: {[ch]: step.name || step.cue || ""},
+            movers: { [ch]: step.name || step.cue || "" },
         });
 
         applyCueValuesToMover(ch, stepValues, chaseStepStackEntry, {
@@ -996,7 +996,7 @@ function startChaseForMover(ch, chaseName) {
 
 function goToCueNumber(cueNumber, stepOptions = {}) {
     currentCueNumber = cueNumber.toString();
-    sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
+    sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
 
     stopCueTweens();
     const playbackCueStackEntry = getCueStackEntryForPlayback(cueStorage.cueStack[cueNumber], stepOptions);
@@ -1006,7 +1006,7 @@ function goToCueNumber(cueNumber, stepOptions = {}) {
     }
     stopChasesExcept(chasesToKeep);
 
-    for(let [ch, cueRef] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
+    for (let [ch, cueRef] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
         if (isChaseRef(cueRef)) {
@@ -1025,15 +1025,16 @@ function clearCurrentCue() {
     currentCueNumber = null;
     stopCueTweens();
     stopChasesExcept();
-    sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
+    sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
 }
 
-// const oscClient = new OSCClient("192.168.200.1", 8000);
-// oscClient.send("/feedback/pb+exec");
+const oscClient = new OSCClient("192.168.200.1", 8000);
+if (process.argv.includes("--use-quickq-feedback"))
+    oscClient.send("/feedback/pb+exec");
 
 const oscServer = new OSCServer(8001, "0.0.0.0");
 oscServer.on("message", msg => {
-    if(debug) console.log("RECEIVED OSC", msg);
+    if (debug) console.log("RECEIVED OSC", msg);
     const path = msg[0].split("/");
     const [_, cmd, pb, cueNumber] = path;
 
@@ -1042,15 +1043,15 @@ oscServer.on("message", msg => {
     goToCueNumber(cueNumber);
 
 
-    // if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
-    //     const intensity = msg[1];
-    //     console.log(pb, msg[1]);
-    //     let data = {};
-    //     let channelsToSet = [1, 2, 3, 4, 5];
-    //     channelsToSet.forEach(c => data[c] = intensity);
-    //     getDmx().setChannels(data);
-    //     return;
-    // }
+    if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
+        const intensity = msg[1];
+        console.log(pb, msg[1]);
+        let data = {};
+        let channelsToSet = [1, 2, 3, 4, 5];
+        channelsToSet.forEach(c => data[c] = intensity);
+        getDmx().setChannels(data);
+        return;
+    }
 });
 
 server.listen(port, () => {
