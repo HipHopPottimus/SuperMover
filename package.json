@@ -1,5 +1,10 @@
 {
   "type": "module",
+  "scripts": {
+    "start": "node main.js",
+    "lint": "node --check main.js && node --check public/js/client.js",
+    "test": "npm run lint"
+  },
   "dependencies": {
     "enttec-open-dmx-usb": "^4.0.1",
     "express": "^5.2.1",
