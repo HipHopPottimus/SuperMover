@@ -26,6 +26,8 @@ let cueApplyDragState = null;
 let suppressCueApplyClick = new WeakSet();
 let suppressCueStorageUpdates = false;
 const expandedChases = new Set();
+const CUE_EDITOR_CHANNEL = 513;
+let activeCueEditor = null;
 
 let connectionEstablished = false;
 let timeout = setTimeout(() => {
@@ -193,9 +195,175 @@ function renderMover(mover) {
     fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
 }
 
-function refreshCueEditorFromStorage() {
-    // Cue editor support is optional in this UI; keep state refreshes from failing
-    // when the editor controls are not present.
+function cueToEditorChannelValues(cueName) {
+    return cueObjectToEditorChannelValues(cueStorage.cues[cueName] || {});
+}
+
+function getCueEditorSlot() {
+    let slot = document.getElementById("cue-editor-slot");
+    if (!slot) {
+        const movers = document.querySelector(".movers");
+        if (!movers) return null;
+        slot = document.createElement("div");
+        slot.id = "cue-editor-slot";
+        slot.className = "cue-editor-slot";
+        movers.prepend(slot);
+    }
+    return slot;
+}
+
+function cueObjectToEditorChannelValues(cue) {
+    const profile = getProfile(activeCueEditor?.fixtureType);
+    const values = {};
+    for (const key of CUE_VALUE_KEYS) {
+        const offset = profile.offsets[key];
+        if (offset !== undefined) values[CUE_EDITOR_CHANNEL + offset] = clampDmx(cue[key] ?? 0);
+    }
+    return values;
+}
+
+function setCueEditorDirty(dirty) {
+    if (!activeCueEditor) return;
+    activeCueEditor.dirty = dirty;
+    const saveButton = document.getElementById("cue-editor-save");
+    if (saveButton) saveButton.disabled = !dirty || cueStorage.cues[activeCueEditor.cueName]?.special === "stage";
+}
+
+function refreshCueEditorFromStorage(force = false) {
+    if (!activeCueEditor) return;
+    if (!cueStorage.cues?.[activeCueEditor.cueName]) {
+        getCueEditorSlot()?.replaceChildren();
+        delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
+        activeCueEditor = null;
+        return;
+    }
+    if (activeCueEditor.dirty && !force) return;
+
+    activeCueEditor.draft = {...cueStorage.cues[activeCueEditor.cueName]};
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(activeCueEditor.cueName), activeCueEditor.fixtureType);
+    setCueEditorDirty(false);
+}
+
+function saveCueEditor() {
+    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
+    if (cueStorage.cues[activeCueEditor.cueName]?.special === "stage") return;
+
+    cueStorage.cues[activeCueEditor.cueName] = {
+        ...cueStorage.cues[activeCueEditor.cueName],
+        ...activeCueEditor.draft,
+        apply: getCueApplyState(cueStorage.cues[activeCueEditor.cueName]),
+    };
+    setCueEditorDirty(false);
+    renderCues();
+}
+
+function captureCueEditorFromMover(channel) {
+    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
+    const mover = currentState.movers.find(m => m.channel == channel);
+    if (!mover) return;
+
+    activeCueEditor.draft = {
+        ...activeCueEditor.draft,
+        ...Object.fromEntries(CUE_VALUE_KEYS.map(key => [key, clampDmx(mover.channelValues[key] ?? 0)])),
+    };
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueObjectToEditorChannelValues(activeCueEditor.draft), activeCueEditor.fixtureType);
+    setCueEditorDirty(true);
+}
+
+function addStaticGoboControls(container, ch) {
+    const selectsDiv = container.querySelector(".mover-selects");
+    if (!selectsDiv || selectsDiv.querySelector(`#${ch}-static-gobo`)) return;
+
+    const staticGoboBlock = document.createElement("div");
+    staticGoboBlock.className = "mover-input-block";
+    staticGoboBlock.innerHTML = `
+        <label for="${ch}-static-gobo">Static Gobo:</label>
+        <select id="${ch}-static-gobo">
+            <option value="w:0">Open</option>
+            <option value="w:7">Gobo 1</option>
+            <option value="w:14">Gobo 2</option>
+            <option value="w:21">Gobo 3</option>
+            <option value="w:28">Gobo 4</option>
+            <option value="w:35">Gobo 5</option>
+            <option value="w:42">Gobo 6</option>
+            <option value="w:49">Gobo 7</option>
+            <option value="w:56">Gobo 8</option>
+            <option value="g8shake">Gobo 8 Shake</option>
+            <option value="g7shake">Gobo 7 Shake</option>
+            <option value="g6shake">Gobo 6 Shake</option>
+            <option value="g5shake">Gobo 5 Shake</option>
+            <option value="g4shake">Gobo 4 Shake</option>
+            <option value="g3shake">Gobo 3 Shake</option>
+            <option value="g2shake">Gobo 2 Shake</option>
+            <option value="g1shake">Gobo 1 Shake</option>
+            <option value="rcycle">Reverse Cycle</option>
+            <option value="cycle">Cycle Effect</option>
+        </select>
+        <span id="${ch}-static-gobo-speed-wrap" class="noSee">
+            <label for="${ch}-static-gobo-speed">Speed:</label>
+            <input type="range" min="0" max="100" value="0" id="${ch}-static-gobo-speed">
+            <span id="${ch}-static-gobo-speed-label">0%</span>
+        </span>
+    `;
+    const forgetBtn = selectsDiv.querySelector(`#forget-${ch}`);
+    selectsDiv.insertBefore(staticGoboBlock, forgetBtn);
+}
+
+function openCueEditor(cueName) {
+    if (!cueStorage.cues?.[cueName]) return;
+    if (cueStorage.cues[cueName]?.special === "stage") return;
+
+    const firstMover = currentState?.movers?.[0];
+    const fixtureType = firstMover?.fixtureType || "375z";
+    const profile = getProfile(fixtureType);
+    activeCueEditor = {
+        cueName,
+        fixtureType,
+        draft: {...cueStorage.cues[cueName]},
+        dirty: false,
+    };
+
+    const template = document.getElementById("mover-template")?.firstElementChild;
+    if (!template) return;
+
+    const editor = template.cloneNode(true);
+    editor.innerHTML = editor.innerHTML
+        .replace(/\{ch\}/g, CUE_EDITOR_CHANNEL)
+        .replace(/\{type\}/g, escapeHtml(cueName));
+    editor.id = `mover-${CUE_EDITOR_CHANNEL}`;
+    editor.classList.remove("noSee");
+    editor.classList.add("cue-editor-mover");
+    editor.querySelector("h2").textContent = cueName;
+    if (profile.hasStaticGobo) addStaticGoboControls(editor, CUE_EDITOR_CHANNEL);
+
+    const actions = editor.querySelector(".mover-selects");
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.id = "cue-editor-save";
+    saveButton.textContent = "Save";
+    actions.insertBefore(saveButton, editor.querySelector(`#forget-${CUE_EDITOR_CHANNEL}`));
+
+    const slot = getCueEditorSlot();
+    if (!slot) return;
+    slot.replaceChildren(editor);
+    moverFixtureTypes[CUE_EDITOR_CHANNEL] = fixtureType;
+
+    initMoverControls(CUE_EDITOR_CHANNEL, fixtureType, {
+        onSet(values) {
+            activeCueEditor.draft = {...activeCueEditor.draft, ...values};
+            setCueEditorDirty(true);
+        },
+        onForget() {
+            getCueEditorSlot()?.replaceChildren();
+            delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
+            activeCueEditor = null;
+        },
+        forgetLabel: "Close",
+    });
+
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(cueName), fixtureType);
+    saveButton.addEventListener("click", saveCueEditor);
+    setCueEditorDirty(false);
 }
 
 /**
