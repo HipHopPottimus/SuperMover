@@ -1,40 +1,5 @@
 import channelValues from "./channelValueUtil.js";
-
-const FIXTURE_PROFILES = {
-    '375z': {
-        name: 'Intimidator 375z',
-        channelCount: 15,
-        offsets: {
-            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
-            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, Prism: 8,
-            Focus: 9, Dimmer: 10, Shutter: 11, Function: 12, MovementMacros: 13, Zoom: 14,
-        },
-        hasStaticGobo: false,
-    },
-    '475z': {
-        name: 'Intimidator 475z',
-        channelCount: 16,
-        offsets: {
-            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
-            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, StaticGoboWheel: 8,
-            Prism: 9, Focus: 10, Zoom: 11, Dimmer: 12, Shutter: 13, Function: 14, MovementMacros: 15,
-        },
-        hasStaticGobo: true,
-    }
-};
-
-const CUE_APPLY_GROUPS = [
-    { id: 'POS', label: 'POS', title: 'Position', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
-    { id: 'SPD', label: 'SPD', title: 'Mover speed', keys: ['PTSpeed'], defaultOn: true },
-    { id: 'DM', label: 'DM', title: 'Dimmer', keys: ['Dimmer'], defaultOn: true },
-    { id: 'FZ', label: 'FZ', title: 'Focus and zoom', keys: ['Focus', 'Zoom'], defaultOn: true },
-    { id: 'CO', label: 'CO', title: 'Colour', keys: ['ColorWheel'], defaultOn: true },
-    { id: 'GB', label: 'GB', title: 'Gobo', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
-    { id: 'ROT', label: 'ROT', title: 'Gobo rotation', keys: ['GoboRotation'], defaultOn: true },
-    { id: 'PS', label: 'PS', title: 'Prism', keys: ['Prism'], defaultOn: true },
-    { id: 'SH', label: 'SH', title: 'Shutter', keys: ['Shutter'], defaultOn: true },
-    { id: 'FN', label: 'FN', title: 'Function', keys: ['Function', 'MovementMacros'], defaultOn: false },
-];
+import { CUE_APPLY_GROUPS, getFixtureProfile } from "/fixtures.js";
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
@@ -42,13 +7,14 @@ const CUE_VALUE_KEYS = [...new Set(CUE_APPLY_GROUPS.flatMap(group => group.keys)
 const SPECIAL_CUE_STAGE = "SPC:STG";
 const SPECIAL_CUE_RESET = "SPC:RST";
 const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
+const DMX_UNIVERSE_SIZE = 512;
 
 /**
  * Gets a profile object for a mover profile, defaults to the profile for the 375z
  * @param {string} type
  */
 function getProfile(type) {
-    return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
+    return getFixtureProfile(type);
 }
 
 const moverFixtureTypes = {};
@@ -85,6 +51,15 @@ socket.onmessage = (event) => {
             const oldState = currentState;
             currentState = msg.state;
             if (oldState?.movers?.length != msg.state.movers.length) renderCues();
+
+            const activeMoverChannels = new Set(msg.state.movers.map(mover => String(mover.channel)));
+            document.querySelectorAll(".movers > .mover").forEach(moverEl => {
+                const channel = moverEl.id?.startsWith("mover-") ? moverEl.id.slice("mover-".length) : null;
+                if (channel && !activeMoverChannels.has(channel)) {
+                    moverEl.remove();
+                    delete moverFixtureTypes[channel];
+                }
+            });
 
             for (const mover of msg.state.movers) renderMover(mover);
 

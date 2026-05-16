@@ -5,7 +5,7 @@ import WebSocket from "ws";
 import { sendError } from "./main.js";
 
 const DEFAULT_FPS = parsePositiveInt(process.env.DMX_FPS, 30);
-const UNIVERSE_SIZE = 32;
+export const UNIVERSE_SIZE = 512;
 const DEBUG_TRANSPORT = process.env.DMX_DEBUG === "true";
 const ARTNET_PORT = 6454;
 const ARTNET_UNIVERSE = 1;

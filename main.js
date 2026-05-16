@@ -6,11 +6,12 @@ import { Client as OSCClient, Server as OSCServer } from "node-osc";
 import path from 'path';
 import * as fs from "fs";
 
-import getDmx from './dmx.js';
+import getDmx, { UNIVERSE_SIZE } from './dmx.js';
 
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
+import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "./fixtures.js";
 
 import * as util from "./util.js";
 
@@ -21,8 +22,6 @@ const debug = process.env.debug === "true" || process.argv.includes("--debug");
 if (debug) console.log("Debug mode is ON");
 const app = express();
 const port = Number.parseInt(process.env.PORT, 10) || 3000;
-
-app.use(express.static(path.join('.', 'public')));
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
@@ -222,6 +221,23 @@ function getStoragePathParent(storage, propChain) {
     return util.isObject(parent) || Array.isArray(parent) ? parent : undefined;
 }
 
+function parseDmxChannel(value) {
+    const channel = Number.parseInt(value, 10);
+    return Number.isInteger(channel) && channel >= 1 && channel <= UNIVERSE_SIZE ? channel : null;
+}
+
+function validateMoverAddress(startChannel, channelCount) {
+    const channel = parseDmxChannel(startChannel);
+    if (channel === null) return `Channel must be between 1 and ${UNIVERSE_SIZE}.`;
+    if (channel + channelCount - 1 > UNIVERSE_SIZE) {
+        return `Mover uses ${channelCount} channels, so start channel ${channel} exceeds DMX universe ${UNIVERSE_SIZE}.`;
+    }
+    return null;
+}
+
+app.use(express.static(path.join('.', 'public')));
+app.get('/fixtures.js', (_req, res) => res.sendFile(path.resolve('fixtures.js')));
+
 function getDeleteTarget(storage, propChain, property) {
     const parent = getStoragePathParent(storage, propChain);
     if (parent) return parent;
@@ -325,42 +341,56 @@ function moverSet(channel, values, options = {}) {
         throw new Error(`No mover at channel ${channel}`);
     }
 
+    const sanitizedValues = {};
+    for (const [channelName, value] of Object.entries(values || {})) {
+        if (!(channelName in mover.CHANNELS)) {
+            throw new Error(`Invalid channel name for mover at channel ${channel}: ${channelName}`);
+        }
+
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+            throw new Error(`Invalid value for ${channelName}: ${value}`);
+        }
+
+        sanitizedValues[channelName] = numericValue;
+    }
+
     if (!options.fromChase) stopChase(channel);
 
     if (mover.channel === primaryMover.channel) {
-        if (values.Zoom !== undefined)
-            joystick1.zoom = values.Zoom;
-        if (values.Dimmer !== undefined)
-            joystick1.throttle = values.Dimmer;
-        if (values.Pan !== undefined || values.PanFine !== undefined) {
-            const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
-            const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
+        if (sanitizedValues.Zoom !== undefined)
+            joystick1.zoom = sanitizedValues.Zoom;
+        if (sanitizedValues.Dimmer !== undefined)
+            joystick1.throttle = sanitizedValues.Dimmer;
+        if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
+            const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
+            const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
             joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
         }
-        if (values.Tilt !== undefined || values.TiltFine !== undefined) {
-            const tiltCoarse = values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-            const tiltFine = USE_FINE_CONTROL ? (values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
+        if (sanitizedValues.Tilt !== undefined || sanitizedValues.TiltFine !== undefined) {
+            const tiltCoarse = sanitizedValues.Tilt ?? (mover.channelValues.Tilt ?? 0);
+            const tiltFine = USE_FINE_CONTROL ? (sanitizedValues.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
             joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
         }
     }
 
     if (mover.channel === gamepadMover.channel) {
-        if (values.Zoom !== undefined) gamepad1.zoom = values.Zoom;
-        if (values.Dimmer !== undefined) gamepad1.dimmer = values.Dimmer;
-        if (values.Pan !== undefined || values.PanFine !== undefined) {
-            const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
-            const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
+        if (sanitizedValues.Zoom !== undefined) gamepad1.zoom = sanitizedValues.Zoom;
+        if (sanitizedValues.Dimmer !== undefined) gamepad1.dimmer = sanitizedValues.Dimmer;
+        if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
+            const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
+            const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
             gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
         }
-        if (values.Tilt !== undefined || values.TiltFine !== undefined) {
-            const tiltCoarse = values.Tilt ?? (mover.channelValues.Tilt ?? 0);
-            const tiltFine = USE_FINE_CONTROL ? (values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
+        if (sanitizedValues.Tilt !== undefined || sanitizedValues.TiltFine !== undefined) {
+            const tiltCoarse = sanitizedValues.Tilt ?? (mover.channelValues.Tilt ?? 0);
+            const tiltFine = USE_FINE_CONTROL ? (sanitizedValues.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
             gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
         }
     }
 
     const translatedValues = Object.fromEntries(
-        Object.entries(values).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
+        Object.entries(sanitizedValues).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
     );
     applyMoverChannels(mover, translatedValues);
     updateState();
@@ -430,6 +460,22 @@ function isChannelBlocked(channel) {
     return blockedChannels.has(channel);
 }
 
+function getMoverChannelRange(startChannel, count) {
+    return Array.from({ length: count }, (_, i) => startChannel + i);
+}
+
+function getMoverCreateError(startChannel, count) {
+    if (!Number.isInteger(startChannel) || startChannel < 1) return 'Mover start channel must be 1 or greater.';
+    if (startChannel + count - 1 > UNIVERSE_SIZE) return `Mover range ${startChannel}-${startChannel + count - 1} exceeds DMX channel ${UNIVERSE_SIZE}.`;
+
+    const blockedChannel = getMoverChannelRange(startChannel, count).find(isChannelBlocked);
+    if (blockedChannel !== undefined) {
+        return `Channel ${blockedChannel} is already in use by another mover. Please choose a different channel.`;
+    }
+
+    return null;
+}
+
 function blockMoverChannels(startChannel, count) {
     for (let channel = startChannel; channel < startChannel + (count || 15); channel++) {
         blockedChannels.add(channel);
@@ -477,17 +523,24 @@ wss.on('connection', (ws) => {
 
         switch (msg.type) {
             case 'CREATE_MOVER': {
-                if (isChannelBlocked(msg.channel)) {
-                    ws.send(JSON.stringify({
-                        type: 'ERROR',
-                        message: `Channel ${msg.channel} is already in use by another mover. Please choose a different channel.`
-                    }));
+                const fixtureType = msg.fixtureType || '375z';
+                const channelCount = getFixtureProfile(fixtureType).channelCount;
+                const validatedChannel = parseDmxChannel(msg.channel);
+                const validationError = validateMoverAddress(msg.channel, channelCount);
+
+                if (validationError) {
+                    sendClientError(ws, validationError);
                     return;
                 }
 
-                const fixtureType = msg.fixtureType || '375z';
-                const newMover = new mlib.Mover(msg.channel, debug, fixtureType);
-                blockMoverChannels(msg.channel, newMover.channelCount);
+                const occupancyError = getMoverCreateError(validatedChannel, channelCount);
+                if (occupancyError) {
+                    sendClientError(ws, occupancyError);
+                    return;
+                }
+
+                const newMover = new mlib.Mover(validatedChannel, debug, fixtureType);
+                blockMoverChannels(validatedChannel, newMover.channelCount);
                 movers.push(newMover);
                 syncConfiguredDmxChannels();
                 applyMoverChannels(newMover, Object.fromEntries(
@@ -497,25 +550,53 @@ wss.on('connection', (ws) => {
                 break;
             }
             case 'FORGET_MOVER': {
-                if (msg.channel === primaryMover.channel || msg.channel === gamepadMover.channel) {
-                    ws.send(JSON.stringify({ type: 'ERROR', message: 'Cannot forget the primary mover!' }));
+                const channel = parseDmxChannel(msg.channel);
+                if (channel === null) {
+                    sendClientError(ws, `Channel must be between 1 and ${UNIVERSE_SIZE}.`);
                     return;
                 }
-                const forgetMover = movers.find(m => m.channel == msg.channel);
-                const forgetCount = forgetMover ? forgetMover.channelCount : 15;
-                movers = movers.filter(m => m.channel != msg.channel);
-                for (let channel = msg.channel; channel < msg.channel + forgetCount; channel++)
-                    blockedChannels.delete(channel);
+                if (channel === primaryMover.channel || channel === gamepadMover.channel) {
+                    sendClientError(ws, 'Cannot forget the primary mover!');
+                    return;
+                }
+                const forgetMover = movers.find(m => m.channel === channel);
+                if (!forgetMover) {
+                    sendClientError(ws, `No mover at channel ${msg.channel}`);
+                    return;
+                }
+                stopChase(channel);
+                movers = movers.filter(m => m.channel !== channel);
+                for (let dmxChannel = channel; dmxChannel < channel + forgetMover.channelCount; dmxChannel++)
+                    blockedChannels.delete(dmxChannel);
                 syncConfiguredDmxChannels();
+                updateState();
                 break;
             }
             case 'MOVER_SET': {
+                const channel = parseDmxChannel(msg.channel);
+                if (channel === null) {
+                    sendClientError(ws, `Channel must be between 1 and ${UNIVERSE_SIZE}.`);
+                    return;
+                }
                 try {
-                    moverSet(msg.channel, msg.values);
+                    moverSet(channel, msg.values);
                 }
                 catch(e) {
-                    ws.send(JSON.stringify({ type: 'ERROR', e}));
+                    sendClientError(ws, e.message || String(e));
                 }
+                break;
+            }
+            case 'START_CHASE': {
+                const channel = Number.parseInt(msg.channel);
+                if (!movers.some(m => m.channel === channel)) {
+                    sendClientError(ws, `No mover at channel ${msg.channel}`);
+                    return;
+                }
+                if (!cueStorage.chases[msg.chaseName]) {
+                    sendClientError(ws, `Invalid chase ${msg.chaseName}`);
+                    return;
+                }
+                startChaseForMover(channel, msg.chaseName);
                 break;
             }
             case 'GET_STATE': {
@@ -626,21 +707,7 @@ wss.on('connection', (ws) => {
     });
 });
 
-const CUE_APPLY_GROUPS = [
-    { id: 'POS', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
-    { id: 'SPD', keys: ['PTSpeed'], defaultOn: true },
-    { id: 'DM', keys: ['Dimmer'], defaultOn: true },
-    { id: 'FZ', keys: ['Focus', 'Zoom'], defaultOn: true },
-    { id: 'CO', keys: ['ColorWheel'], defaultOn: true },
-    { id: 'GB', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
-    { id: 'ROT', keys: ['GoboRotation'], defaultOn: true },
-    { id: 'PS', keys: ['Prism'], defaultOn: true },
-    { id: 'SH', keys: ['Shutter'], defaultOn: true },
-    { id: 'FN', keys: ['Function', 'MovementMacros'], defaultOn: false },
-];
-
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
-const CUE_FADE_GROUP_IDS = new Set(["POS", "SPD", "DM", "FZ"]);
 const TWEENABLE_ATTRIBUTES = CUE_APPLY_GROUPS
     .filter(group => CUE_FADE_GROUP_IDS.has(group.id))
     .flatMap(group => group.keys);
@@ -795,21 +862,29 @@ function getCuePlaybackDuration(cueNumber, ch, cueRef, cueStackEntry) {
 }
 
 function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
-    const nonTweenableData = {...cueToSet};
+    const mover = movers.find(m => m.channel == ch);
+    if (!mover) return;
+    const cueValuesForMover = Object.fromEntries(
+        Object.entries(cueToSet || {}).filter(([attribute]) => attribute in mover.CHANNELS)
+    );
+
+    const nonTweenableData = {...cueValuesForMover};
     TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
     moverSet(ch, nonTweenableData, options);
 
     const tweenIds = [];
     for(const attribute of TWEENABLE_ATTRIBUTES) {
-        const initialValue = movers.filter(m => m.channel == ch)[0].channelValues[attribute];
-        const targetValue = cueToSet[attribute];
+        const initialValue = mover.channelValues[attribute];
+        const targetValue = cueValuesForMover[attribute];
         if (targetValue === undefined) continue;
 
         const fadeTime = getCueFadeTime(cueStackEntry, attribute) * 1000;
         const delayTime = getCueDelayTime(cueStackEntry, attribute) * 1000;
         if (fadeTime <= 0 || initialValue === undefined) {
             if (delayTime > 0) {
-                const timeoutId = setTimeout(() => moverSet(ch, {[attribute]: targetValue}, options), delayTime);
+                const timeoutId = setTimeout(() => {
+                    if (movers.some(m => m.channel == ch)) moverSet(ch, {[attribute]: targetValue}, options);
+                }, delayTime);
                 tweenIds.push(timeoutId);
             }
             else {
@@ -821,6 +896,10 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
         let value  = initialValue;
         const startTime = performance.now() + delayTime;
         const intervalId = setInterval(() => {
+            if (!movers.some(m => m.channel == ch)) {
+                clearInterval(intervalId);
+                return;
+            }
             const elapsedTime = performance.now() - startTime;
             if (elapsedTime < 0) return;
             value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));

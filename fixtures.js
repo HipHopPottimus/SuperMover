@@ -7,6 +7,12 @@ export const FIXTURE_TYPES = {
             'ColorWheel', 'GoboWheel', 'GoboRotation', 'Prism',
             'Focus', 'Dimmer', 'Shutter', 'Function', 'MovementMacros', 'Zoom'
         ],
+        offsets: {
+            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
+            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, Prism: 8,
+            Focus: 9, Dimmer: 10, Shutter: 11, Function: 12, MovementMacros: 13, Zoom: 14,
+        },
+        hasStaticGobo: false,
     },
     '475z': {
         name: 'ChauvetDJ Intimidator 475z',
@@ -16,9 +22,30 @@ export const FIXTURE_TYPES = {
             'ColorWheel', 'GoboWheel', 'GoboRotation', 'StaticGoboWheel',
             'Prism', 'Focus', 'Zoom', 'Dimmer', 'Shutter', 'Function', 'MovementMacros'
         ],
+        offsets: {
+            Pan: 0, PanFine: 1, Tilt: 2, TiltFine: 3, PTSpeed: 4,
+            ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, StaticGoboWheel: 8,
+            Prism: 9, Focus: 10, Zoom: 11, Dimmer: 12, Shutter: 13, Function: 14, MovementMacros: 15,
+        },
+        hasStaticGobo: true,
     },
 };
 
 export function getFixtureProfile(type) {
     return FIXTURE_TYPES[type] || FIXTURE_TYPES['375z'];
 }
+
+export const CUE_APPLY_GROUPS = [
+    { id: 'POS', label: 'POS', title: 'Position', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
+    { id: 'SPD', label: 'SPD', title: 'Mover speed', keys: ['PTSpeed'], defaultOn: true },
+    { id: 'DM', label: 'DM', title: 'Dimmer', keys: ['Dimmer'], defaultOn: true },
+    { id: 'FZ', label: 'FZ', title: 'Focus and zoom', keys: ['Focus', 'Zoom'], defaultOn: true },
+    { id: 'CO', label: 'CO', title: 'Colour', keys: ['ColorWheel'], defaultOn: true },
+    { id: 'GB', label: 'GB', title: 'Gobo', keys: ['GoboWheel', 'StaticGoboWheel'], defaultOn: true },
+    { id: 'ROT', label: 'ROT', title: 'Gobo rotation', keys: ['GoboRotation'], defaultOn: true },
+    { id: 'PS', label: 'PS', title: 'Prism', keys: ['Prism'], defaultOn: true },
+    { id: 'SH', label: 'SH', title: 'Shutter', keys: ['Shutter'], defaultOn: true },
+    { id: 'FN', label: 'FN', title: 'Function', keys: ['Function', 'MovementMacros'], defaultOn: false },
+];
+
+export const CUE_FADE_GROUP_IDS = new Set(["POS", "SPD", "DM", "FZ"]);
