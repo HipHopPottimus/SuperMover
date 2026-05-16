@@ -206,7 +206,6 @@ function refreshCueEditorFromStorage() {
  * @returns
  */
 function setSlider(ch, id, val) {
-    console.log("called with ", ch, id, val);
     const el = document.getElementById(`${ch}-${id}`);
     if (!el) return;
     el.value = val;
@@ -379,6 +378,10 @@ function sendMoverSet(ch, values) {
     socket.send(JSON.stringify({ type: 'MOVER_SET', channel: ch, values }));
 }
 
+function sendStartChase(ch, chaseName) {
+    socket.send(JSON.stringify({ type: 'START_CHASE', channel: ch, chaseName }));
+}
+
 function initMoverControls(ch, fixtureType, options = {}) {
     const profile = getProfile(fixtureType);
     const emitMoverSet = options.onSet || ((values) => sendMoverSet(ch, values));
@@ -547,8 +550,6 @@ function initMoverControls(ch, fixtureType, options = {}) {
             type: 'FORGET_MOVER',
             channel: ch
         }));
-        document.getElementById(`mover-${ch}`).remove();
-        delete moverFixtureTypes[ch];
     });
 }
 
@@ -1217,17 +1218,17 @@ function openFadeMatrix(selectedCueNumber) {
                     </thead>
                     <tbody>
                         ${cueRows.map(([cueNumber, cue]) => `
-                            <tr data-cue-number="${cueNumber}" data-cue-key="${escapeCss(cueNumber)}" class="${selectedCueNumber == cueNumber ? "fade-matrix-selected-row" : ""}">
-                                <th scope="row">${cueNumber}</th>
+                            <tr data-cue-number="${escapeAttr(cueNumber)}" data-cue-key="${escapeCss(cueNumber)}" class="${selectedCueNumber == cueNumber ? "fade-matrix-selected-row" : ""}">
+                                <th scope="row">${escapeHtml(cueNumber)}</th>
                                 <td>
                                     <input
                                         type="number"
                                         min="0"
                                         step="0.1"
-                                        data-cue-number="${cueNumber}"
+                                        data-cue-number="${escapeAttr(cueNumber)}"
                                         data-apply-all="true"
                                         value="${getCueFadeApplyAllValue(cue)}"
-                                        aria-label="Apply all fades for cue ${cueNumber}"
+                                        aria-label="Apply all fades for cue ${escapeAttr(cueNumber)}"
                                     >
                                 </td>
                                 ${CUE_FADE_GROUPS.map(group => `
@@ -1237,10 +1238,10 @@ function openFadeMatrix(selectedCueNumber) {
                                                 type="number"
                                                 min="0"
                                                 step="0.1"
-                                                data-cue-number="${cueNumber}"
+                                                data-cue-number="${escapeAttr(cueNumber)}"
                                                 data-group="${group.id}"
                                                 value="${getCueFadeTime(cue, group.id)}"
-                                                aria-label="${group.title} fade for cue ${cueNumber}"
+                                                aria-label="${group.title} fade for cue ${escapeAttr(cueNumber)}"
                                             >
                                         ` : ""}
                                     </td>
@@ -1600,13 +1601,13 @@ async function renderCues() {
         const isSpecialCue = isSpecialCueName(cueName);
         cueTableCues.innerHTML += `
             <span class="cue-table-cue-drop" data-cue-index="${cueIndex}"></span>
-            <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${cueName}">${cueName}</p>
+            <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${escapeCss(cueName)}">${escapeHtml(cueName)}</p>
             ${CUE_APPLY_GROUPS.map(group => `
                 <span>
                     <input
                         type="checkbox"
                         class="cue-table-cue-apply-${escapeCss(cueName)}"
-                        data-cue-name="${cueName}"
+                        data-cue-name="${escapeAttr(cueName)}"
                         data-group="${group.id}"
                         title="${group.title}"
                         ${applyState[group.id] ? "checked" : ""}
@@ -1614,7 +1615,7 @@ async function renderCues() {
                     />
                 </span>
             `).join("")}
-            <button type="button" class="cue-edit-button" data-cue-name="${cueName}" ${isSpecialCue && cueName === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
+            <button type="button" class="cue-edit-button" data-cue-name="${escapeAttr(cueName)}" ${isSpecialCue && cueName === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
         `;
     }
     cueTableCues.innerHTML += `<span class="cue-table-cue-drop" data-cue-index="${cueNames.length}"></span>`;
@@ -1655,16 +1656,17 @@ async function renderCues() {
                 renderCues();
             }
             else {
-                if (isSpecialCueName(event.target.innerHTML)) return;
-                if (confirm(`Are you sure you want to overwrite cue ${event.target.innerHTML}?`)) {
-                    await setCue(event.target.innerHTML, event.data);
+                const targetCueName = event.target.textContent;
+                if (isSpecialCueName(targetCueName)) return;
+                if (confirm(`Are you sure you want to overwrite cue ${targetCueName}?`)) {
+                    await setCue(targetCueName, event.data);
                 }
             }
         });
     }
 
     for (const cueListing of cueList.querySelectorAll(".cue-table-cue")) {
-        const cueName = cueListing.innerHTML;
+        const cueName = cueListing.textContent;
 
         if (cueName === "+") continue;
 
@@ -1695,8 +1697,9 @@ async function renderCues() {
             }
 
             if (event.target.classList.contains("cue-table-cue") && !event.target.classList.contains("cue-table-add")) {
-                if (isSpecialCueName(event.target.innerHTML)) return;
-                moveSavedCueToIndex(cueName, Object.keys(cueStorage.cues).indexOf(event.target.innerHTML));
+                const targetCueName = event.target.textContent;
+                if (isSpecialCueName(targetCueName)) return;
+                moveSavedCueToIndex(cueName, Object.keys(cueStorage.cues).indexOf(targetCueName));
                 return;
             }
 
@@ -1752,8 +1755,13 @@ async function renderCues() {
 
     for (const chaseRow of cueList.querySelectorAll(".chase-row")) {
         const chaseName = chaseRow.getAttribute("data-chase-name");
-        setupDragDrop(chaseRow, createChaseRef(chaseName), document.querySelectorAll(".cue-stack-add, .cue-stack-cue"), async event => {
+        setupDragDrop(chaseRow, createChaseRef(chaseName), document.querySelectorAll(".cue-table-mover, .cue-stack-add, .cue-stack-cue"), async event => {
             const ch = Number.parseInt(event.target.getAttribute("data-channel"));
+
+            if (event.target.classList.contains("cue-table-mover")) {
+                sendStartChase(ch, chaseName);
+                return;
+            }
 
             if(event.target.classList.contains("cue-stack-add")) {
                 const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
