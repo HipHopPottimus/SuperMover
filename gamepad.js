@@ -48,7 +48,6 @@ export class Gamepad {
                 const { gamepad } = await XInput.getState(this._index);
                 this._handleState(gamepad);
             } catch {
-                // Gamepad disconnected or not connected — silently skip
             }
         }, 1000 / 60);
 

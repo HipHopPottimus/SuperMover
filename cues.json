@@ -211,17 +211,6 @@
         "FZ": 0
       }
     },
-    "0.11": {
-      "movers": {
-        "1": "#1 Middle"
-      },
-      "fadeTime": 0.5,
-      "fadeTimes": {
-        "POS": 0,
-        "FZ": 0,
-        "DM": 0.5
-      }
-    },
     "0.07": {
       "movers": {
         "1": "SPC:STG",
@@ -234,6 +223,21 @@
         "SPD": 0.1,
         "DM": 0,
         "FZ": 0.1
+      }
+    },
+    "0.1": {
+      "movers": {
+        "1": "#1 Middle",
+        "16": {
+          "type": "chase",
+          "name": "test"
+        }
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0,
+        "FZ": 0,
+        "DM": 0.5
       }
     }
   },
