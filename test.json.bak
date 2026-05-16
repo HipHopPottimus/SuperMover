@@ -1,0 +1,231 @@
+{
+  "cues": {
+    "SPC:STG": {
+      "special": "stage",
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "SPC:RST": {
+      "Pan": 127,
+      "PanFine": 127,
+      "Tilt": 127,
+      "TiltFine": 127,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 0,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "Centre": {
+      "1": 127,
+      "2": 127,
+      "3": 127,
+      "4": 127,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 127,
+      "PanFine": 127,
+      "Tilt": 127,
+      "TiltFine": 127,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "Off": {
+      "1": 127,
+      "2": 127,
+      "3": 127,
+      "4": 127,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 127,
+      "PanFine": 127,
+      "Tilt": 127,
+      "TiltFine": 127,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 0,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "Left": {
+      "1": 255,
+      "2": 255,
+      "3": 255,
+      "4": 255,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 255,
+      "PanFine": 255,
+      "Tilt": 255,
+      "TiltFine": 255,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    }
+  },
+  "cueStack": {
+    "1": {
+      "movers": {
+        "1": "Centre"
+      },
+      "fadeTime": 2,
+      "fadeTimes": {
+        "POS": 2,
+        "SPD": 2,
+        "DM": 2,
+        "FZ": 2
+      }
+    },
+    "2": {
+      "movers": {
+        "1": "Off"
+      },
+      "fadeTime": 2,
+      "fadeTimes": {
+        "POS": 2,
+        "SPD": 2,
+        "DM": 2,
+        "FZ": 2
+      }
+    },
+    "3": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "Left"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "4": {
+      "movers": {
+        "1": "Left"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    }
+  }
+}

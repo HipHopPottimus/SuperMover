@@ -42,6 +42,10 @@ const SPECIAL_CUE_STAGE = "SPC:STG";
 const SPECIAL_CUE_RESET = "SPC:RST";
 const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
 
+/**
+ * Gets a profile object for a mover profile, defaults to the profile for the 375z
+ * @param {string} type
+ */
 function getProfile(type) {
     return FIXTURE_PROFILES[type] || FIXTURE_PROFILES['375z'];
 }
@@ -82,7 +86,7 @@ socket.onmessage = (event) => {
         }
         case "GOTO_CUE_NUMBER":
         case "CUE_STATE": {
-            applyCueState(msg.cueNumber);
+            applyCueStackState(msg.cueNumber);
             break;
         }
         case "CUE_STORAGE_STATE": {
@@ -90,7 +94,7 @@ socket.onmessage = (event) => {
 
             cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
             renderCues();
-            applyCueState(currentCueNumber, 0);
+            applyCueStackState(currentCueNumber, 0);
             break;
         }
         default: {
@@ -108,6 +112,10 @@ socket.onclose = () => {
     document.body.innerHTML = "<h1>Connection closed</h1><p>Please refresh the page.</p>";
 }
 
+/**
+ * Updates the style property --range-value for a slider- used for styling slider vertically
+ * @param {Element} slider the slider element
+ */
 function updateRangeFill(slider) {
     if (!slider) return;
     const min = Number(slider.min || 0);
@@ -117,6 +125,9 @@ function updateRangeFill(slider) {
     slider.style.setProperty('--range-value', `${percent}%`);
 }
 
+/**
+ * Sends a socket message to add a mover based on the values in the add mover form
+ */
 function addMover() {
     const moverCh = parseInt(document.getElementById("moverCh").value);
     const fixtureType = document.getElementById("moverType").value;
@@ -131,6 +142,10 @@ function addMover() {
     }));
 }
 
+/**
+ * Renders the html for a mover block
+ * @param {*} mover mover object
+ */
 function renderMover(mover) {
     const ch = mover.channel;
     const fixtureType = mover.fixtureType || '375z';
@@ -187,7 +202,15 @@ function renderMover(mover) {
     fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
 }
 
+/**
+ * Sets the value of a mover property slider
+ * @param {number} ch  mover channel
+ * @param {string} id id of the property (e.g. pan-fine, zoom)
+ * @param {number} val value to set (0-255)
+ * @returns 
+ */
 function setSlider(ch, id, val) {
+    console.log("called with ", ch, id, val);
     const el = document.getElementById(`${ch}-${id}`);
     if (!el) return;
     el.value = val;
@@ -223,6 +246,12 @@ function setSlider(ch, id, val) {
     }
 }
 
+/**
+ * Sets the speed of a mover property
+ * @param {*} ch the channel number
+ * @param {*} suffix value to use in class names
+ * @param {number} spd decimal value of the speed to set (0-1)
+ */
 function setSelectSpeed(ch, suffix, sel, spd) {
     const el = document.getElementById(`${ch}-${suffix}`);
     if (!el) return;
@@ -243,6 +272,12 @@ function setSelectSpeed(ch, suffix, sel, spd) {
     }
 }
 
+/**
+ * Fills a mover UI with channel values
+ * @param {number} ch the mover channel number
+ * @param {*} cv the channel values to set in an object that associates dmx addresses (indexed from 0 relative to the) to values from 0-255
+ * @param {string} fixtureType the type of fixture to fill 
+ */
 function fillMoverFromChannelValues(ch, cv, fixtureType) {
     if (!cv) return;
     const profile = getProfile(fixtureType);
@@ -516,6 +551,13 @@ function initMoverControls(ch, fixtureType) {
 
 let unproxiedStorage = {};
 
+/**
+ * Creates a proxy for an object that is also applied to all nested objects and arrays
+ * @param {*} target the object to target
+ * @param {*} callback called when the object is modified
+ * @param {({target, property, type, propChain}) => {}} propChain used recursively to build the chain of properties accessed
+ * @returns 
+ */
 function deepProxy(target, callback, propChain = []) {
     const handler = {
         get(target, property, receiver) {
@@ -554,7 +596,13 @@ function deepProxy(target, callback, propChain = []) {
 
 let cueStorage;
 
-function applyCueState(cueNumber, transitionMs) {
+/**
+ * Highlights the cue number in the cue stack
+ * @param {*} cueNumber the cue number to highlight
+ * @param {*} [transitionMs] optional- the transition time in milliseconds. Defaults to the max fade time defined in the cue stack entry
+ * @returns 
+ */
+function applyCueStackState(cueNumber, transitionMs) {
     currentCueNumber = cueNumber ? cueNumber.toString() : null;
 
     const cue = currentCueNumber && cueStorage?.cueStack?.[currentCueNumber];
@@ -579,19 +627,22 @@ function applyCueState(cueNumber, transitionMs) {
     });
 }
 
+/**
+ * Handler for the proxy on cue storage
+ */
 function onStorageUpdate(change) {
     if (suppressCueStorageUpdates) return;
 
     if (change.property === "cues") change.type = "replace";
     if (change.propChain?.[0] === "cues") change.type = "replace";
 
-    socket.send(JSON.stringify({
-        type: 'CUE_STORAGE_UPDATE',
-        cueStorage: cueStorage,
-        change
-    }));
+    sendCueStorageUpdate(change);
 }
 
+/**
+ * Sends a cue storage update socket message to the server along with the client side stage of cue storage
+ * @param {string} change a string describing the change
+ */
 function sendCueStorageUpdate(change) {
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
@@ -600,18 +651,30 @@ function sendCueStorageUpdate(change) {
     }));
 }
 
-function getCueFadeTime(cue, groupId) {
-    if (cue?.special === "stage" || Object.values(cue?.movers || {}).includes(SPECIAL_CUE_STAGE)) return 0;
+/**
+ * Gets the fade time of a apply property of a cue stack entry
+ * @param {*} cueStackEntry the cue stack entry to check the fade time of
+ * @param {*} groupId the apply property id to get the fade time for
+ */
+function getCueFadeTime(cueStackEntry, groupId) {
+    if (cueStackEntry?.special === "stage" || Object.values(cueStackEntry?.movers || {}).includes(SPECIAL_CUE_STAGE)) return 0;
 
-    const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
+    const groupFade = Number.parseFloat(cueStackEntry?.fadeTimes?.[groupId]);
     if (!Number.isNaN(groupFade)) return groupFade;
 
-    const defaultFade = Number.parseFloat(cue?.fadeTime);
+    const defaultFade = Number.parseFloat(cueStackEntry?.fadeTime);
     return Number.isNaN(defaultFade) ? 0 : defaultFade;
 }
 
+/**
+ * Sets the fade times for a property group of a cue stack entry
+ * @param {*} cueNumber the cue number to set the fade time for
+ * @param {*} groupId the id of the property group
+ * @param {*} value the fade time to set
+ */
 function setCueFadeTime(cueNumber, groupId, value) {
     const fadeTime = Math.max(0, Number.parseFloat(value));
+    console.log(fadeTime);
     if (Number.isNaN(fadeTime)) return false;
 
     if (!cueStorage.cueStack[cueNumber].fadeTimes) cueStorage.cueStack[cueNumber].fadeTimes = {};
@@ -619,23 +682,37 @@ function setCueFadeTime(cueNumber, groupId, value) {
     return true;
 }
 
-function getCueFadeSummary(cue) {
+/**
+ * Returns a summery of the fade time for a cue stack entry (e.g. 0.5s or 2s-3s)
+ * @param {*} cueStackEntry the entry object to get a summery for
+ */
+function getCueFadeSummary(cueStackEntry) {
     const values = CUE_FADE_GROUPS
-        .filter(group => cueStackAppliesGroup(cue, group.id))
-        .map(group => getCueFadeTime(cue, group.id));
+        .filter(group => cueStackAppliesGroup(cueStackEntry, group.id))
+        .map(group => getCueFadeTime(cueStackEntry, group.id));
     const uniqueValues = [...new Set(values.map(value => value.toString()))];
     if (!uniqueValues.length) return "Fade...";
     if (uniqueValues.length === 1) return `${uniqueValues[0]}s`;
     return `${Math.min(...values)}-${Math.max(...values)}s`;
 }
 
-function getCueMaxFadeTime(cue) {
+/**
+ * Gets the maximum fade time for a cue stack entry
+ * @param {*} cueStackEntry the entry object to get the max fade time for
+ */
+function getCueMaxFadeTime(cueStackEntry) {
     const values = CUE_FADE_GROUPS
-        .filter(group => cueStackAppliesGroup(cue, group.id))
-        .map(group => getCueFadeTime(cue, group.id));
+        .filter(group => cueStackAppliesGroup(cueStackEntry, group.id))
+        .map(group => getCueFadeTime(cueStackEntry, group.id));
     return Math.max(...values, 0);
 }
 
+/**
+ * Checks if a cue stack entry applies a set of properties
+ * @param {*} cueStackEntry the cue stack object
+ * @param {*} groupId the id of the property group to check
+ * @returns 
+ */
 function cueStackAppliesGroup(cueStackEntry, groupId) {
     return Object.values(cueStackEntry?.movers || {}).some(cueName => {
         const cue = cueStorage.cues[cueName];
@@ -643,14 +720,24 @@ function cueStackAppliesGroup(cueStackEntry, groupId) {
     });
 }
 
-function getCueFadeApplyAllValue(cue) {
+/**
+ * Return an empty string if the fade times for apply properties at a cue number are different, or the fade time if they're all the same
+ * Used for setting the value of the apply all input in the fade time matrix
+ * @param {*} cueStackEntry a cue stack entry object to check
+ */
+function getCueFadeApplyAllValue(cueStackEntry) {
     const values = CUE_FADE_GROUPS
-        .filter(group => cueStackAppliesGroup(cue, group.id))
-        .map(group => getCueFadeTime(cue, group.id));
+        .filter(group => cueStackAppliesGroup(cueStackEntry, group.id))
+        .map(group => getCueFadeTime(cueStackEntry, group.id));
     if (!values.length) return "";
     return values.every(value => value === values[0]) ? values[0] : "";
 }
 
+/**
+ * Sets the fade times for all apply properties of a set of cues in the cue stack
+ * @param {*} cueNumber the cue number to set fade times for
+ * @param {number} value the value to set the fade times to
+ */
 function setAllCueFadeTimes(cueNumber, value) {
     const fadeTime = Math.max(0, Number.parseFloat(value));
     if (Number.isNaN(fadeTime)) return false;
@@ -664,6 +751,11 @@ function setAllCueFadeTimes(cueNumber, value) {
     return true;
 }
 
+/**
+ * Applies a check to a cue apply checkbox and updates the state of the element and cueStorage
+ * @param {Element} cb the checkbox element 
+ * @param {Boolean} checked the state of the checkbox; 
+ */
 function setCueApplyCheckbox(cb, checked) {
     const cueName = cb.getAttribute("data-cue-name");
     const groupId = cb.getAttribute("data-group");
@@ -681,6 +773,10 @@ function setCueApplyCheckbox(cb, checked) {
     cb.checked = checked;
 }
 
+/**
+ * Applies click listeners to a list of cue apply checkboxes
+ * @param {Element[]} checkboxes a list of checkbox elements to apply
+ */
 function setupCueApplyDrag(checkboxes) {
     for (const cb of checkboxes) {
         cb.addEventListener("pointerdown", e => {
@@ -730,6 +826,12 @@ window.addEventListener("pointerup", () => {
     });
 });
 
+/**
+ * Copies a mover's state to a cue
+ * @param {*} cueName the name of the cue to copy to
+ * @param {*} ch the mover channel to copy from
+ * @returns 
+ */
 async function setCue(cueName, ch) {
     const mover = currentState.movers.filter(m => m.channel == ch)[0];
     if (!mover) return;
@@ -743,6 +845,11 @@ async function setCue(cueName, ch) {
     await renderCues();
 }
 
+/**
+ * Reorders a cue and moves it to an index
+ * @param {*} cueName the name of the cue
+ * @param {*} targetIndex the index to move the cue to  
+ */
 function moveSavedCueToIndex(cueName, targetIndex) {
     if (isSpecialCueName(cueName) || targetIndex < SPECIAL_CUE_NAMES.length) return;
 
@@ -759,6 +866,9 @@ function moveSavedCueToIndex(cueName, targetIndex) {
     renderCues();
 }
 
+/**
+ * Fills cue-stack-container with the cue stack table
+ */
 async function generateCueStackTable() {
     const cueStackContainer = document.getElementById("cue-stack-container");
     cueStackContainer.innerHTML = `
@@ -856,13 +966,23 @@ async function generateCueStackTable() {
     });
 }
 
+/**
+ * Flashes the cell red to indicate an error and replaces the cell's content with the original number
+ * @param {*} cell the cell element
+ * @param {*} originalCueNumber the cue number that was originally in the cell
+ */
 function rejectCueNumberEdit(cell, originalCueNumber) {
+    console.log("Reject?");
     cell.textContent = originalCueNumber;
     cell.classList.remove("cue-stack-number-error");
     void cell.offsetWidth;
     cell.classList.add("cue-stack-number-error");
 }
 
+/**
+ * Creates a fade time matrix and opens it
+ * @param {*} selectedCueNumber optional- a cue number to highlight when the dialog opens
+ */
 function openFadeMatrix(selectedCueNumber) {
     let dialog = document.getElementById("fade-matrix-dialog");
     if (!dialog) {
@@ -967,6 +1087,9 @@ function openFadeMatrix(selectedCueNumber) {
     }
 }
 
+/**
+ * Renders all cues
+ */
 async function renderCues() {
     if (!currentState) return;
     if (!cueStorage?.cues) return;
@@ -1097,9 +1220,13 @@ async function renderCues() {
         });
     }
 
-    applyCueState(currentCueNumber, 0);
+    applyCueStackState(currentCueNumber, 0);
 }
 
+/**
+ * Gets the values of a cue that are set to be applied
+ * @param {*} cueName the name of the cue
+ */
 function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
     if (!cue) return {};
@@ -1111,10 +1238,18 @@ function getCueValues(cueName) {
     }));
 }
 
+/**
+ * Gets the default apply state for a cue (currently all except mover function)
+ */
 function getDefaultCueApplyState() {
     return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
 }
 
+/**
+ * Returns an object that associates apply ids with true / false depending on their state
+ * Returns the default if one isn't set
+ * @param {*} cue the cue object
+ */
 function getCueApplyState(cue) {
     if (cue?.apply) return {...getDefaultCueApplyState(), ...cue.apply};
 
@@ -1128,6 +1263,10 @@ function getCueApplyState(cue) {
     return applyState;
 }
 
+/**
+ * Returns the title for a apply group id
+ * @param {*} groupId 
+ */
 function groupTitle(groupId) {
     return {
         POS: "Position",
@@ -1151,10 +1290,21 @@ function cssSafeCueNumber(cueNumber) {
     return String(cueNumber).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
+/**
+ * Returns true if the cue name is a special cue
+ * @param {*} cueName the cue name to check
+ */
 function isSpecialCueName(cueName) {
     return SPECIAL_CUE_NAMES.includes(cueName);
 }
 
+/**
+ * Sets up drag and drop for an element
+ * @param {Element} element The element to make draggable
+ * @param {*} data The data to be transferred
+ * @param {Element[]} targets acceptable targets for dropping
+ * @param {Function} onDrop function to be called when element is dropped. The target and data are passed to it in an object
+ */
 function setupDragDrop(element, data, targets, onDrop) {
     element.draggable = true;
     let elementId = element.id.toLowerCase();
@@ -1195,10 +1345,19 @@ function setupDragDrop(element, data, targets, onDrop) {
     }
 }
 
+/**
+ * Sorts the cues in the cue stack by number and returns their numbers as strings in an array
+ */
 function getCueNumberList() {
     return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a,b) => a - b).map(x => x.toString());
 }
 
+/**
+ * Sends a socket message to move the cue number forward / backward by a specified amount
+ * If no cue is currently set it starts and the beginning / end of the cue stack depending on the sign of d
+ * @param {number} d the amount to move the cue forward by (negative for backward)
+ * @returns 
+ */
 function moveCueNumber(d) {
     const cueNumberList = getCueNumberList();
     let cueIndex = cueNumberList.indexOf(currentCueNumber);
@@ -1218,6 +1377,10 @@ function moveCueNumber(d) {
     }));
 }
 
+/**
+ * Sends a socket message to jump to a cue number
+ * @param {string} cueNumber the cue number to go to
+ */
 function goToCueNumber(cueNumber) {
     const normalizedCueNumber = cueNumber?.toString().trim();
     if (!normalizedCueNumber) return;
@@ -1228,12 +1391,19 @@ function goToCueNumber(cueNumber) {
     }));
 }
 
+/**
+ * Sends a socket message to clear the current cue
+ */
 function clearCurrentCue() {
     socket.send(JSON.stringify({
         type: "CLEAR_CUE"
     }));
 }
 
+/**
+ * Sends a socket message to request the state to be sent to the client again
+ * (Instant State Update)
+ */
 function requestISU() {
     socket.send(JSON.stringify({
         type: 'GET_STATE'
