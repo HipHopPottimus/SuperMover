@@ -807,10 +807,14 @@ function applyCueStackState(cueNumber, transitionMs) {
 function onStorageUpdate(change) {
     if (suppressCueStorageUpdates) return;
 
-    if (change.property === "cues") change.type = "replace";
-    if (change.property === "chases") change.type = "replace";
-    if (change.type !== "delete" && change.propChain?.[0] === "cues") change.type = "replace";
-    if (change.type !== "delete" && change.propChain?.[0] === "chases") change.type = "replace";
+    const rootProperty = change.property === "cues" || change.propChain?.[0] === "cues"
+        ? "cues"
+        : (change.property === "chases" || change.propChain?.[0] === "chases" ? "chases" : null);
+    if (rootProperty) {
+        change.type = "replace";
+        change.propChain = [];
+        change.property = rootProperty;
+    }
 
     sendCueStorageUpdate(change);
 }
@@ -1045,7 +1049,7 @@ function getUniqueChaseName(baseName = "New chase") {
 }
 
 function addStepToChase(chaseName, cueName, index) {
-    if (isSpecialCueName(cueName) || !cueStorage.cues?.[cueName]) return;
+    if (!canUseCueAsChaseStep(cueName)) return;
     const chase = cueStorage.chases[chaseName];
     if (!chase) return;
     const step = { cue: cueName, fadeTime: 0.7, waitAfterFade: 0.2 };
@@ -1072,16 +1076,16 @@ function hasChaseStepValues(step) {
 }
 
 function promptAddStepToChase(chaseName) {
-    const cueNames = Object.keys(cueStorage.cues || {}).filter(cueName => !isSpecialCueName(cueName));
+    const cueNames = Object.keys(cueStorage.cues || {}).filter(canUseCueAsChaseStep);
     if (!cueNames.length) {
-        alert("Create a normal saved cue first, then add it to the chase.");
+        alert("Create a saved cue first, then add it to the chase.");
         return;
     }
 
     const cueName = prompt(`Cue name for new chase step:\n${cueNames.join("\n")}`, cueNames[0]);
     if (!cueName) return;
-    if (isSpecialCueName(cueName)) {
-        alert("Special cues cannot be used as chase steps.");
+    if (!canUseCueAsChaseStep(cueName)) {
+        alert("Only normal cues and SPC:STG can be used as chase steps.");
         return;
     }
     if (!cueStorage.cues?.[cueName]) {
@@ -1871,8 +1875,8 @@ async function renderCues() {
             }
 
             if (event.target.classList.contains("chase-expanded") || event.target.classList.contains("chase-step-add")) {
-                if (isSpecialCueName(cueName)) {
-                    alert("Special cues cannot be used as chase steps.");
+                if (!canUseCueAsChaseStep(cueName)) {
+                    alert("Only normal cues and SPC:STG can be used as chase steps.");
                     return;
                 }
                 addStepToChase(event.target.getAttribute("data-chase-name"), cueName);
@@ -1881,8 +1885,8 @@ async function renderCues() {
             }
 
             if (event.target.classList.contains("chase-step-cue")) {
-                if (isSpecialCueName(cueName)) {
-                    alert("Special cues cannot be used as chase steps.");
+                if (!canUseCueAsChaseStep(cueName)) {
+                    alert("Only normal cues and SPC:STG can be used as chase steps.");
                     return;
                 }
                 const chaseName = event.target.getAttribute("data-chase-name");
@@ -2034,6 +2038,10 @@ function clampDmx(value) {
  */
 function isSpecialCueName(cueName) {
     return SPECIAL_CUE_NAMES.includes(cueName);
+}
+
+function canUseCueAsChaseStep(cueName) {
+    return !!cueStorage.cues?.[cueName] && (cueName === SPECIAL_CUE_STAGE || !isSpecialCueName(cueName));
 }
 
 /**

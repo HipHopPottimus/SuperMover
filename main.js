@@ -175,7 +175,7 @@ function normalizeSpecialCues() {
         chase.restartOnEnter = chase.restartOnEnter !== false;
         if (!Array.isArray(chase.steps)) chase.steps = [];
         chase.steps = chase.steps
-            .filter(step => util.isObject(step) && !SPECIAL_CUE_NAMES.includes(step.cue))
+            .filter(step => util.isObject(step) && step.cue !== SPECIAL_CUE_RESET)
             .map(step => ({
                 cue: step.cue,
                 name: typeof step.name === "string" ? step.name : undefined,
@@ -725,13 +725,34 @@ function getCueValues(cueName) {
     }));
 }
 
-function getChaseStepValues(step) {
+function getChaseStepValues(chaseName, stepIndex, stageDepth = 0) {
+    const chase = cueStorage.chases[chaseName];
+    const steps = chase?.steps || [];
+    if (!steps.length || stageDepth >= steps.length) return null;
+
+    const step = steps[stepIndex % steps.length];
     if (step?.values && typeof step.values === "object") {
         return Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_APPLY_KEYS.has(key)));
     }
 
-    if (!step?.cue || SPECIAL_CUE_NAMES.includes(step.cue) || !cueStorage.cues[step.cue]) return null;
+    if (!step?.cue || step.cue === SPECIAL_CUE_RESET || !cueStorage.cues[step.cue]) return null;
+    if (step.cue === SPECIAL_CUE_STAGE) {
+        const nextStepIndex = stepIndex + 1;
+        const nextStepValues = (chase.loop !== false || nextStepIndex < steps.length)
+            ? (getChaseStepValues(chaseName, nextStepIndex, stageDepth + 1) || {})
+            : {};
+        return {
+            ...nextStepValues,
+            Dimmer: 0,
+        };
+    }
+
     return getCueValues(step.cue);
+}
+
+function getCueValuesForCueRef(cueRef) {
+    if (isChaseRef(cueRef)) return getChaseStepValues(cueRef.name, 0) || {};
+    return getCueValues(cueRef);
 }
 
 function getDefaultCueApplyState() {
@@ -792,14 +813,14 @@ function getCueNumberList() {
     return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a, b) => a - b).map(x => x.toString());
 }
 
-function getNextCueNameForMover(cueNumber, ch) {
+function getNextCueRefForMover(cueNumber, ch) {
     const cueNumberList = getCueNumberList();
     const cueIndex = cueNumberList.indexOf(cueNumber.toString());
     if (cueIndex === -1) return undefined;
 
     for (const nextCueNumber of cueNumberList.slice(cueIndex + 1)) {
-        const nextCueName = cueStorage.cueStack[nextCueNumber]?.movers?.[ch];
-        if (nextCueName && nextCueName !== SPECIAL_CUE_STAGE) return nextCueName;
+        const nextCueRef = cueStorage.cueStack[nextCueNumber]?.movers?.[ch];
+        if (nextCueRef && nextCueRef !== SPECIAL_CUE_STAGE) return nextCueRef;
     }
 
     return undefined;
@@ -815,10 +836,10 @@ function getCueDelayTime(cue, attribute) {
 }
 
 function getCueValuesForStackEntry(cueNumber, ch, cueRef) {
-    if (cueRef !== SPECIAL_CUE_STAGE) return getCueValues(cueRef);
+    if (cueRef !== SPECIAL_CUE_STAGE) return getCueValuesForCueRef(cueRef);
 
-    const nextCueRef = getNextCueNameForMover(cueNumber, ch);
-    const nextCueValues = nextCueRef && nextCueRef !== SPECIAL_CUE_STAGE && !isChaseRef(nextCueRef) ? getCueValues(nextCueRef) : {};
+    const nextCueRef = getNextCueRefForMover(cueNumber, ch);
+    const nextCueValues = nextCueRef && nextCueRef !== SPECIAL_CUE_STAGE ? getCueValuesForCueRef(nextCueRef) : {};
     return {
         ...nextCueValues,
         Dimmer: 0,
@@ -942,7 +963,7 @@ function startChaseForMover(ch, chaseName) {
         }
 
         const step = steps[stepIndex % steps.length];
-        const stepValues = getChaseStepValues(step);
+        const stepValues = getChaseStepValues(chaseName, stepIndex);
         if (!stepValues) {
             const timerId = setTimeout(() => runStep(stepIndex + 1), MIN_CHASE_STEP_MS);
             active.timers.push(timerId);
