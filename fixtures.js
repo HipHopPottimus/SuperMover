@@ -1,6 +1,6 @@
 export const FIXTURE_TYPES = {
     '375z': {
-        name: 'ChauvetDJ Intimidator 375z',
+        name: 'Intimidator 375z',
         channelCount: 15,
         channels: [
             'Pan', 'PanFine', 'Tilt', 'TiltFine', 'PTSpeed',
@@ -15,7 +15,7 @@ export const FIXTURE_TYPES = {
         hasStaticGobo: false,
     },
     '475z': {
-        name: 'ChauvetDJ Intimidator 475z',
+        name: 'Intimidator 475z',
         channelCount: 16,
         channels: [
             'Pan', 'PanFine', 'Tilt', 'TiltFine', 'PTSpeed',
