@@ -20,9 +20,13 @@
         </select>
         <input type="submit" value="Add Mover">
     </form>
+    <button onclick="resetAllMovers()">RESET</button>
+    <button onclick="blackoutAllMovers()">BLACKOUT</button>
     <button onclick="requestISU()">Request ISU</button>
     <div class="workspace">
-        <div class="movers"></div>
+        <div class="movers">
+            <div id="cue-editor-slot" class="cue-editor-slot"></div>
+        </div>
         <div class="cue-storage">
             <h2>Saved cues</h2>
             <div class="cue-table">

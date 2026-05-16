@@ -38,6 +38,7 @@ const CUE_APPLY_GROUPS = [
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
+const CUE_VALUE_KEYS = [...new Set(CUE_APPLY_GROUPS.flatMap(group => group.keys))];
 const SPECIAL_CUE_STAGE = "SPC:STG";
 const SPECIAL_CUE_RESET = "SPC:RST";
 const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
@@ -55,16 +56,24 @@ let cueApplyDragState = null;
 let suppressCueApplyClick = new WeakSet();
 let suppressCueStorageUpdates = false;
 
+let connectionEstablished = false;
 let timeout = setTimeout(() => {
-    document.body.innerHTML = "<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p>";
-}, 5000);
+    if (connectionEstablished || socket.readyState === WebSocket.OPEN) return;
+    document.body.innerHTML = `<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p><p>Socket: ${escapeHtml(socket.url)} (${socket.readyState})</p>`;
+}, 15000);
+
+function markSocketConnected() {
+    connectionEstablished = true;
+    clearTimeout(timeout);
+}
 
 socket.onopen = () => {
-    clearTimeout(timeout);
+    markSocketConnected();
     console.log("WebSocket connection established");
 }
 
 socket.onmessage = (event) => {
+    markSocketConnected();
     const msg = JSON.parse(event.data);
     switch (msg.type) {
         case 'STATE': {
@@ -91,6 +100,7 @@ socket.onmessage = (event) => {
             cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
             renderCues();
             applyCueState(currentCueNumber, 0);
+            refreshCueEditorFromStorage();
             break;
         }
         default: {
@@ -317,15 +327,15 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
     const pri = cv[ch + off.Prism];
     if (pri !== undefined) {
         if (pri < 4) setSelectSpeed(ch, 'prism', 'nofunc');
-        else if (pri <= 6) setSelectSpeed(ch, 'prism', 'round');
-        else if (pri <= 65) setSelectSpeed(ch, 'prism', 'rfwd', (pri - 7) / 58);
-        else if (pri <= 123) setSelectSpeed(ch, 'prism', 'rrev', (pri - 66) / 57);
-        else if (pri <= 127) setSelectSpeed(ch, 'prism', 'round');
+        else if (pri <= 6) setSelectSpeed(ch, 'prism', '6faucet');
+        else if (pri <= 65) setSelectSpeed(ch, 'prism', '6fwd', (pri - 7) / 58);
+        else if (pri <= 123) setSelectSpeed(ch, 'prism', '6rev', (pri - 66) / 57);
+        else if (pri <= 127) setSelectSpeed(ch, 'prism', '6faucet');
         else if (pri <= 131) setSelectSpeed(ch, 'prism', 'nofunc');
-        else if (pri <= 134) setSelectSpeed(ch, 'prism', 'linear');
-        else if (pri <= 193) setSelectSpeed(ch, 'prism', 'lfwd', (pri - 135) / 58);
-        else if (pri <= 251) setSelectSpeed(ch, 'prism', 'lrev', (pri - 194) / 57);
-        else setSelectSpeed(ch, 'prism', 'linear');
+        else if (pri <= 134) setSelectSpeed(ch, 'prism', '5faucet');
+        else if (pri <= 193) setSelectSpeed(ch, 'prism', '5fwd', (pri - 135) / 58);
+        else if (pri <= 251) setSelectSpeed(ch, 'prism', '5rev', (pri - 194) / 57);
+        else setSelectSpeed(ch, 'prism', '5faucet');
     }
 
     const shu = cv[ch + off.Shutter];
@@ -348,8 +358,9 @@ function sendMoverSet(ch, values) {
     socket.send(JSON.stringify({ type: 'MOVER_SET', channel: ch, values }));
 }
 
-function initMoverControls(ch, fixtureType) {
+function initMoverControls(ch, fixtureType, options = {}) {
     const profile = getProfile(fixtureType);
+    const emitMoverSet = options.onSet || ((values) => sendMoverSet(ch, values));
 
     const sliderMap = {
         'pan': 'Pan',
@@ -391,7 +402,7 @@ function initMoverControls(ch, fixtureType) {
                 default:
                     label.textContent = slider.value;
             }
-            sendMoverSet(ch, { [dmxKey]: parseInt(slider.value) });
+            emitMoverSet({ [dmxKey]: parseInt(slider.value) });
         });
     }
 
@@ -403,12 +414,12 @@ function initMoverControls(ch, fixtureType) {
     const needsColorSpeed = () => ['indexed', 'cycle', 'rcycle'].includes(colorSelect.value);
     colorSelect.addEventListener('change', () => {
         colorSpeedWrap.classList.toggle('noSee', !needsColorSpeed());
-        sendMoverSet(ch, { ColorWheel: channelValues.computeColorValue(ch) });
+        emitMoverSet({ ColorWheel: channelValues.computeColorValue(ch) });
     });
     colorSpeed.addEventListener('input', () => {
         updateRangeFill(colorSpeed);
         colorSpeedLbl.textContent = colorSpeed.value + '%';
-        sendMoverSet(ch, { ColorWheel: channelValues.computeColorValue(ch) });
+        emitMoverSet({ ColorWheel: channelValues.computeColorValue(ch) });
     });
 
     // Gobo wheel
@@ -419,12 +430,12 @@ function initMoverControls(ch, fixtureType) {
     const needsGoboSpeed = () => !goboSelect.value.startsWith('w:');
     goboSelect.addEventListener('change', () => {
         goboSpeedWrap.classList.toggle('noSee', !needsGoboSpeed());
-        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
+        emitMoverSet({ GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
     goboSpeed.addEventListener('input', () => {
         updateRangeFill(goboSpeed);
         goboSpeedLbl.textContent = goboSpeed.value + '%';
-        sendMoverSet(ch, { GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
+        emitMoverSet({ GoboWheel: channelValues.computeGoboValue(ch, fixtureType) });
     });
 
     // Gobo rotation
@@ -435,12 +446,12 @@ function initMoverControls(ch, fixtureType) {
     const needsGoboRotSpeed = () => !['nofunc', 'stop'].includes(goboRotSelect.value);
     goboRotSelect.addEventListener('change', () => {
         goboRotSpeedWrap.classList.toggle('noSee', !needsGoboRotSpeed());
-        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
+        emitMoverSet({ GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
     goboRotSpeed.addEventListener('input', () => {
         updateRangeFill(goboRotSpeed);
         goboRotSpeedLbl.textContent = goboRotSpeed.value + '%';
-        sendMoverSet(ch, { GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
+        emitMoverSet({ GoboRotation: channelValues.computeGoboRotValue(ch, fixtureType) });
     });
 
     // Static gobo (475z only)
@@ -453,12 +464,12 @@ function initMoverControls(ch, fixtureType) {
             const needsSGSpeed = () => !sgSelect.value.startsWith('w:');
             sgSelect.addEventListener('change', () => {
                 sgSpeedWrap.classList.toggle('noSee', !needsSGSpeed());
-                sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
+                emitMoverSet({ StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
             });
             sgSpeed.addEventListener('input', () => {
                 updateRangeFill(sgSpeed);
                 sgSpeedLbl.textContent = sgSpeed.value + '%';
-                sendMoverSet(ch, { StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
+                emitMoverSet({ StaticGoboWheel: channelValues.computeStaticGoboValue(ch) });
             });
         }
     }
@@ -468,16 +479,16 @@ function initMoverControls(ch, fixtureType) {
     const prismSpeedWrap = document.getElementById(`${ch}-prism-speed-wrap`);
     const prismSpeed = document.getElementById(`${ch}-prism-speed`);
     const prismSpeedLbl = document.getElementById(`${ch}-prism-speed-label`);
-    const staticPrismVals = ['nofunc', 'round', 'linear'];
+    const staticPrismVals = ['nofunc', '6faucet', '5faucet'];
     const needsPrismSpeed = () => !staticPrismVals.includes(prismSelect.value);
     prismSelect.addEventListener('change', () => {
         prismSpeedWrap.classList.toggle('noSee', !needsPrismSpeed());
-        sendMoverSet(ch, { Prism: channelValues.computePrismValue(ch) });
+        emitMoverSet({ Prism: channelValues.computePrismValue(ch) });
     });
     prismSpeed.addEventListener('input', () => {
         updateRangeFill(prismSpeed);
         prismSpeedLbl.textContent = prismSpeed.value + '%';
-        sendMoverSet(ch, { Prism: channelValues.computePrismValue(ch) });
+        emitMoverSet({ Prism: channelValues.computePrismValue(ch) });
     });
 
     // Shutter
@@ -488,22 +499,28 @@ function initMoverControls(ch, fixtureType) {
     const needsShutterSpeed = () => !['closed', 'open'].includes(shutterSelect.value);
     shutterSelect.addEventListener('change', () => {
         shutterSpeedWrap.classList.toggle('noSee', !needsShutterSpeed());
-        sendMoverSet(ch, { Shutter: channelValues.computeShutterValue(ch) });
+        emitMoverSet({ Shutter: channelValues.computeShutterValue(ch) });
     });
     shutterSpeed.addEventListener('input', () => {
         updateRangeFill(shutterSpeed);
         shutterSpeedLbl.textContent = shutterSpeed.value + '%';
-        sendMoverSet(ch, { Shutter: channelValues.computeShutterValue(ch) });
+        emitMoverSet({ Shutter: channelValues.computeShutterValue(ch) });
     });
 
     // Function
     const funcSelect = document.getElementById(`${ch}-func`);
     funcSelect.addEventListener('change', () => {
-        sendMoverSet(ch, { Function: parseInt(funcSelect.value) });
+        emitMoverSet({ Function: parseInt(funcSelect.value) });
     });
 
     // Forget mover
     const forgetButton = document.getElementById(`forget-${ch}`);
+    if (options.onForget) {
+        forgetButton.textContent = options.forgetLabel || "Close";
+        forgetButton.addEventListener("click", options.onForget);
+        return;
+    }
+
     forgetButton.addEventListener("click", () => {
         socket.send(JSON.stringify({
             type: 'FORGET_MOVER',
@@ -544,8 +561,10 @@ function deepProxy(target, callback, propChain = []) {
         },
 
         deleteProperty(target, property) {
-            callback({target, property, type: "delete", propChain});
-            return Reflect.deleteProperty(target, property);
+            const oldValue = target[property];
+            const result = Reflect.deleteProperty(target, property);
+            if (result) callback({target, property, oldValue, type: "delete", propChain});
+            return result;
         }
     };
 
@@ -583,7 +602,7 @@ function onStorageUpdate(change) {
     if (suppressCueStorageUpdates) return;
 
     if (change.property === "cues") change.type = "replace";
-    if (change.propChain?.[0] === "cues") change.type = "replace";
+    if (change.type !== "delete" && change.propChain?.[0] === "cues") change.type = "replace";
 
     socket.send(JSON.stringify({
         type: 'CUE_STORAGE_UPDATE',
@@ -743,6 +762,140 @@ async function setCue(cueName, ch) {
     await renderCues();
 }
 
+const CUE_EDITOR_CHANNEL = 513;
+let activeCueEditor = null;
+
+function cueToEditorChannelValues(cueName) {
+    return cueObjectToEditorChannelValues(cueStorage.cues[cueName] || {});
+}
+
+function getCueEditorSlot() {
+    let slot = document.getElementById("cue-editor-slot");
+    if (!slot) {
+        const movers = document.querySelector(".movers");
+        if (!movers) return null;
+        slot = document.createElement("div");
+        slot.id = "cue-editor-slot";
+        slot.className = "cue-editor-slot";
+        movers.prepend(slot);
+    }
+    return slot;
+}
+
+function cueObjectToEditorChannelValues(cue) {
+    const profile = getProfile(activeCueEditor?.fixtureType);
+    const values = {};
+    for (const key of CUE_VALUE_KEYS) {
+        const offset = profile.offsets[key];
+        if (offset !== undefined) values[CUE_EDITOR_CHANNEL + offset] = clampDmx(cue[key] ?? 0);
+    }
+    return values;
+}
+
+function setCueEditorDirty(dirty) {
+    if (!activeCueEditor) return;
+    activeCueEditor.dirty = dirty;
+    const saveButton = document.getElementById("cue-editor-save");
+    if (saveButton) saveButton.disabled = !dirty || cueStorage.cues[activeCueEditor.cueName]?.special === "stage";
+}
+
+function refreshCueEditorFromStorage(force = false) {
+    if (!activeCueEditor) return;
+    if (!cueStorage.cues?.[activeCueEditor.cueName]) {
+        getCueEditorSlot()?.replaceChildren();
+        delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
+        activeCueEditor = null;
+        return;
+    }
+    if (activeCueEditor.dirty && !force) return;
+
+    activeCueEditor.draft = {...cueStorage.cues[activeCueEditor.cueName]};
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(activeCueEditor.cueName), activeCueEditor.fixtureType);
+    setCueEditorDirty(false);
+}
+
+function saveCueEditor() {
+    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
+    if (cueStorage.cues[activeCueEditor.cueName]?.special === "stage") return;
+
+    cueStorage.cues[activeCueEditor.cueName] = {
+        ...cueStorage.cues[activeCueEditor.cueName],
+        ...activeCueEditor.draft,
+        apply: getCueApplyState(cueStorage.cues[activeCueEditor.cueName]),
+    };
+    setCueEditorDirty(false);
+    renderCues();
+}
+
+function captureCueEditorFromMover(channel) {
+    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
+    const mover = currentState.movers.find(m => m.channel == channel);
+    if (!mover) return;
+
+    activeCueEditor.draft = {
+        ...activeCueEditor.draft,
+        ...Object.fromEntries(CUE_VALUE_KEYS.map(key => [key, clampDmx(mover.channelValues[key] ?? 0)])),
+    };
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueObjectToEditorChannelValues(activeCueEditor.draft), activeCueEditor.fixtureType);
+    setCueEditorDirty(true);
+}
+
+function openCueEditor(cueName) {
+    if (!cueStorage.cues?.[cueName]) return;
+    if (cueStorage.cues[cueName]?.special === "stage") return;
+
+    const firstMover = currentState?.movers?.[0];
+    const fixtureType = firstMover?.fixtureType || "375z";
+    const profile = getProfile(fixtureType);
+    activeCueEditor = {
+        cueName,
+        fixtureType,
+        draft: {...cueStorage.cues[cueName]},
+        dirty: false,
+    };
+
+    const template = document.getElementById("mover-template").innerHTML;
+    let html = template.replace(/\{ch\}/g, CUE_EDITOR_CHANNEL);
+    html = html.replace(/\{type\}/g, escapeHtml(cueName));
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const editor = wrapper.firstElementChild;
+    editor.id = `mover-${CUE_EDITOR_CHANNEL}`;
+    editor.classList.add("cue-editor-mover");
+    editor.querySelector("h2").textContent = cueName;
+
+    const actions = editor.querySelector(".mover-selects");
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.id = "cue-editor-save";
+    saveButton.textContent = "Save";
+    actions.insertBefore(saveButton, editor.querySelector(`#forget-${CUE_EDITOR_CHANNEL}`));
+
+    const slot = getCueEditorSlot();
+    if (!slot) return;
+    slot.replaceChildren(editor);
+    moverFixtureTypes[CUE_EDITOR_CHANNEL] = fixtureType;
+
+    initMoverControls(CUE_EDITOR_CHANNEL, fixtureType, {
+        onSet(values) {
+            activeCueEditor.draft = {...activeCueEditor.draft, ...values};
+            setCueEditorDirty(true);
+        },
+        onForget() {
+            getCueEditorSlot()?.replaceChildren();
+            delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
+            activeCueEditor = null;
+        },
+        forgetLabel: "Close",
+    });
+
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(cueName), fixtureType);
+    saveButton.addEventListener("click", saveCueEditor);
+    setCueEditorDirty(false);
+
+    if (profile.hasStaticGobo) fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(cueName), fixtureType);
+}
+
 function moveSavedCueToIndex(cueName, targetIndex) {
     if (isSpecialCueName(cueName) || targetIndex < SPECIAL_CUE_NAMES.length) return;
 
@@ -776,7 +929,7 @@ async function generateCueStackTable() {
 
     cueStackTable.innerHTML += `<p class="cue-table-header">Cue number</p>
         ${currentState.movers.map(m => `<p class="cue-table-header">Mover #${m.channel}</p>`).join("")}
-        <p class="cue-table-header">Fade time</p>
+        <p class="cue-table-header">Fade</p>
         <p class="cue-table-header">Go</p>
         <p class="cue-table-header">Delete</p>
     `;
@@ -784,8 +937,8 @@ async function generateCueStackTable() {
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCueName(cueNumber)}">${cueNumber}</p>
-            ${currentState.movers.map(m => 
-                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${cue.movers[m.channel] || ""}</p>`
+            ${currentState.movers.map(m =>
+                `<p class="cue-stack-cue cue-stack-table-${escapeCueName(cueNumber)}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${cue.movers?.[m.channel] || ""}</p>`
             ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCueName(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p class="cue-stack-go" id="cue-stack-go-${escapeCueName(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
@@ -837,9 +990,13 @@ async function generateCueStackTable() {
             renderCues();
         });
 
-        document.getElementById(`cue-stack-go-${escapeCueName(cueNumber)}`).addEventListener("click", () => goToCueNumber(cueNumber));
+        document.getElementById(`cue-stack-go-${escapeCueName(cueNumber)}`).addEventListener("click", () => {
+            goToCueNumber(cueNumber);
+        });
 
-        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => openFadeMatrix(cueNumber));
+        document.getElementById(`cue-stack-fade-time-${escapeCueName(cueNumber)}`).addEventListener("click", () => {
+            openFadeMatrix(cueNumber);
+        });
     }
 
     cueStackTable.querySelectorAll(".cue-stack-cue").forEach(cell => {
@@ -955,7 +1112,7 @@ function openFadeMatrix(selectedCueNumber) {
         });
     });
 
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
 
     if (selectedCueNumber !== undefined) {
         const selectedRow = dialog.querySelector(`tr[data-cue-number="${cssSafeCueNumber(selectedCueNumber)}"]`);
@@ -993,6 +1150,7 @@ async function renderCues() {
     cueTableCues.innerHTML = `
         <p class="cue-table-header">Cue name</p>
         ${CUE_APPLY_GROUPS.map(group => `<p class="cue-table-header" title="${groupTitle(group.id)}">${group.label}</p>`).join("")}
+        <p class="cue-table-header">Edit</p>
     `;
 
     const cueNames = Object.keys(cueStorage.cues);
@@ -1015,6 +1173,7 @@ async function renderCues() {
                     />
                 </span>
             `).join("")}
+            <button type="button" class="cue-edit-button" data-cue-name="${cueName}" ${isSpecialCue && cueName === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
         `;
     }
     cueTableCues.innerHTML += `<span class="cue-table-cue-drop" data-cue-index="${cueNames.length}"></span>`;
@@ -1026,7 +1185,12 @@ async function renderCues() {
     await generateCueStackTable();
 
     for (const moverListing of moverList.querySelectorAll(".cue-table-mover-main")) {
-        setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.getElementsByClassName("cue-table-cue"), async event => {
+        setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.querySelectorAll(".cue-table-cue, .cue-editor-mover"), async event => {
+            if (event.target.classList.contains("cue-editor-mover")) {
+                captureCueEditorFromMover(event.data);
+                return;
+            }
+
             if (event.target.className.includes("cue-table-add")) {
                 const cueName = prompt("Enter new cue name:");
                 if (!cueName || isSpecialCueName(cueName)) return;
@@ -1050,7 +1214,12 @@ async function renderCues() {
 
         setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCueName(cueName)}`));
 
-        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop"), async event => {
+        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue, .cue-table-cue-drop, .cue-editor-mover"), async event => {
+            if (event.target.classList.contains("cue-editor-mover")) {
+                openCueEditor(cueName);
+                return;
+            }
+
             //dragging over delete cue
             if (event.target.classList.contains("cue-table-delete")) {
                 if (isSpecialCueName(cueName)) return;
@@ -1097,7 +1266,15 @@ async function renderCues() {
         });
     }
 
+    cueList.querySelectorAll(".cue-edit-button").forEach(button => {
+        button.addEventListener("click", e => {
+            e.stopPropagation();
+            openCueEditor(e.currentTarget.getAttribute("data-cue-name"));
+        });
+    });
+
     applyCueState(currentCueNumber, 0);
+    refreshCueEditorFromStorage();
 }
 
 function getCueValues(cueName) {
@@ -1144,11 +1321,30 @@ function groupTitle(groupId) {
 }
 
 function escapeCueName(cueName) {
-    return cueName.replaceAll(" ","-").replaceAll(".","-");
+    return cueName.toString().replaceAll(" ","-").replaceAll(".","-");
 }
 
 function cssSafeCueNumber(cueNumber) {
     return String(cueNumber).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value);
+}
+
+function clampDmx(value) {
+    const parsed = Number.parseInt(value);
+    if (Number.isNaN(parsed)) return 0;
+    return Math.max(0, Math.min(255, parsed));
 }
 
 function isSpecialCueName(cueName) {
@@ -1157,6 +1353,7 @@ function isSpecialCueName(cueName) {
 
 function setupDragDrop(element, data, targets, onDrop) {
     element.draggable = true;
+    if (!element.id) element.id = `drag-${Math.random().toString(36).slice(2)}`;
     let elementId = element.id.toLowerCase();
     element.addEventListener("dragstart", event => {
         event.dataTransfer.setData(elementId, JSON.stringify(data));
@@ -1234,6 +1431,18 @@ function clearCurrentCue() {
     }));
 }
 
+function resetAllMovers() {
+    socket.send(JSON.stringify({
+        type: "RESET_ALL"
+    }));
+}
+
+function blackoutAllMovers() {
+    socket.send(JSON.stringify({
+        type: "BLACKOUT_ALL"
+    }));
+}
+
 function requestISU() {
     socket.send(JSON.stringify({
         type: 'GET_STATE'
@@ -1245,11 +1454,13 @@ function load() {
 }
 
 if (document.readyState != "loading") load();
-else document.addEventListener("load", load);
+else document.addEventListener("DOMContentLoaded", load);
 
 Object.assign(window, {
     addMover,
     moveCueNumber,
     clearCurrentCue,
+    resetAllMovers,
+    blackoutAllMovers,
     requestISU
 });
