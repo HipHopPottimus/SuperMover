@@ -53,6 +53,23 @@ function computePrismValue(ch) {
     return 0;
 }
 
+function computeStaticGoboValue(ch) {
+    const sel = document.getElementById(`${ch}-static-gobo`).value;
+    const s = spd(`${ch}-static-gobo-speed`);
+    if (sel.startsWith('w:')) return parseInt(sel.slice(2));
+    if (sel === 'g8shake') return 64 + Math.round(7 * s);
+    if (sel === 'g7shake') return 72 + Math.round(6 * s);
+    if (sel === 'g6shake') return 79 + Math.round(6 * s);
+    if (sel === 'g5shake') return 86 + Math.round(6 * s);
+    if (sel === 'g4shake') return 93 + Math.round(6 * s);
+    if (sel === 'g3shake') return 100 + Math.round(6 * s);
+    if (sel === 'g2shake') return 107 + Math.round(6 * s);
+    if (sel === 'g1shake') return 114 + Math.round(6 * s);
+    if (sel === 'rcycle') return 128 + Math.round(63 * s);
+    if (sel === 'cycle') return 192 + Math.round(63 * s);
+    return 0;
+}
+
 function computeShutterValue(ch) {
     const sel = document.getElementById(`${ch}-shutter`).value;
     const s = spd(`${ch}-shutter-speed`);
@@ -69,6 +86,7 @@ export default {
     computeColorValue,
     computeGoboValue,
     computeGoboRotValue,
+    computeStaticGoboValue,
     computePrismValue,
     computeShutterValue
 }
