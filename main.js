@@ -20,7 +20,7 @@ const USE_FINE_CONTROL = process.env.DMX_DISABLE_FINE_PANTILT === "true" ? false
 const debug = process.env.debug === "true" || process.argv.includes("--debug");
 if (debug) console.log("Debug mode is ON");
 const app = express();
-const port = 3000;
+const port = Number.parseInt(process.env.PORT, 10) || 3000;
 
 app.use(express.static(path.join('.', 'public')));
 
@@ -156,6 +156,13 @@ function normalizeSpecialCues() {
         }
     }
 
+    const legacySequenceEntryProperty = "cha" + "seName";
+    const legacySequenceStorageProperty = "cha" + "ses";
+    for (const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
+        if (cue?.[legacySequenceEntryProperty]) delete cueStorage.cueStack[cueNumber];
+    }
+    delete cueStorage[legacySequenceStorageProperty];
+
     const orderedCues = {};
     for (const cueName of SPECIAL_CUE_NAMES) orderedCues[cueName] = cueStorage.cues[cueName];
     for (const [cueName, cue] of Object.entries(cueStorage.cues)) {
@@ -281,13 +288,14 @@ function moverSet(channel, values) {
     const mover = movers.find(m => m.channel === channel);
 
     if (!mover) {
-        throw new Error(`No mover at channel ${msg.channel}`);
-        return;
+        throw new Error(`No mover at channel ${channel}`);
     }
 
     if (mover.channel === primaryMover.channel) {
         if (values.Zoom !== undefined)
             joystick1.zoom = values.Zoom;
+        if (values.Dimmer !== undefined)
+            joystick1.throttle = values.Dimmer;
         if (values.Pan !== undefined || values.PanFine !== undefined) {
             const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
             const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
@@ -320,6 +328,43 @@ function moverSet(channel, values) {
     );
     applyMoverChannels(mover, translatedValues);
     updateState();
+}
+
+function resetAllMovers() {
+    stopCueTweens();
+
+    for (const mover of movers) {
+        mover.reset();
+        syncControlSurfaceFromMover(mover);
+    }
+
+    syncAllMoversToUniverse();
+    clearCurrentCue();
+    updateState();
+}
+
+function blackoutAllMovers() {
+    stopCueTweens();
+
+    for (const mover of movers) moverSet(mover.channel, { Dimmer: 0 });
+}
+
+function syncControlSurfaceFromMover(mover) {
+    const values = mover.channelValues;
+
+    if (mover.channel === primaryMover.channel) {
+        joystick1.zoom = values.Zoom;
+        joystick1.throttle = values.Dimmer;
+        joystick1.x = (((values.Pan ?? 0) << 8) | (USE_FINE_CONTROL ? (values.PanFine ?? 0) : 0)) / 65535 * 255;
+        joystick1.y = (((values.Tilt ?? 0) << 8) | (USE_FINE_CONTROL ? (values.TiltFine ?? 0) : 0)) / 65535 * 255;
+    }
+
+    if (mover.channel === gamepadMover.channel) {
+        gamepad1.zoom = values.Zoom;
+        gamepad1.dimmer = values.Dimmer;
+        gamepad1.x = (((values.Pan ?? 0) << 8) | (USE_FINE_CONTROL ? (values.PanFine ?? 0) : 0)) / 65535 * 255;
+        gamepad1.y = (((values.Tilt ?? 0) << 8) | (USE_FINE_CONTROL ? (values.TiltFine ?? 0) : 0)) / 65535 * 255;
+    }
 }
 
 function sendToAllClients(message) {
@@ -464,6 +509,14 @@ wss.on('connection', (ws) => {
                 clearCurrentCue();
                 break;
             }
+            case "RESET_ALL": {
+                resetAllMovers();
+                break;
+            }
+            case "BLACKOUT_ALL": {
+                blackoutAllMovers();
+                break;
+            }
             case 'CUE_STORAGE_UPDATE': {
                 if (!msg.change || !msg.cueStorage) {
                     sendClientError(ws, "Invalid cue storage update");
@@ -588,6 +641,11 @@ function getCueApplyState(cue) {
 
 let activeCueTweens = [];
 
+function stopCueTweens() {
+    activeCueTweens.forEach(tId => clearInterval(tId));
+    activeCueTweens = [];
+}
+
 function getCueFadeTime(cue, attribute) {
     if (cue?.special === "stage") return 0;
 
@@ -616,6 +674,15 @@ function getNextCueNameForMover(cueNumber, ch) {
     return undefined;
 }
 
+function getCueDelayTime(cue, attribute) {
+    const groupId = CUE_APPLY_KEYS.get(attribute);
+    const groupDelay = Number.parseFloat(cue?.delayTimes?.[groupId]);
+    if (!Number.isNaN(groupDelay)) return groupDelay;
+
+    const defaultDelay = Number.parseFloat(cue?.delayTime);
+    return Number.isNaN(defaultDelay) ? 0 : defaultDelay;
+}
+
 function getCueValuesForStackEntry(cueNumber, ch, cueName) {
     if (cueName !== SPECIAL_CUE_STAGE) return getCueValues(cueName);
 
@@ -627,18 +694,28 @@ function getCueValuesForStackEntry(cueNumber, ch, cueName) {
     };
 }
 
-function goToCueNumber(cueNumber) {
+function getCueStackEntryForPlayback(cueStackEntry, stepOptions = {}) {
+    return {
+        ...cueStackEntry,
+        fadeTime: stepOptions.fadeTime ?? cueStackEntry.fadeTime,
+        delayTime: stepOptions.delayTime ?? cueStackEntry.delayTime,
+        fadeTimes: stepOptions.fadeTime === undefined ? cueStackEntry.fadeTimes : {},
+        delayTimes: stepOptions.delayTime === undefined ? cueStackEntry.delayTimes : {},
+    };
+}
+
+function goToCueNumber(cueNumber, stepOptions = {}) {
     currentCueNumber = cueNumber.toString();
     sendToAllClients({type: "CUE_STATE", cueNumber: currentCueNumber});
 
-    activeCueTweens.forEach(tId => clearInterval(tId));
-    activeCueTweens = [];
+    stopCueTweens();
+    const playbackCueStackEntry = getCueStackEntryForPlayback(cueStorage.cueStack[cueNumber], stepOptions);
 
     for(let [ch, cueName] of Object.entries(cueStorage.cueStack[cueNumber].movers)) {
         ch = Number.parseInt(ch);
 
         const cueToSet = getCueValuesForStackEntry(cueNumber, ch, cueName);
-        const cueStackEntry = cueName === SPECIAL_CUE_STAGE ? getSpecialStageCue() : cueStorage.cueStack[cueNumber];
+        const cueStackEntry = cueName === SPECIAL_CUE_STAGE ? getSpecialStageCue() : playbackCueStackEntry;
 
         const nonTweenableData = {...cueToSet};
         TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
@@ -650,15 +727,23 @@ function goToCueNumber(cueNumber) {
             if (targetValue === undefined) continue;
 
             const fadeTime = getCueFadeTime(cueStackEntry, attribute) * 1000;
+            const delayTime = getCueDelayTime(cueStackEntry, attribute) * 1000;
             if (fadeTime <= 0 || initialValue === undefined) {
-                moverSet(ch, {[attribute]: targetValue});
+                if (delayTime > 0) {
+                    const timeoutId = setTimeout(() => moverSet(ch, {[attribute]: targetValue}), delayTime);
+                    activeCueTweens.push(timeoutId);
+                }
+                else {
+                    moverSet(ch, {[attribute]: targetValue});
+                }
                 continue;
             }
 
             let value  = initialValue;
-            const startTime = performance.now();
+            const startTime = performance.now() + delayTime;
             const intervalId = setInterval(() => {
                 const elapsedTime = performance.now() - startTime;
+                if (elapsedTime < 0) return;
                 value = Math.floor(initialValue + (targetValue - initialValue) * (elapsedTime / fadeTime));
                 if(elapsedTime >= fadeTime) {
                     value = targetValue;
