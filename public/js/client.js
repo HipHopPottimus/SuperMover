@@ -117,8 +117,9 @@ function updateRangeFill(slider) {
 function addMover() {
     const moverCh = parseInt(document.getElementById("moverCh").value);
     const fixtureType = document.getElementById("moverType").value;
-    if (isNaN(moverCh) || moverCh < 1 || moverCh > 512) {
-        alert("Please enter a valid channel number (1-512)");
+    const profile = getProfile(fixtureType);
+    if (isNaN(moverCh) || moverCh < 1 || moverCh + profile.channelCount - 1 > DMX_UNIVERSE_SIZE) {
+        alert(`Please enter a valid start channel. ${profile.name} uses ${profile.channelCount} channels and must fit within 1-${DMX_UNIVERSE_SIZE}.`);
         return;
     }
     socket.send(JSON.stringify({
@@ -139,14 +140,18 @@ function renderMover(mover) {
     const profile = getProfile(fixtureType);
 
     if (!document.getElementById(`mover-${ch}`)) {
-        const template = document.getElementById('mover-template').innerHTML;
-        let html = template.replace(/\{ch\}/g, ch);
-        html = html.replace(/\{type\}/g, profile.name);
-        const div = document.createElement('div');
-        div.innerHTML = html;
+        const template = document.getElementById('mover-template')?.firstElementChild;
+        if (!template) return;
+
+        const moverElement = template.cloneNode(true);
+        moverElement.innerHTML = moverElement.innerHTML
+            .replace(/\{ch\}/g, ch)
+            .replace(/\{type\}/g, profile.name);
+        moverElement.id = `mover-${ch}`;
+        moverElement.classList.remove("noSee");
 
         if (profile.hasStaticGobo) {
-            const selectsDiv = div.querySelector('.mover-selects');
+            const selectsDiv = moverElement.querySelector('.mover-selects');
             const staticGoboBlock = document.createElement('div');
             staticGoboBlock.className = 'mover-input-block';
             staticGoboBlock.innerHTML = `
@@ -182,10 +187,15 @@ function renderMover(mover) {
             selectsDiv.insertBefore(staticGoboBlock, forgetBtn);
         }
 
-        document.querySelector('.movers').appendChild(div.firstElementChild);
+        document.querySelector('.movers').appendChild(moverElement);
         initMoverControls(ch, fixtureType);
     }
     fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
+}
+
+function refreshCueEditorFromStorage() {
+    // Cue editor support is optional in this UI; keep state refreshes from failing
+    // when the editor controls are not present.
 }
 
 /**
@@ -1085,12 +1095,12 @@ async function generateCueStackTable() {
 
     for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
         cueStackTable.innerHTML += `
-            <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${cueNumber}</p>
+            <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${escapeHtml(cueNumber)}</p>
             ${currentState.movers.map(m =>
-                `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${cueNumber}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
+                `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
             ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCss(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
-            <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${cueNumber}">Go</p>
+            <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${escapeAttr(cueNumber)}">Go</p>
             <p id="cue-stack-delete-${escapeCss(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
         `;
     }
