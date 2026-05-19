@@ -195,8 +195,19 @@ function renderMover(mover) {
     fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
 }
 
-function cueToEditorChannelValues(cueName) {
-    return cueObjectToEditorChannelValues(cueStorage.cues[cueName] || {});
+function getCueEditorSource() {
+    if (!activeCueEditor) return null;
+    if (activeCueEditor.type === "cue") return cueStorage.cues?.[activeCueEditor.cueName] || null;
+    if (activeCueEditor.type === "chaseStep") {
+        const step = cueStorage.chases?.[activeCueEditor.chaseName]?.steps?.[activeCueEditor.stepIndex];
+        if (!step) return null;
+        return hasChaseStepValues(step) ? step.values : cueStorage.cues?.[step.cue] || {};
+    }
+    return null;
+}
+
+function cueToEditorChannelValues() {
+    return cueObjectToEditorChannelValues(getCueEditorSource() || {});
 }
 
 function getCueEditorSlot() {
@@ -226,12 +237,12 @@ function setCueEditorDirty(dirty) {
     if (!activeCueEditor) return;
     activeCueEditor.dirty = dirty;
     const saveButton = document.getElementById("cue-editor-save");
-    if (saveButton) saveButton.disabled = !dirty || cueStorage.cues[activeCueEditor.cueName]?.special === "stage";
+    if (saveButton) saveButton.disabled = !dirty || getCueEditorSource()?.special === "stage";
 }
 
 function refreshCueEditorFromStorage(force = false) {
     if (!activeCueEditor) return;
-    if (!cueStorage.cues?.[activeCueEditor.cueName]) {
+    if (!getCueEditorSource()) {
         getCueEditorSlot()?.replaceChildren();
         delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
         activeCueEditor = null;
@@ -239,26 +250,35 @@ function refreshCueEditorFromStorage(force = false) {
     }
     if (activeCueEditor.dirty && !force) return;
 
-    activeCueEditor.draft = {...cueStorage.cues[activeCueEditor.cueName]};
-    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(activeCueEditor.cueName), activeCueEditor.fixtureType);
+    activeCueEditor.draft = {...getCueEditorSource()};
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(), activeCueEditor.fixtureType);
     setCueEditorDirty(false);
 }
 
 function saveCueEditor() {
-    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
-    if (cueStorage.cues[activeCueEditor.cueName]?.special === "stage") return;
+    if (!activeCueEditor || !getCueEditorSource()) return;
+    if (getCueEditorSource()?.special === "stage") return;
 
-    cueStorage.cues[activeCueEditor.cueName] = {
-        ...cueStorage.cues[activeCueEditor.cueName],
-        ...activeCueEditor.draft,
-        apply: getCueApplyState(cueStorage.cues[activeCueEditor.cueName]),
-    };
+    if (activeCueEditor.type === "chaseStep") {
+        const step = cueStorage.chases?.[activeCueEditor.chaseName]?.steps?.[activeCueEditor.stepIndex];
+        if (!step) return;
+        if (!step.name) step.name = step.cue ? `${step.cue} edit` : `Step ${activeCueEditor.stepIndex + 1}`;
+        step.values = Object.fromEntries(CUE_VALUE_KEYS.map(key => [key, clampDmx(activeCueEditor.draft[key] ?? 0)]));
+        delete step.cue;
+    }
+    else {
+        cueStorage.cues[activeCueEditor.cueName] = {
+            ...cueStorage.cues[activeCueEditor.cueName],
+            ...activeCueEditor.draft,
+            apply: getCueApplyState(cueStorage.cues[activeCueEditor.cueName]),
+        };
+    }
     setCueEditorDirty(false);
     renderCues();
 }
 
 function captureCueEditorFromMover(channel) {
-    if (!activeCueEditor || !cueStorage.cues?.[activeCueEditor.cueName]) return;
+    if (!activeCueEditor || !getCueEditorSource()) return;
     const mover = currentState.movers.find(m => m.channel == channel);
     if (!mover) return;
 
@@ -313,13 +333,37 @@ function openCueEditor(cueName) {
     if (!cueStorage.cues?.[cueName]) return;
     if (cueStorage.cues[cueName]?.special === "stage") return;
 
+    openCueEditorForTarget({
+        type: "cue",
+        title: cueName,
+        cueName,
+        source: cueStorage.cues[cueName],
+    });
+}
+
+function openChaseStepEditor(chaseName, stepIndex) {
+    const step = cueStorage.chases?.[chaseName]?.steps?.[stepIndex];
+    if (!step) return;
+    const source = hasChaseStepValues(step) ? step.values : cueStorage.cues?.[step.cue];
+    if (!source || source.special === "stage") return;
+
+    openCueEditorForTarget({
+        type: "chaseStep",
+        title: `${chaseName}: ${getChaseStepLabel(step) || `Step ${stepIndex + 1}`}`,
+        chaseName,
+        stepIndex,
+        source,
+    });
+}
+
+function openCueEditorForTarget(target) {
     const firstMover = currentState?.movers?.[0];
     const fixtureType = firstMover?.fixtureType || "375z";
     const profile = getProfile(fixtureType);
     activeCueEditor = {
-        cueName,
+        ...target,
         fixtureType,
-        draft: {...cueStorage.cues[cueName]},
+        draft: {...target.source},
         dirty: false,
     };
 
@@ -329,11 +373,11 @@ function openCueEditor(cueName) {
     const editor = template.cloneNode(true);
     editor.innerHTML = editor.innerHTML
         .replace(/\{ch\}/g, CUE_EDITOR_CHANNEL)
-        .replace(/\{type\}/g, escapeHtml(cueName));
+        .replace(/\{type\}/g, escapeHtml(target.title));
     editor.id = `mover-${CUE_EDITOR_CHANNEL}`;
     editor.classList.remove("noSee");
     editor.classList.add("cue-editor-mover");
-    editor.querySelector("h2").textContent = cueName;
+    editor.querySelector("h2").textContent = target.title;
     if (profile.hasStaticGobo) addStaticGoboControls(editor, CUE_EDITOR_CHANNEL);
 
     const actions = editor.querySelector(".mover-selects");
@@ -361,7 +405,7 @@ function openCueEditor(cueName) {
         forgetLabel: "Close",
     });
 
-    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(cueName), fixtureType);
+    fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(), fixtureType);
     saveButton.addEventListener("click", saveCueEditor);
     setCueEditorDirty(false);
 }
@@ -1606,6 +1650,7 @@ function renderChases(cueList) {
                     <div class="chase-step-table">
                         <p class="cue-table-header">Step</p>
                         <p class="cue-table-header">Cue</p>
+                        <p class="cue-table-header">Edit</p>
                         <p class="cue-table-header">Fade</p>
                         <p class="cue-table-header">Wait</p>
                         <p class="cue-table-header">Move</p>
@@ -1619,6 +1664,9 @@ function renderChases(cueList) {
                             <p>${index + 1}</p>
                             <p class="chase-step-cue ${isMissing ? "broken-ref" : ""}" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
                                 ${isMissing ? `⚠ Missing cue: ${escapeHtml(step.cue || "")}` : escapeHtml(stepLabel)}
+                            </p>
+                            <p>
+                                <button type="button" class="chase-step-edit" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" ${isMissing || step?.cue === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
                             </p>
                             <p>
                                 <button type="button" class="chase-step-fade-summary" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
@@ -1702,6 +1750,15 @@ function renderChases(cueList) {
     chaseTable.querySelectorAll(".chase-step-fade-summary").forEach(button => {
         button.addEventListener("click", e => {
             openChaseFadeMatrix(
+                e.currentTarget.getAttribute("data-chase-name"),
+                Number.parseInt(e.currentTarget.getAttribute("data-step-index"))
+            );
+        });
+    });
+
+    chaseTable.querySelectorAll(".chase-step-edit").forEach(button => {
+        button.addEventListener("click", e => {
+            openChaseStepEditor(
                 e.currentTarget.getAttribute("data-chase-name"),
                 Number.parseInt(e.currentTarget.getAttribute("data-step-index"))
             );

@@ -570,7 +570,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 .chase-step-table {
     display: grid;
-    grid-template-columns: max-content minmax(130px, max-content) repeat(4, max-content);
+    grid-template-columns: max-content minmax(130px, max-content) repeat(5, max-content);
     column-gap: 4px;
     row-gap: 2px;
     align-items: center;
