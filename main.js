@@ -344,7 +344,8 @@ function moverSet(channel, values, options = {}) {
     const sanitizedValues = {};
     for (const [channelName, value] of Object.entries(values || {})) {
         if (!(channelName in mover.CHANNELS)) {
-            throw new Error(`Invalid channel name for mover at channel ${channel}: ${channelName}`);
+            console.error(`Invalid channel name for mover at channel ${channel}: ${channelName} (v: ${value})`);
+            continue;
         }
 
         const numericValue = Number(value);

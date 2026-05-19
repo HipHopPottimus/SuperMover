@@ -1211,6 +1211,12 @@ function hasChaseStepValues(step) {
     return step?.values && typeof step.values === "object";
 }
 
+function getChaseStepValues(step) {
+    if (hasChaseStepValues(step)) return step.values;
+    if (step?.cue && cueStorage.cues?.[step.cue]) return getCueValues(step.cue);
+    return null;
+}
+
 function promptAddStepToChase(chaseName) {
     const cueNames = Object.keys(cueStorage.cues || {}).filter(canUseCueAsChaseStep);
     if (!cueNames.length) {
@@ -2232,6 +2238,18 @@ async function renderCues() {
                 cueStorage.cueStack[cueNumber].movers[ch] = createChaseRef(chaseName);
                 await renderCues();
             }
+        });
+    }
+
+    for (const stepCell of cueList.querySelectorAll(".chase-step-cue")) {
+        const chaseName = stepCell.getAttribute("data-chase-name");
+        const stepIndex = Number.parseInt(stepCell.getAttribute("data-step-index"));
+        setupDragDrop(stepCell, { chaseName, stepIndex }, document.querySelectorAll(".cue-table-mover"), event => {
+            const step = cueStorage.chases?.[event.data.chaseName]?.steps?.[event.data.stepIndex];
+            const values = getChaseStepValues(step);
+            const ch = Number.parseInt(event.target.getAttribute("data-channel"));
+            if (!values || Number.isNaN(ch)) return;
+            sendMoverSet(ch, values);
         });
     }
 
