@@ -244,6 +244,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 }
 
 .slider-label {
+    cursor: pointer;
     width: 6ch;
     min-width: 6ch;
     text-align: center;

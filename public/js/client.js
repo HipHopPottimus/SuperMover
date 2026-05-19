@@ -250,7 +250,7 @@ function refreshCueEditorFromStorage(force = false) {
     }
     if (activeCueEditor.dirty && !force) return;
 
-    activeCueEditor.draft = {...getCueEditorSource()};
+    activeCueEditor.draft = { ...getCueEditorSource() };
     fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(), activeCueEditor.fixtureType);
     setCueEditorDirty(false);
 }
@@ -363,7 +363,7 @@ function openCueEditorForTarget(target) {
     activeCueEditor = {
         ...target,
         fixtureType,
-        draft: {...target.source},
+        draft: { ...target.source },
         dirty: false,
     };
 
@@ -394,7 +394,7 @@ function openCueEditorForTarget(target) {
 
     initMoverControls(CUE_EDITOR_CHANNEL, fixtureType, {
         onSet(values) {
-            activeCueEditor.draft = {...activeCueEditor.draft, ...values};
+            activeCueEditor.draft = { ...activeCueEditor.draft, ...values };
             setCueEditorDirty(true);
         },
         onForget() {
@@ -611,7 +611,14 @@ function initMoverControls(ch, fixtureType, options = {}) {
     for (const [id, dmxKey] of Object.entries(sliderMap)) {
         const slider = document.getElementById(`${ch}-${id}`);
         const label = document.getElementById(`${ch}-${id}-label`);
-        if (!slider) continue;
+        if (!slider) {
+            console.warn("No slider found!", slider, ch, id)
+            continue;
+        }
+        if (!label) {
+            console.warn("No label found!", slider, ch, id)
+            continue;
+        }
         updateRangeFill(slider);
         slider.addEventListener('input', () => {
             updateRangeFill(slider);
@@ -640,6 +647,90 @@ function initMoverControls(ch, fixtureType, options = {}) {
             }
             emitMoverSet({ [dmxKey]: parseInt(slider.value) });
         });
+        let clickLst = () => {
+            switch (id) {
+                case 'zoom':
+                    let degInpt = prompt("Enter new zoom deg (10 to 28 deg)");
+                    if (degInpt.trim() === "") break;
+                    let deg = Number.parseInt(degInpt);
+                    if (Number.isNaN(deg)) {
+                        alert("Error! Invalid value", deg);
+                        break;
+                    }
+                    deg = Math.max(10, Math.min(28, deg));
+                    label.textContent = deg.toFixed(1) + '\u00B0';
+                    emitMoverSet({ [dmxKey]: Math.round((deg - 28) / (10 - 28) * 255) });
+                    slider.value = Math.round((deg - 28) / (10 - 28) * 255);
+                    break;
+                case 'pt-speed':
+                    let ptInpt = prompt("Enter new pan-tilt speed % (0 to 100%)");
+                    if (ptInpt.trim() === "") break;
+                    let ptPct = Number.parseInt(ptInpt);
+                    if (Number.isNaN(ptPct)) {
+                        alert("Error! Invalid value", ptPct);
+                        break;
+                    }
+                    ptPct = Math.max(0, Math.min(100, ptPct));
+                    label.textContent = ptPct + '%';
+                    emitMoverSet({ [dmxKey]: Math.round(255 - ptPct * 2.55) });
+                    slider.value = Math.round(255 - ptPct * 2.55);
+                    break;
+                case 'dimmer':
+                    let dmInpt = prompt("Enter new dimmer % (0 to 100%)");
+                    if (dmInpt.trim() === "") break;
+                    let dmPct = Number.parseInt(dmInpt);
+                    if (Number.isNaN(dmPct)) {
+                        alert("Error! Invalid value", dmPct);
+                        break;
+                    }
+                    dmPct = Math.max(0, Math.min(100, dmPct));
+                    label.textContent = dmPct + '%';
+                    emitMoverSet({ [dmxKey]: Math.round(dmPct * 2.55) });
+                    slider.value = Math.round(dmPct * 2.55);
+                    break;
+                case 'pan':
+                    let panInpt = prompt("Enter new pan deg (-270 to 270 deg)");
+                    if (panInpt.trim() === "") break;
+                    let panDeg = Number.parseInt(panInpt);
+                    if (Number.isNaN(panDeg)) {
+                        alert("Error! Invalid value", panDeg);
+                        break;
+                    }
+                    panDeg = Math.max(-270, Math.min(270, panDeg));
+                    label.textContent = panDeg.toFixed(0) + '\u00B0';
+                    emitMoverSet({ [dmxKey]: Math.round((panDeg + 270) / 540 * 255) });
+                    slider.value = Math.round((panDeg + 270) / 540 * 255);
+                    break;
+                case 'tilt':
+                    let tiltInpt = prompt("Enter new tilt deg (-135 to 135 deg)");
+                    if (tiltInpt.trim() === "") break;
+                    let tiltDeg = Number.parseInt(tiltInpt);
+                    if (Number.isNaN(tiltDeg)) {
+                        alert("Error! Invalid value", tiltDeg);
+                        break;
+                    }
+                    tiltDeg = Math.max(-135, Math.min(135, tiltDeg));
+                    label.textContent = tiltDeg.toFixed(0) + '\u00B0';
+                    emitMoverSet({ [dmxKey]: Math.round((tiltDeg + 135) / 270 * 255) });
+                    slider.value = Math.round((tiltDeg + 135) / 270 * 255);
+                    break;
+                default:
+                    let valInpt = prompt("Enter new value (0-255)");
+                    if (valInpt.trim() === "") break;
+                    let val = Number.parseInt(valInpt);
+                    if (Number.isNaN(val)) {
+                        alert("Error! Invalid value", val);
+                        break;
+                    }
+                    val = Math.max(0, Math.min(255, val));
+                    label.textContent = val;
+                    emitMoverSet({ [dmxKey]: val });
+                    slider.value = val;
+            }
+            updateRangeFill(slider);
+        };
+        label.addEventListener('click', clickLst);
+        document.querySelector(`label[for="${ch}-${id}"]`).addEventListener('click', clickLst);
     }
 
     // Color wheel
@@ -804,7 +895,7 @@ function deepProxy(target, callback, propChain = []) {
         deleteProperty(target, property) {
             const oldValue = target[property];
             const result = Reflect.deleteProperty(target, property);
-            if (result) callback({target, property, oldValue, type: "delete", propChain});
+            if (result) callback({ target, property, oldValue, type: "delete", propChain });
             return result;
         }
     };
@@ -1295,13 +1386,13 @@ async function generateCueStackTable() {
         <div id="cue-stack-table" class="cue-stack-table"></div>
     `;
 
-    if(!Object.entries(cueStorage.cueStack).length) {
+    if (!Object.entries(cueStorage.cueStack).length) {
         cueStackContainer.innerHTML += `<p class="empty-message">No cues saved in cue stack</p>`;
     }
 
     const cueStackTable = document.getElementById("cue-stack-table");
 
-    cueStackTable.style.gridTemplateColumns  = `repeat(${currentState.movers.length + 4}, max-content)`;
+    cueStackTable.style.gridTemplateColumns = `repeat(${currentState.movers.length + 4}, max-content)`;
 
     cueStackTable.innerHTML += `<p class="cue-table-header">Cue number</p>
         ${currentState.movers.map(m => `<p class="cue-table-header">Mover #${m.channel}</p>`).join("")}
@@ -1310,12 +1401,12 @@ async function generateCueStackTable() {
         <p class="cue-table-header">Delete</p>
     `;
 
-    for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
+    for (const [cueNumber, cue] of Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]))) {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${escapeHtml(cueNumber)}</p>
             ${currentState.movers.map(m =>
-                `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
-            ).join("")}
+            `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
+        ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCss(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${escapeAttr(cueNumber)}">Go</p>
             <p id="cue-stack-delete-${escapeCss(cueNumber)}"><img src="imgs/bin.svg" width="15"/></p>
@@ -1331,7 +1422,7 @@ async function generateCueStackTable() {
     document.getElementById("cue-stack-fade-matrix-open")?.addEventListener("click", openFadeMatrix);
 
     //apply listeners now that table construction is done
-    for(const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
+    for (const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
         const cueNumberCell = document.getElementById(`cue-stack-number-${escapeCss(cueNumber)}`);
         cueNumberCell.addEventListener("keydown", e => {
             if (e.key !== "Enter") return;
@@ -1342,14 +1433,14 @@ async function generateCueStackTable() {
 
         cueNumberCell.addEventListener("blur", async e => {
             const newCueNumber = Number.parseFloat(e.target.textContent);
-            if(isNaN(newCueNumber) || !newCueNumber) {
+            if (isNaN(newCueNumber) || !newCueNumber) {
                 rejectCueNumberEdit(e.target, cueNumber);
                 return;
             }
 
-            if(cueNumber == newCueNumber) return;
+            if (cueNumber == newCueNumber) return;
 
-            if(cueStorage.cueStack[newCueNumber]) {
+            if (cueStorage.cueStack[newCueNumber]) {
                 rejectCueNumberEdit(e.target, cueNumber);
                 return;
             }
@@ -1361,7 +1452,7 @@ async function generateCueStackTable() {
         });
 
         document.getElementById(`cue-stack-delete-${escapeCss(cueNumber)}`).addEventListener("click", async e => {
-            if(!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
+            if (!confirm(`Are you sure you want to delete cue ${cueNumber}?`)) return;
             await delete cueStorage.cueStack[cueNumber];
             renderCues();
         });
@@ -1503,7 +1594,7 @@ function openFadeMatrix(selectedCueNumber) {
     if (selectedCueNumber !== undefined) {
         const selectedRow = dialog.querySelector(`tr[data-cue-key="${escapeCss(selectedCueNumber)}"]`);
         if (selectedRow) {
-            selectedRow.scrollIntoView({block: "center", inline: "nearest"});
+            selectedRow.scrollIntoView({ block: "center", inline: "nearest" });
             selectedRow.classList.remove("fade-matrix-flash-row");
             requestAnimationFrame(() => selectedRow.classList.add("fade-matrix-flash-row"));
         }
@@ -1612,7 +1703,7 @@ function openChaseFadeMatrix(chaseName, selectedStepIndex) {
 
     if (selectedStepIndex !== undefined) {
         const selectedRow = dialog.querySelector(`tr[data-step-index="${Number.parseInt(selectedStepIndex)}"]`);
-        selectedRow?.scrollIntoView({block: "center", inline: "nearest"});
+        selectedRow?.scrollIntoView({ block: "center", inline: "nearest" });
         if (selectedRow) {
             selectedRow.classList.remove("fade-matrix-flash-row");
             requestAnimationFrame(() => selectedRow.classList.add("fade-matrix-flash-row"));
@@ -1656,11 +1747,11 @@ function renderChases(cueList) {
                         <p class="cue-table-header">Move</p>
                         <p class="cue-table-header">Delete</p>
                         ${(chase.steps || []).map((step, index) => {
-                            const stepLabel = getChaseStepLabel(step);
-                            const hasValues = hasChaseStepValues(step);
-                            const savedCueExists = step?.cue && cueStorage.cues?.[step.cue];
-                            const isMissing = step?.cue && !savedCueExists && !hasValues;
-                            return `
+            const stepLabel = getChaseStepLabel(step);
+            const hasValues = hasChaseStepValues(step);
+            const savedCueExists = step?.cue && cueStorage.cues?.[step.cue];
+            const isMissing = step?.cue && !savedCueExists && !hasValues;
+            return `
                             <p>${index + 1}</p>
                             <p class="chase-step-cue ${isMissing ? "broken-ref" : ""}" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
                                 ${isMissing ? `⚠ Missing cue: ${escapeHtml(step.cue || "")}` : escapeHtml(stepLabel)}
@@ -1961,16 +2052,16 @@ async function renderCues() {
             const ch = Number.parseInt(event.target.getAttribute("data-channel"));
 
             //dragging over cue-stack-add, create a new cue
-            if(event.target.classList.contains("cue-stack-add")) {
+            if (event.target.classList.contains("cue-stack-add")) {
                 const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
-                if(isNaN(cueNumber) || !cueNumber) return;
-                cueStorage.cueStack[cueNumber] = {movers: {[ch]: cueName}, fadeTime: 0};
+                if (isNaN(cueNumber) || !cueNumber) return;
+                cueStorage.cueStack[cueNumber] = { movers: { [ch]: cueName }, fadeTime: 0 };
                 renderCues();
                 return;
             }
 
             //dragging over an existing cue, overwrite its data
-            if(event.target.classList.contains("cue-stack-cue")) {
+            if (event.target.classList.contains("cue-stack-cue")) {
                 const cueNumber = event.target.getAttribute("data-cue-number");
                 cueStorage.cueStack[cueNumber].movers[ch] = cueName;
                 await renderCues();
@@ -1991,15 +2082,15 @@ async function renderCues() {
                 return;
             }
 
-            if(event.target.classList.contains("cue-stack-add")) {
+            if (event.target.classList.contains("cue-stack-add")) {
                 const cueNumber = Number.parseFloat(prompt("Enter new cue number:"));
-                if(isNaN(cueNumber) || !cueNumber) return;
-                cueStorage.cueStack[cueNumber] = {movers: {[ch]: createChaseRef(chaseName)}, fadeTime: 0};
+                if (isNaN(cueNumber) || !cueNumber) return;
+                cueStorage.cueStack[cueNumber] = { movers: { [ch]: createChaseRef(chaseName) }, fadeTime: 0 };
                 renderCues();
                 return;
             }
 
-            if(event.target.classList.contains("cue-stack-cue")) {
+            if (event.target.classList.contains("cue-stack-cue")) {
                 const cueNumber = event.target.getAttribute("data-cue-number");
                 cueStorage.cueStack[cueNumber].movers[ch] = createChaseRef(chaseName);
                 await renderCues();
@@ -2046,7 +2137,7 @@ function getDefaultCueApplyState() {
  * @param {*} cue the cue object
  */
 function getCueApplyState(cue) {
-    if (cue?.apply) return {...getDefaultCueApplyState(), ...cue.apply};
+    if (cue?.apply) return { ...getDefaultCueApplyState(), ...cue.apply };
 
     const applyState = getDefaultCueApplyState();
     if (cue?.mode === "pos") {
@@ -2153,7 +2244,7 @@ function setupDragDrop(element, data, targets, onDrop) {
  * Sorts the cues in the cue stack by number and returns their numbers as strings in an array
  */
 function getCueNumberList() {
-    return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a,b) => a - b).map(x => x.toString());
+    return Object.keys(cueStorage.cueStack).map(parseFloat).sort((a, b) => a - b).map(x => x.toString());
 }
 
 /**
@@ -2166,9 +2257,9 @@ function moveCueNumber(d) {
     const cueNumberList = getCueNumberList();
     let cueIndex = cueNumberList.indexOf(currentCueNumber);
 
-    if(cueIndex == -1 && d < 0) cueIndex = cueNumberList.length;
+    if (cueIndex == -1 && d < 0) cueIndex = cueNumberList.length;
 
-    if(cueIndex + d < 0 || cueIndex + d > cueNumberList.length - 1) {
+    if (cueIndex + d < 0 || cueIndex + d > cueNumberList.length - 1) {
         clearCurrentCue();
         return;
     }
