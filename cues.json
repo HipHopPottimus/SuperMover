@@ -243,14 +243,14 @@
       "restartOnEnter": true,
       "steps": [
         {
-          "name": "#1",
+          "name": "Left On",
           "values": {
             "Pan": 215,
             "PanFine": 210,
             "Tilt": 38,
-            "TiltFine": 167,
+            "TiltFine": 100,
             "PTSpeed": 0,
-            "Dimmer": 23,
+            "Dimmer": 51,
             "Focus": 0,
             "Zoom": 61,
             "ColorWheel": 0,
@@ -272,14 +272,14 @@
           "waitAfterFade": 0
         },
         {
-          "name": "2",
+          "name": "Right On",
           "values": {
             "Pan": 127,
             "PanFine": 162,
             "Tilt": 37,
             "TiltFine": 74,
             "PTSpeed": 0,
-            "Dimmer": 23,
+            "Dimmer": 51,
             "Focus": 0,
             "Zoom": 61,
             "ColorWheel": 0,
@@ -301,7 +301,7 @@
           "waitAfterFade": 0.5
         },
         {
-          "name": "3",
+          "name": "Right off",
           "values": {
             "Pan": 127,
             "PanFine": 162,
