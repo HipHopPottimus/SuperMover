@@ -14,8 +14,8 @@ function deepMerge(target, source) {
                     output[key] = deepMerge(target[key], source[key]);
                 }
             } 
-            else if (Array.isArray(source[key]) && Array.isArray(target[key])) {
-                output[key] = [...target[key], ...source[key]];
+            else if (Array.isArray(source[key])) {
+                output[key] = source[key];
             }
             else {
                 Object.assign(output, { [key]: source[key] });

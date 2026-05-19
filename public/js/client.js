@@ -904,6 +904,7 @@ function deepProxy(target, callback, propChain = []) {
 }
 
 let cueStorage;
+let suppressNextAltRenameClick = false;
 
 /**
  * Highlights the cue number in the cue stack
@@ -1376,6 +1377,107 @@ function moveSavedCueToIndex(cueName, targetIndex) {
     renderCues();
 }
 
+function renameSavedCue(oldCueName, requestedCueName) {
+    const newCueName = (requestedCueName || "").trim();
+    if (!oldCueName || oldCueName === newCueName) return false;
+    if (isSpecialCueName(oldCueName) || isSpecialCueName(newCueName)) return false;
+    if (!cueStorage.cues?.[oldCueName]) return false;
+    if (!newCueName) return false;
+    if (cueStorage.cues[newCueName]) {
+        alert(`Cue already exists: ${newCueName}`);
+        return false;
+    }
+
+    cueStorage.cues = Object.fromEntries(Object.entries(cueStorage.cues).map(([cueName, cue]) =>
+        cueName === oldCueName ? [newCueName, cue] : [cueName, cue]
+    ));
+
+    for (const stackCue of Object.values(cueStorage.cueStack || {})) {
+        for (const [channel, cueRef] of Object.entries(stackCue.movers || {})) {
+            if (cueRef === oldCueName) stackCue.movers[channel] = newCueName;
+        }
+    }
+
+    for (const chase of Object.values(cueStorage.chases || {})) {
+        for (const step of chase.steps || []) {
+            if (step?.cue === oldCueName) step.cue = newCueName;
+        }
+    }
+
+    if (activeCueEditor?.cueName === oldCueName) {
+        activeCueEditor.cueName = newCueName;
+        activeCueEditor.title = newCueName;
+        const heading = document.querySelector("#cue-editor-slot .cue-editor-mover h2");
+        if (heading) heading.textContent = newCueName;
+    }
+    return true;
+}
+
+function promptRenameSavedCue(cueName) {
+    if (!cueStorage.cues?.[cueName] || isSpecialCueName(cueName)) return;
+
+    const requested = prompt("Rename cue:", cueName);
+    if (requested === null) return;
+    if (renameSavedCue(cueName, requested)) renderCues();
+}
+
+function handleAltCueRename(event, cueName) {
+    if (!event.altKey || !cueName) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "click" && suppressNextAltRenameClick) {
+        suppressNextAltRenameClick = false;
+        return true;
+    }
+    if (event.type === "pointerdown") suppressNextAltRenameClick = true;
+
+    promptRenameSavedCue(cueName);
+    return true;
+}
+
+function getSavedCueNameFromChaseStep(chaseName, stepIndex) {
+    const cueName = cueStorage.chases?.[chaseName]?.steps?.[stepIndex]?.cue;
+    return cueStorage.cues?.[cueName] ? cueName : null;
+}
+
+function promptRenameChaseStep(chaseName, stepIndex) {
+    const step = cueStorage.chases?.[chaseName]?.steps?.[stepIndex];
+    if (!step) return;
+
+    const linkedCueName = getSavedCueNameFromChaseStep(chaseName, stepIndex);
+    if (linkedCueName) {
+        promptRenameSavedCue(linkedCueName);
+        return;
+    }
+
+    if (!hasChaseStepValues(step)) return;
+
+    const currentName = step.name || `Step ${stepIndex + 1}`;
+    const requested = prompt("Rename chase step:", currentName);
+    if (requested === null) return;
+
+    const newName = requested.trim();
+    if (!newName || newName === step.name || isSpecialCueName(newName)) return;
+    step.name = newName;
+    renderCues();
+}
+
+function handleAltChaseStepRename(event, chaseName, stepIndex) {
+    if (!event.altKey || !chaseName || Number.isNaN(stepIndex)) return false;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "click" && suppressNextAltRenameClick) {
+        suppressNextAltRenameClick = false;
+        return true;
+    }
+    if (event.type === "pointerdown") suppressNextAltRenameClick = true;
+
+    promptRenameChaseStep(chaseName, stepIndex);
+    return true;
+}
+
 /**
  * Fills cue-stack-container with the cue stack table
  */
@@ -1405,7 +1507,7 @@ async function generateCueStackTable() {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${escapeHtml(cueNumber)}</p>
             ${currentState.movers.map(m =>
-            `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
+            `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Alt+click to rename. Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
         ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCss(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${escapeAttr(cueNumber)}">Go</p>
@@ -1467,12 +1569,26 @@ async function generateCueStackTable() {
     }
 
     cueStackTable.querySelectorAll(".cue-stack-cue").forEach(cell => {
-        cell.addEventListener("click", e => {
-            if (!e.ctrlKey) return;
-
+        cell.addEventListener("pointerdown", e => {
             const cueNumber = e.currentTarget.getAttribute("data-cue-number");
             const channel = e.currentTarget.getAttribute("data-channel");
-            if (!cueStorage.cueStack[cueNumber]?.movers?.[channel]) return;
+            const cueRef = cueStorage.cueStack[cueNumber]?.movers?.[channel];
+            if (typeof cueRef === "string") handleAltCueRename(e, cueRef);
+        });
+
+        cell.addEventListener("click", e => {
+            const cueNumber = e.currentTarget.getAttribute("data-cue-number");
+            const channel = e.currentTarget.getAttribute("data-channel");
+            const cueRef = cueStorage.cueStack[cueNumber]?.movers?.[channel];
+
+            if (e.altKey) {
+                if (typeof cueRef === "string") handleAltCueRename(e, cueRef);
+                return;
+            }
+
+            if (!e.ctrlKey) return;
+
+            if (!cueRef) return;
 
             delete cueStorage.cueStack[cueNumber].movers[channel];
             renderCues();
@@ -1856,6 +1972,24 @@ function renderChases(cueList) {
         });
     });
 
+    chaseTable.querySelectorAll(".chase-step-cue").forEach(cell => {
+        cell.addEventListener("pointerdown", e => {
+            handleAltChaseStepRename(
+                e,
+                e.currentTarget.getAttribute("data-chase-name"),
+                Number.parseInt(e.currentTarget.getAttribute("data-step-index"))
+            );
+        });
+
+        cell.addEventListener("click", e => {
+            handleAltChaseStepRename(
+                e,
+                e.currentTarget.getAttribute("data-chase-name"),
+                Number.parseInt(e.currentTarget.getAttribute("data-step-index"))
+            );
+        });
+    });
+
     chaseTable.querySelectorAll(".chase-step-delete").forEach(button => {
         button.addEventListener("click", e => {
             const chaseName = e.currentTarget.getAttribute("data-chase-name");
@@ -1920,7 +2054,7 @@ async function renderCues() {
         const isSpecialCue = isSpecialCueName(cueName);
         cueTableCues.innerHTML += `
             <span class="cue-table-cue-drop" data-cue-index="${cueIndex}"></span>
-            <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${escapeCss(cueName)}">${escapeHtml(cueName)}</p>
+            <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${escapeCss(cueName)}" title="${isSpecialCue ? "" : "Alt+click to rename"}">${escapeHtml(cueName)}</p>
             ${CUE_APPLY_GROUPS.map(group => `
                 <span>
                     <input
@@ -1988,6 +2122,9 @@ async function renderCues() {
         const cueName = cueListing.textContent;
 
         if (cueName === "+") continue;
+
+        cueListing.addEventListener("pointerdown", e => handleAltCueRename(e, cueName));
+        cueListing.addEventListener("click", e => handleAltCueRename(e, cueName));
 
         setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCss(cueName)}`));
 
