@@ -188,9 +188,525 @@
         "SH": true,
         "FN": false
       }
+    },
+    "#16 assembly": {
+      "16": 83,
+      "17": 193,
+      "18": 232,
+      "19": 49,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 49,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 90,
+      "Pan": 83,
+      "PanFine": 193,
+      "Tilt": 232,
+      "TiltFine": 49,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 49,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 90,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Left news": {
+      "16": 95,
+      "17": 53,
+      "18": 228,
+      "19": 96,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 217,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 0,
+      "Pan": 95,
+      "PanFine": 53,
+      "Tilt": 228,
+      "TiltFine": 96,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 217,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Right news": {
+      "1": 73,
+      "2": 34,
+      "3": 236,
+      "4": 21,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 85,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 73,
+      "PanFine": 34,
+      "Tilt": 236,
+      "TiltFine": 21,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 85,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Dwayne": {
+      "1": 157,
+      "2": 0,
+      "3": 18,
+      "4": 67,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 47,
+      "11": 73,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 46,
+      "Pan": 157,
+      "PanFine": 0,
+      "Tilt": 18,
+      "TiltFine": 67,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 47,
+      "Dimmer": 73,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 46,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 spot on stella and squish": {
+      "16": 167,
+      "17": 55,
+      "18": 17,
+      "19": 183,
+      "20": 0,
+      "21": 32,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 187,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 167,
+      "PanFine": 55,
+      "Tilt": 17,
+      "TiltFine": 183,
+      "PTSpeed": 0,
+      "ColorWheel": 32,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 187,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Stella bed": {
+      "16": 180,
+      "17": 249,
+      "18": 25,
+      "19": 28,
+      "20": 0,
+      "21": 24,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 13,
+      "26": 184,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 85,
+      "Pan": 180,
+      "PanFine": 249,
+      "Tilt": 25,
+      "TiltFine": 28,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 13,
+      "Dimmer": 184,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 85,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Tony spot": {
+      "16": 168,
+      "17": 125,
+      "18": 24,
+      "19": 68,
+      "20": 0,
+      "21": 8,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 168,
+      "PanFine": 125,
+      "Tilt": 24,
+      "TiltFine": 68,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Priya": {
+      "1": 160,
+      "2": 71,
+      "3": 10,
+      "4": 164,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 111,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "Pan": 160,
+      "PanFine": 71,
+      "Tilt": 10,
+      "TiltFine": 164,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 111,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage Priya": {
+      "16": 9,
+      "17": 4,
+      "18": 24,
+      "19": 113,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 108,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 0,
+      "Pan": 9,
+      "PanFine": 4,
+      "Tilt": 24,
+      "TiltFine": 113,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 108,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 0,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Fight": {
+      "16": 179,
+      "17": 63,
+      "18": 23,
+      "19": 209,
+      "20": 0,
+      "21": 8,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 222,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 255,
+      "Pan": 179,
+      "PanFine": 63,
+      "Tilt": 23,
+      "TiltFine": 209,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 222,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Fight": {
+      "1": 164,
+      "2": 230,
+      "3": 14,
+      "4": 191,
+      "5": 0,
+      "6": 24,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 180,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 164,
+      "PanFine": 230,
+      "Tilt": 14,
+      "TiltFine": 191,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 180,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     }
   },
   "cueStack": {
+    "10000": {
+      "movers": {
+        "1": "#1 Fight",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "20000": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Fight"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "30000": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
     "0.01": {
       "movers": {
         "1": "SPC:STG",
@@ -198,43 +714,139 @@
       },
       "fadeTime": 0
     },
-    "0.04": {
+    "10.07": {
       "movers": {
-        "1": "#1 Bed",
-        "16": "#16 Priya"
+        "16": "#16 assembly"
       },
-      "fadeTime": 0,
+      "fadeTime": 0
+    },
+    "10.13": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "25.04": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Left news"
+      },
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 0,
+        "POS": 0.5,
         "SPD": 0.5,
         "DM": 0.5,
-        "FZ": 0
+        "FZ": 0.5
       }
     },
-    "0.07": {
+    "25.07": {
+      "movers": {
+        "1": "#1 Right news",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "25.1": {
+      "movers": {
+        "1": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "60.07": {
+      "movers": {
+        "1": "#1 Dwayne",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "60.13": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 spot on stella and squish"
+      },
+      "fadeTime": 0
+    },
+    "60.16": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.01": {
+      "movers": {
+        "16": "#16 Stella bed"
+      },
+      "fadeTime": 0
+    },
+    "70.22": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.25": {
+      "movers": {
+        "16": "#16 Tony spot"
+      },
+      "fadeTime": 0
+    },
+    "70.34": {
       "movers": {
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0,
-      "delayTime": 0.1,
-      "delayTimes": {
-        "POS": 0.1,
-        "SPD": 0.1,
-        "DM": 0,
-        "FZ": 0.1
-      }
+      "fadeTime": 0
     },
-    "0.1": {
+    "70.37": {
       "movers": {
-        "1": "#1 Middle"
+        "1": "#1 Priya",
+        "16": "#16 Stella bed"
       },
-      "fadeTime": 0.5,
-      "fadeTimes": {
-        "POS": 0,
-        "FZ": 0,
-        "DM": 0.5
-      }
+      "fadeTime": 0
+    },
+    "70.4": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.43": {
+      "movers": {
+        "16": "#16 Tony spot"
+      },
+      "fadeTime": 0
+    },
+    "70.46": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "90.07": {
+      "movers": {
+        "16": "#16 Stella bed"
+      },
+      "fadeTime": 0
+    },
+    "90.1": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
     }
   },
   "chases": {
