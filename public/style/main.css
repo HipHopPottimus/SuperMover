@@ -387,6 +387,11 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     outline: 1px solid #33404d;
 }
 
+.cue-table #cue-list {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
 .cue-table p:not(.cue-table-header) {
     padding: 1px 3px;
     margin: 2px 5px;
@@ -400,6 +405,10 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 .cue-section-header {
     text-decoration: underline;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #11151A;
 }
 
 .empty-message {

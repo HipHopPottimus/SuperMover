@@ -3,4 +3,7 @@ bun.lock
 package-lock.json
 .venv
 qlcproj.qxw
-cues.json.bak
+.json.bak
+
+# for testing locally without breaking cues
+testCues.json
