@@ -7,3 +7,5 @@ qlcproj.qxw
 
 # for testing locally without breaking cues
 testCues.json
+cues.json.bak
+testCues.json.bak
