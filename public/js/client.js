@@ -19,7 +19,30 @@ function getProfile(type) {
 
 const moverFixtureTypes = {};
 
-export const socket = new WebSocket(`ws://${window.location.host}`);
+const socketUrl = `ws://${window.location.host}`;
+export let socket = null;
+const noisyWsLogging = window.__NOISY_WS_LOGGING__ === true;
+const SOCKET_RECONNECT_DELAYS_MS = [250, 500, 1000, 2000, 5000];
+const INITIAL_SOCKET_TIMEOUT_MS = 30000;
+
+function getSocketReadyStateLabel(readyState) {
+    return {
+        [WebSocket.CONNECTING]: "CONNECTING",
+        [WebSocket.OPEN]: "OPEN",
+        [WebSocket.CLOSING]: "CLOSING",
+        [WebSocket.CLOSED]: "CLOSED",
+    }[readyState] || `UNKNOWN(${readyState})`;
+}
+
+function logSocketEvent(label, extra = {}) {
+    if (!noisyWsLogging) return;
+    console.log(`[socket] ${label}`, {
+        time: new Date().toISOString(),
+        url: socket?.url || socketUrl,
+        readyState: getSocketReadyStateLabel(socket?.readyState),
+        ...extra,
+    });
+}
 
 let currentState, currentCueNumber;
 let cueApplyDragState = null;
@@ -30,75 +53,162 @@ const CUE_EDITOR_CHANNEL = 513;
 let activeCueEditor = null;
 
 let connectionEstablished = false;
-let timeout = setTimeout(() => {
-    if (connectionEstablished || socket.readyState === WebSocket.OPEN) return;
-    document.body.innerHTML = `<h1>Connection timeout</h1><p>The server did not respond in time. Please refresh the page.</p><p>Socket: ${escapeHtml(socket.url)} (${socket.readyState})</p>`;
-}, 15000);
+let reconnectAttempt = 0;
+let reconnectTimer = null;
+let timeout = null;
 
-function markSocketConnected() {
-    connectionEstablished = true;
-    clearTimeout(timeout);
+function ensureSocketStatusBanner(message) {
+    const existingBanner = document.querySelector(".socket-status-banner");
+    if (existingBanner) {
+        existingBanner.textContent = message;
+        return;
+    }
+
+    document.body.insertAdjacentHTML("afterbegin", `<div class="socket-status-banner">${escapeHtml(message)}</div>`);
 }
 
-socket.onopen = () => {
-    markSocketConnected();
-    console.log("WebSocket connection established");
-}
-
-socket.onmessage = (event) => {
-    markSocketConnected();
-    const msg = JSON.parse(event.data);
-    switch (msg.type) {
-        case 'STATE': {
-            const oldState = currentState;
-            currentState = msg.state;
-            if (oldState?.movers?.length != msg.state.movers.length) renderCues();
-
-            const activeMoverChannels = new Set(msg.state.movers.map(mover => String(mover.channel)));
-            document.querySelectorAll(".movers > .mover").forEach(moverEl => {
-                const channel = moverEl.id?.startsWith("mover-") ? moverEl.id.slice("mover-".length) : null;
-                if (channel && !activeMoverChannels.has(channel)) {
-                    moverEl.remove();
-                    delete moverFixtureTypes[channel];
-                }
-            });
-
-            for (const mover of msg.state.movers) renderMover(mover);
-
-            break;
-        }
-        case 'ERROR': {
-            alert(msg.message);
-            break;
-        }
-        case "GOTO_CUE_NUMBER":
-        case "CUE_STATE": {
-            applyCueStackState(msg.cueNumber);
-            break;
-        }
-        case "CUE_STORAGE_STATE": {
-            if (cueApplyDragState) break;
-
-            cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
-            renderCues();
-            applyCueStackState(currentCueNumber, 0);
-            refreshCueEditorFromStorage();
-            break;
-        }
-        default: {
-            console.log("Received unknown message: ", msg);
-        }
+function clearConnectionTimeout() {
+    if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
     }
 }
 
-socket.onerror = (err) => {
-    console.error("WebSocket error: ", err, "please refresh the page.");
-    document.body.innerHTML = "<h1>Connection error: " + err.message + "</h1><p>Please refresh the page.</p>";
+function scheduleConnectionTimeout() {
+    clearConnectionTimeout();
+    timeout = setTimeout(() => {
+        if (connectionEstablished || socket?.readyState === WebSocket.OPEN) return;
+        logSocketEvent("connection timeout", {
+            elapsedMs: INITIAL_SOCKET_TIMEOUT_MS,
+            navigatorOnline: navigator.onLine,
+        });
+        ensureSocketStatusBanner(`Server still starting. Reconnecting... (${getSocketReadyStateLabel(socket?.readyState)})`);
+        if (socket?.readyState === WebSocket.CONNECTING || socket?.readyState === WebSocket.OPEN) {
+            socket.close();
+        } else {
+            scheduleReconnect();
+        }
+    }, INITIAL_SOCKET_TIMEOUT_MS);
 }
 
-socket.onclose = () => {
-    document.body.innerHTML = "<h1>Connection closed</h1><p>Please refresh the page.</p>";
+function markSocketConnected() {
+    connectionEstablished = true;
+    reconnectAttempt = 0;
+    clearConnectionTimeout();
+    document.querySelector(".socket-status-banner")?.remove();
 }
+
+function sendSocketMessage(message) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        logSocketEvent("send skipped", {
+            messageType: message?.type,
+        });
+        return false;
+    }
+
+    socket.send(JSON.stringify(message));
+    return true;
+}
+
+function scheduleReconnect() {
+    if (reconnectTimer) return;
+
+    const delay = SOCKET_RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, SOCKET_RECONNECT_DELAYS_MS.length - 1)];
+    reconnectAttempt += 1;
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectSocket();
+    }, delay);
+    logSocketEvent("reconnect scheduled", {
+        attempt: reconnectAttempt,
+        delay,
+        navigatorOnline: navigator.onLine,
+    });
+}
+
+function connectSocket() {
+    clearConnectionTimeout();
+    socket = new WebSocket(socketUrl);
+    scheduleConnectionTimeout();
+
+    socket.onopen = () => {
+        markSocketConnected();
+        logSocketEvent("open");
+    };
+
+    socket.onmessage = (event) => {
+        markSocketConnected();
+        const msg = JSON.parse(event.data);
+        logSocketEvent("message", {
+            type: msg?.type,
+            size: typeof event.data === "string" ? event.data.length : undefined,
+        });
+        switch (msg.type) {
+            case 'STATE': {
+                const oldState = currentState;
+                currentState = msg.state;
+                if (oldState?.movers?.length != msg.state.movers.length) renderCues();
+
+                const activeMoverChannels = new Set(msg.state.movers.map(mover => String(mover.channel)));
+                document.querySelectorAll(".movers > .mover").forEach(moverEl => {
+                    const channel = moverEl.id?.startsWith("mover-") ? moverEl.id.slice("mover-".length) : null;
+                    if (channel && !activeMoverChannels.has(channel)) {
+                        moverEl.remove();
+                        delete moverFixtureTypes[channel];
+                    }
+                });
+
+                for (const mover of msg.state.movers) renderMover(mover);
+
+                break;
+            }
+            case 'ERROR': {
+                alert(msg.message);
+                break;
+            }
+            case "GOTO_CUE_NUMBER":
+            case "CUE_STATE": {
+                applyCueStackState(msg.cueNumber);
+                break;
+            }
+            case "CUE_STORAGE_STATE": {
+                if (cueApplyDragState) break;
+
+                cueStorage = deepProxy(msg.cueStorage, onStorageUpdate);
+                renderCues();
+                applyCueStackState(currentCueNumber, 0);
+                refreshCueEditorFromStorage();
+                break;
+            }
+            default: {
+                console.log("Received unknown message: ", msg);
+            }
+        }
+    };
+
+    socket.onerror = (err) => {
+        console.error("[socket] error", {
+            time: new Date().toISOString(),
+            url: socket?.url || socketUrl,
+            readyState: getSocketReadyStateLabel(socket?.readyState),
+            error: err,
+        });
+    };
+
+    socket.onclose = (event) => {
+        logSocketEvent("close", {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+        });
+        if (connectionEstablished && !document.querySelector(".socket-status-banner")) {
+            ensureSocketStatusBanner("Connection lost. Reconnecting...");
+        }
+        scheduleReconnect();
+    };
+}
+
+connectSocket();
 
 /**
  * Updates the style property --range-value for a slider- used for styling slider vertically
@@ -124,11 +234,11 @@ function addMover() {
         alert(`Please enter a valid start channel. ${profile.name} uses ${profile.channelCount} channels and must fit within 1-${DMX_UNIVERSE_SIZE}.`);
         return;
     }
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: 'CREATE_MOVER',
         channel: moverCh,
         fixtureType: fixtureType
-    }));
+    });
 }
 
 /**
@@ -587,11 +697,11 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
 }
 
 function sendMoverSet(ch, values) {
-    socket.send(JSON.stringify({ type: 'MOVER_SET', channel: ch, values }));
+    sendSocketMessage({ type: 'MOVER_SET', channel: ch, values });
 }
 
 function sendStartChase(ch, chaseName) {
-    socket.send(JSON.stringify({ type: 'START_CHASE', channel: ch, chaseName }));
+    sendSocketMessage({ type: 'START_CHASE', channel: ch, chaseName });
 }
 
 function initMoverControls(ch, fixtureType, options = {}) {
@@ -849,10 +959,10 @@ function initMoverControls(ch, fixtureType, options = {}) {
     }
 
     forgetButton.addEventListener("click", () => {
-        socket.send(JSON.stringify({
+        sendSocketMessage({
             type: 'FORGET_MOVER',
             channel: ch
-        }));
+        });
     });
 }
 
@@ -960,11 +1070,11 @@ function onStorageUpdate(change) {
  * @param {string} change a string describing the change
  */
 function sendCueStorageUpdate(change) {
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: 'CUE_STORAGE_UPDATE',
         cueStorage: cueStorage,
         change
-    }));
+    });
 }
 
 /**
@@ -2360,10 +2470,12 @@ function setupDragDrop(element, data, targets, onDrop) {
     let elementId = element.id.toLowerCase();
     element.addEventListener("dragstart", event => {
         event.dataTransfer.setData(elementId, JSON.stringify(data));
+        startDragAutoScroll();
         [...targets].forEach(t => t.classList.add("drag-active"));
     });
 
     element.addEventListener("dragend", event => {
+        stopDragAutoScroll();
         [...targets].forEach(t => {
             t.classList.remove("drag-active");
             t.classList.remove("drag-hover");
@@ -2390,9 +2502,85 @@ function setupDragDrop(element, data, targets, onDrop) {
             event.preventDefault();
             event.stopImmediatePropagation();
             const data = JSON.parse(event.dataTransfer.getData(elementId));
+            stopDragAutoScroll();
             onDrop({ target, data });
         });
     }
+}
+
+let dragAutoScrollState = null;
+
+function startDragAutoScroll() {
+    dragAutoScrollState = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+    };
+}
+
+function stopDragAutoScroll() {
+    dragAutoScrollState = null;
+}
+
+document.addEventListener("dragover", event => {
+    if (!dragAutoScrollState) return;
+
+    dragAutoScrollState.x = event.clientX;
+    dragAutoScrollState.y = event.clientY;
+
+    const scrollTargets = getDragAutoScrollTargets(event.target);
+    const edgeThreshold = 100;
+    const maxStep = 22;
+
+    for (const target of scrollTargets) {
+        const rect = target === window
+            ? { top: 0, left: 0, right: window.innerWidth, bottom: window.innerHeight }
+            : target.getBoundingClientRect();
+
+        const deltaX = getDragAutoScrollDelta(dragAutoScrollState.x, rect.left, rect.right, edgeThreshold, maxStep);
+        const deltaY = getDragAutoScrollDelta(dragAutoScrollState.y, rect.top, rect.bottom, edgeThreshold, maxStep);
+
+        if (deltaX || deltaY) {
+            if (target === window) window.scrollBy(deltaX, deltaY);
+            else {
+                target.scrollLeft += deltaX;
+                target.scrollTop += deltaY;
+            }
+        }
+    }
+});
+
+function getDragAutoScrollTargets(origin) {
+    const targets = [];
+    let node = origin instanceof Element ? origin : null;
+
+    while (node) {
+        if (isDragAutoScrollable(node)) targets.push(node);
+        node = node.parentElement;
+    }
+
+    targets.push(window);
+    return targets;
+}
+
+function isDragAutoScrollable(element) {
+    const style = window.getComputedStyle(element);
+    const overflowY = style.overflowY;
+    const overflowX = style.overflowX;
+    const canScrollY = (overflowY === "auto" || overflowY === "scroll") && element.scrollHeight > element.clientHeight;
+    const canScrollX = (overflowX === "auto" || overflowX === "scroll") && element.scrollWidth > element.clientWidth;
+    return canScrollX || canScrollY;
+}
+
+function getDragAutoScrollDelta(pointer, minEdge, maxEdge, threshold, maxStep) {
+    if (pointer < minEdge + threshold) {
+        return -Math.ceil(((minEdge + threshold) - pointer) / threshold * maxStep);
+    }
+
+    if (pointer > maxEdge - threshold) {
+        return Math.ceil((pointer - (maxEdge - threshold)) / threshold * maxStep);
+    }
+
+    return 0;
 }
 
 /**
@@ -2421,10 +2609,10 @@ function moveCueNumber(d) {
 
     cueIndex += d;
 
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: "GOTO_CUE_NUMBER",
         cueNumber: (cueNumberList[cueIndex]).toString()
-    }));
+    });
 }
 
 /**
@@ -2435,31 +2623,31 @@ function goToCueNumber(cueNumber) {
     const normalizedCueNumber = cueNumber?.toString().trim();
     if (!normalizedCueNumber) return;
 
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: "GOTO_CUE_NUMBER",
         cueNumber: normalizedCueNumber
-    }));
+    });
 }
 
 /**
  * Sends a socket message to clear the current cue
  */
 function clearCurrentCue() {
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: "CLEAR_CUE"
-    }));
+    });
 }
 
 function resetAllMovers() {
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: "RESET_ALL"
-    }));
+    });
 }
 
 function blackoutAllMovers() {
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: "BLACKOUT_ALL"
-    }));
+    });
 }
 
 /**
@@ -2467,9 +2655,9 @@ function blackoutAllMovers() {
  * (Instant State Update)
  */
 function requestISU() {
-    socket.send(JSON.stringify({
+    sendSocketMessage({
         type: 'GET_STATE'
-    }));
+    });
 }
 
 function load() {

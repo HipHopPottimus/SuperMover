@@ -19,12 +19,22 @@ const dmx = getDmx();
 const USE_FINE_CONTROL = process.env.DMX_DISABLE_FINE_PANTILT === "true" ? false : true;
 
 const debug = process.env.debug === "true" || process.argv.includes("--debug");
+const noisyWsLogging = process.argv.includes("--noisy-ws-logging");
 if (debug) console.log("Debug mode is ON");
 const app = express();
 const port = Number.parseInt(process.env.PORT, 10) || 3000;
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
+
+function logSocketServerEvent(label, extra = {}) {
+    if (!noisyWsLogging) return;
+    console.log(`[ws] ${label}`, {
+        time: new Date().toISOString(),
+        clients: clients.length,
+        ...extra,
+    });
+}
 
 let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
 const primaryMover = movers[0];
@@ -235,6 +245,16 @@ function validateMoverAddress(startChannel, channelCount) {
     return null;
 }
 
+app.get('/', (_req, res) => {
+    const indexPath = path.resolve('public', 'index.html');
+    const indexHtml = fs.readFileSync(indexPath, 'utf8');
+    const injectedHtml = indexHtml.replace(
+        '</head>',
+        `    <script>window.__NOISY_WS_LOGGING__ = ${JSON.stringify(noisyWsLogging)};</script>\n</head>`
+    );
+    res.type('html').send(injectedHtml);
+});
+
 app.use(express.static(path.join('.', 'public')));
 app.get('/fixtures.js', (_req, res) => res.sendFile(path.resolve('fixtures.js')));
 
@@ -436,6 +456,11 @@ function syncControlSurfaceFromMover(mover) {
 
 function sendToAllClients(message) {
     const stringifiedMessage = JSON.stringify(message);
+    // logSocketServerEvent("broadcast", {
+    //     type: message?.type,
+    //     recipients: clients.filter(client => client.readyState === WebSocket.OPEN).length,
+    //     size: stringifiedMessage.length,
+    // });
     for (const client of clients) {
         if (client.readyState === WebSocket.OPEN) {
             client.send(stringifiedMessage);
@@ -449,6 +474,9 @@ function updateState() {
 }
 
 function sendCueState(ws) {
+    logSocketServerEvent("send cue state", {
+        cueNumber: currentCueNumber,
+    });
     ws.send(JSON.stringify({
         type: 'CUE_STATE',
         cueNumber: currentCueNumber,
@@ -491,10 +519,22 @@ export function sendError(message) {
 }
 
 wss.on('connection', (ws) => {
-    console.log('Client connected!');
+    const req = ws._socket?.parser?.incoming || ws.upgradeReq;
+    const remoteAddress = ws._socket?.remoteAddress;
+    const remotePort = ws._socket?.remotePort;
+    if (noisyWsLogging) {
+        console.log('[ws] client connected', {
+            time: new Date().toISOString(),
+            remoteAddress,
+            remotePort,
+            url: req?.url,
+            userAgent: req?.headers?.['user-agent'],
+        });
+    }
 
     clients.push(ws);
 
+    logSocketServerEvent("initial state push", { remoteAddress, remotePort });
     ws.send(JSON.stringify({
         type: 'STATE',
         state: getState(),
@@ -520,6 +560,12 @@ wss.on('connection', (ws) => {
             return;
         }
 
+        logSocketServerEvent("message received", {
+            remoteAddress,
+            remotePort,
+            type: msg?.type,
+            size: message.length ?? message.toString().length,
+        });
         if (debug) console.log(msg);
 
         switch (msg.type) {
@@ -699,12 +745,32 @@ wss.on('connection', (ws) => {
         }
     });
 
-    ws.on('close', () => {
-        if (debug) console.log('Client disconnected!');
+    ws.on('error', error => {
+        if (!noisyWsLogging) return;
+        console.error('[ws] client socket error', {
+            time: new Date().toISOString(),
+            remoteAddress,
+            remotePort,
+            error,
+        });
+    });
+
+    ws.on('close', (code, reasonBuffer) => {
+        const reason = reasonBuffer?.toString?.() || "";
+        if (noisyWsLogging) {
+            console.log('[ws] client disconnected', {
+                time: new Date().toISOString(),
+                remoteAddress,
+                remotePort,
+                code,
+                reason,
+            });
+        }
         const index = clients.indexOf(ws);
         if (index !== -1) {
             clients.splice(index, 1);
         }
+        logSocketServerEvent("client removed", { remoteAddress, remotePort });
     });
 });
 

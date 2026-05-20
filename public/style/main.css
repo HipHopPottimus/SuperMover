@@ -6,6 +6,16 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
+.socket-status-banner {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 8px 12px;
+    background: #5b2400;
+    color: #ffe3d1;
+    border-bottom: 1px solid #a74b17;
+}
+
 button,
 input,
 select {
@@ -104,12 +114,19 @@ footer img {
     display: flex;
     column-gap: 50px;
     align-items: flex-start;
+    max-width: 100%;
 }
 
 .movers {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
+}
+
+.cue-storage {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .cue-editor-slot {
@@ -381,16 +398,20 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     grid-gap: 1px;
     grid-template-columns: max-content 1fr;
     margin-bottom: 10px;
+    min-width: 0;
 }
 
 .cue-table>div {
     background-color: #11151a;
     outline: 1px solid #33404d;
+    min-width: 0;
 }
 
 .cue-table #cue-list {
     max-height: 50vh;
+    width: max-content;
     overflow-y: auto;
+    overflow-x: visible;
 }
 
 .cue-table p:not(.cue-table-header) {
@@ -453,9 +474,11 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     display: grid;
     margin-left: 7px;
     margin-bottom: 5px;
-    grid-template-columns: repeat(12, max-content);
+    grid-template-columns: minmax(0, 1fr) repeat(11, minmax(34px, max-content));
     align-items: center;
     column-gap: 4px;
+    width: 100%;
+    min-width: 100%;
 }
 
 #cue-table-cues span:has(input[type="checkbox"]) {
@@ -562,6 +585,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 .chase-list {
     margin-top: 10px;
+    min-width: 0;
 }
 
 .chase-row {
@@ -588,6 +612,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     padding: 6px;
     border-left: 2px solid #3b4652;
     background-color: #151b22;
+    overflow: visible;
 }
 
 .chase-step-table {
@@ -596,11 +621,15 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     column-gap: 4px;
     row-gap: 0px;
     align-items: center;
+    width: 100%;
+    min-width: 100%;
 }
 
 .chase-step-table p {
     margin: 0;
     padding: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .chase-step-table input {
@@ -699,6 +728,8 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 #cue-stack-container {
     grid-column: span 2;
+    min-width: 0;
+    overflow: visible;
 }
 
 #cue-stack-table {
@@ -707,11 +738,15 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     margin-left: 7px;
     margin-bottom: 5px;
     row-gap: 2px;
+    width: 100%;
+    min-width: 100%;
 }
 
 #cue-stack-table p {
     margin: 0;
     padding-right: 12px;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .cue-table-header {

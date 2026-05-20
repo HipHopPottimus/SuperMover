@@ -189,6 +189,12 @@ class DMXUniverseManager {
         };
     }
 
+    setBackend(backend) {
+        if (!backend) return;
+        this.backend = backend;
+        this.pendingFrame = true;
+    }
+
     start() {
         if (this.timer) return;
         this.stats.startedAt = Date.now();
@@ -498,10 +504,18 @@ async function createBackend() {
     }
 }
 
-const dmxDevice = new DMXUniverseManager(await createBackend(), {
+const dmxDevice = new DMXUniverseManager(new DummyBackend(), {
     fps: DEFAULT_FPS,
     debug: DEBUG_TRANSPORT,
 });
+
+void createBackend()
+    .then(backend => {
+        dmxDevice.setBackend(backend);
+    })
+    .catch(err => {
+        console.error("DMX backend initialization failed; continuing with dummy backend.", err);
+    });
 
 export default function getDmx() {
     return dmxDevice;
