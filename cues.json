@@ -915,14 +915,26 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "60.04": {
       "movers": {
         "1": "#1 Dwayne",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     }
   },
   "chases": {
