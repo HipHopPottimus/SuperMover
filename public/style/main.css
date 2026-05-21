@@ -115,18 +115,20 @@ footer img {
     column-gap: 50px;
     align-items: flex-start;
     max-width: 100%;
+    overflow-x: auto;
 }
 
 .movers {
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: 12px;
-    min-width: 0;
+    min-width: max-content;
 }
 
 .cue-storage {
-    min-width: 0;
-    max-width: 100%;
+    flex: 0 0 auto;
+    min-width: max-content;
 }
 
 .cue-editor-slot {
