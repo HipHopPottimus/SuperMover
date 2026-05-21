@@ -74,7 +74,7 @@ gamepad1.onUpdate = () => {
 joystick1.onUpdate = () => {
     const channels = {
         [primaryMover.CHANNELS.Zoom]: Math.round(joystick1.zoom),
-        [primaryMover.CHANNELS.Dimmer]: joystick1.throttle,
+        [primaryMover.CHANNELS.Dimmer]: Math.round(joystick1.dimmer ?? joystick1.throttle ?? 0),
         ...encodePanTiltChannels(primaryMover, joystick1.x, joystick1.y),
     };
     applyMoverChannels(primaryMover, channels);
@@ -382,7 +382,7 @@ function moverSet(channel, values, options = {}) {
         if (sanitizedValues.Zoom !== undefined)
             joystick1.zoom = sanitizedValues.Zoom;
         if (sanitizedValues.Dimmer !== undefined)
-            joystick1.throttle = sanitizedValues.Dimmer;
+            joystick1.dimmer = sanitizedValues.Dimmer;
         if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
             const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
             const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
@@ -441,7 +441,7 @@ function syncControlSurfaceFromMover(mover) {
 
     if (mover.channel === primaryMover.channel) {
         joystick1.zoom = values.Zoom;
-        joystick1.throttle = values.Dimmer;
+        joystick1.dimmer = values.Dimmer;
         joystick1.x = (((values.Pan ?? 0) << 8) | (USE_FINE_CONTROL ? (values.PanFine ?? 0) : 0)) / 65535 * 255;
         joystick1.y = (((values.Tilt ?? 0) << 8) | (USE_FINE_CONTROL ? (values.TiltFine ?? 0) : 0)) / 65535 * 255;
     }

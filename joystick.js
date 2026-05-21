@@ -10,7 +10,15 @@ const INVERT_X = true;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 10;
 const ZOOM_SENSITIVITY = 500;
+const DIMMER_SENSITIVITY = 500;
 const ZOOM_EASING = 0.4; // Lower is more eased
+const DIMMER_EASING = ZOOM_EASING;
+const USE_THROTTLE_DIMMER = process.argv.includes("--use-throttle-dimmer");
+const HIGH_SENSITIVITY_MASK = 1 << 0;
+const ZOOM_DOWN_MASK = 1 << 1;
+const ZOOM_UP_MASK = 1 << 2;
+const DIMMER_DOWN_MASK = 1 << 3;
+const DIMMER_UP_MASK = 1 << 4;
 
 class Joystick {
     /** @type {usb.usb.Device} */
@@ -52,8 +60,14 @@ class Joystick {
     /** @type {number} */
     zoomVelocity = 0;
 
+    /** @type {number} 0-255 dimmer */
+    dimmer = 0;
+
     /** @type {number} */
-    throttle = 255;
+    dimmerVelocity = 0;
+
+    /** @type {number} */
+    dDimmer = 0;
 
     /** @type {ReturnType<typeof setInterval> | undefined} */
     updateTimer;
@@ -91,6 +105,8 @@ class Joystick {
 
             this.zoomVelocity += (this.dZ - this.zoomVelocity) * ZOOM_EASING;
             this.zoom = clamp(this.zoom + this.zoomVelocity * UPDATE_INTERVAL_MS / 1000, 0, 255);
+            this.dimmerVelocity += (this.dDimmer - this.dimmerVelocity) * DIMMER_EASING;
+            this.dimmer = clamp(this.dimmer + this.dimmerVelocity * UPDATE_INTERVAL_MS / 1000, 0, 255);
             this.onUpdate?.();
         }, UPDATE_INTERVAL_MS);
 
@@ -100,17 +116,19 @@ class Joystick {
     handleInput(data) {
         this.rawData = Array.from(data);
         
-        this.USE_HIGH_SENSITIVITY = data[3] & 1 ? true : false;
+        const buttons = data[3] ?? 0;
+        this.USE_HIGH_SENSITIVITY = (buttons & HIGH_SENSITIVITY_MASK) !== 0;
 
         const xInput = data[0];
         const yInput = data[1];
         const throttleInput = data[2] ?? 0;
 
-        this.throttle = 255 - throttleInput;
+        if (USE_THROTTLE_DIMMER) this.dimmer = 255 - throttleInput;
         this.dX = mapAxis(xInput, INVERT_X) * (this.USE_HIGH_SENSITIVITY ? HIGH_SENSITIVITY_X : LOW_SENSITIVITY_X);
         this.dY = mapAxis(yInput, INVERT_Y) * (this.USE_HIGH_SENSITIVITY ? HIGH_SENSITIVITY_Y : LOW_SENSITIVITY_Y);
 
-        this.dZ = data[3] >> 1 & 1 ? 1 * ZOOM_SENSITIVITY : data[3] >> 2 & 1 ? -ZOOM_SENSITIVITY : 0;
+        this.dZ = buttons & ZOOM_DOWN_MASK ? ZOOM_SENSITIVITY : buttons & ZOOM_UP_MASK ? -ZOOM_SENSITIVITY : 0;
+        this.dDimmer = buttons & DIMMER_UP_MASK ? DIMMER_SENSITIVITY : buttons & DIMMER_DOWN_MASK ? -DIMMER_SENSITIVITY : 0;
         this.onData?.();
     }
 
@@ -119,6 +137,15 @@ class Joystick {
             clearInterval(this.updateTimer);
             this.updateTimer = undefined;
         }
+    }
+
+    get throttle() {
+        return this.dimmer;
+    }
+
+    set throttle(value) {
+        this.dimmer = clamp(Number(value) || 0, 0, 255);
+        this.dimmerVelocity = 0;
     }
 }
 
