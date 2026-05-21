@@ -419,14 +419,19 @@ function moverSet(channel, values, options = {}) {
 
 function resetAllMovers() {
     stopCueTweens();
+    stopChasesExcept();
+
+    const resetCueStackEntry = {
+        ...(currentCueNumber === null ? {} : cueStorage.cueStack[currentCueNumber]),
+        movers: Object.fromEntries(movers.map(mover => [mover.channel, SPECIAL_CUE_RESET])),
+    };
 
     for (const mover of movers) {
-        mover.reset();
-        syncControlSurfaceFromMover(mover);
+        applyCueValuesToMover(mover.channel, mover.getResetValues(), resetCueStackEntry);
     }
 
-    syncAllMoversToUniverse();
-    clearCurrentCue();
+    currentCueNumber = null;
+    sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
     updateState();
 }
 
@@ -924,12 +929,7 @@ function getCueStackEntryForPlayback(cueStackEntry, stepOptions = {}) {
 }
 
 function getCueStackEntryForMoverPlayback(cueRef, cueStackEntry) {
-    if (cueRef !== SPECIAL_CUE_STAGE) return cueStackEntry;
-    return {
-        ...cueStackEntry,
-        fadeTime: 0,
-        fadeTimes: {},
-    };
+    return cueStackEntry;
 }
 
 function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
@@ -957,7 +957,7 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
     );
 
     const nonTweenableData = { ...cueValuesForMover };
-    if (cueStackEntry.movers[ch] != "SPC:STG") TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
+    TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
     moverSet(ch, nonTweenableData, options);
 
     const tweenIds = [];

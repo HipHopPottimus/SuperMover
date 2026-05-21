@@ -86,7 +86,7 @@ export class Mover {
         }
     }
 
-    reset() {
+    getResetValues() {
         const SHUTTER_CONSTANTS = this.fixtureType === '475z' ? SHUTTER_475Z : SHUTTER_375Z;
         const GOBO_CONSTANTS = this.fixtureType === '475z' ? GOBO_475Z : GOBO_375Z;
         const PRISM_CONSTANTS = this.fixtureType === '475z' ? PRISM_475Z : PRISM_375Z;
@@ -116,7 +116,11 @@ export class Mover {
             base.Zoom = 0;
         }
 
-        this.set(base);
+        return base;
+    }
+
+    reset() {
+        this.set(this.getResetValues());
     }
 }
 
