@@ -2583,6 +2583,27 @@ function getDragAutoScrollDelta(pointer, minEdge, maxEdge, threshold, maxStep) {
     return 0;
 }
 
+function isEditableTarget(target) {
+    if (!(target instanceof Element)) return false;
+    if (target.isContentEditable) return true;
+
+    return !!target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+}
+
+document.addEventListener("keydown", event => {
+    if (event.defaultPrevented) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (isEditableTarget(event.target)) return;
+
+    if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveCueNumber(-1);
+    } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveCueNumber(1);
+    }
+});
+
 /**
  * Sorts the cues in the cue stack by number and returns their numbers as strings in an array
  */
