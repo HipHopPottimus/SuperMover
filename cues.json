@@ -672,6 +672,50 @@
         "SH": true,
         "FN": false
       }
+    },
+    "#1 Tony spot": {
+      "1": 170,
+      "2": 233,
+      "3": 17,
+      "4": 105,
+      "5": 0,
+      "6": 8,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 170,
+      "PanFine": 233,
+      "Tilt": 17,
+      "TiltFine": 105,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     }
   },
   "cueStack": {
@@ -758,51 +802,6 @@
       },
       "fadeTime": 0
     },
-    "70.22": {
-      "movers": {
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
-    "70.25": {
-      "movers": {
-        "16": "#16 Tony spot"
-      },
-      "fadeTime": 0
-    },
-    "70.34": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
-    "70.37": {
-      "movers": {
-        "1": "#1 Priya",
-        "16": "#16 Stella bed"
-      },
-      "fadeTime": 0
-    },
-    "70.4": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
-    "70.43": {
-      "movers": {
-        "16": "#16 Tony spot"
-      },
-      "fadeTime": 0
-    },
-    "70.46": {
-      "movers": {
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
     "90.07": {
       "movers": {
         "16": "#16 Stella bed"
@@ -841,6 +840,52 @@
         "DM": 0,
         "FZ": 0
       }
+    },
+    "70.19": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.22": {
+      "movers": {
+        "1": "#1 Tony spot"
+      },
+      "fadeTime": 0
+    },
+    "70.31": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.34": {
+      "movers": {
+        "1": "#1 Priya",
+        "16": "#16 Stella bed"
+      },
+      "fadeTime": 0
+    },
+    "70.37": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.4": {
+      "movers": {
+        "16": "#16 Tony spot"
+      },
+      "fadeTime": 0
+    },
+    "70.43": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
     }
   },
   "chases": {
