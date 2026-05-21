@@ -866,7 +866,7 @@ function stopChasesExcept(assignmentsToKeep = new Map()) {
 }
 
 function getCueFadeTime(cue, attribute) {
-    if (cue?.special === "stage") return 0;
+    // if (cue?.special === "stage") return 0;
 
     const groupId = CUE_APPLY_KEYS.get(attribute);
     const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
