@@ -957,7 +957,7 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
     );
 
     const nonTweenableData = { ...cueValuesForMover };
-    TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
+    if (cueStackEntry.movers[ch] != "SPC:STG") TWEENABLE_ATTRIBUTES.forEach(a => delete nonTweenableData[a]);
     moverSet(ch, nonTweenableData, options);
 
     const tweenIds = [];
