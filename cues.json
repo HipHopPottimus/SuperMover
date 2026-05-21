@@ -768,18 +768,24 @@
       "movers": {
         "16": "#16 Stella bed"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "90.07": {
       "movers": {
         "16": "#16 Stella bed"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "90.1": {
@@ -794,25 +800,25 @@
         "1": "#1 Fight",
         "16": "SPC:STG"
       },
-      "fadeTime": 0.5,
+      "fadeTime": 0.2,
       "fadeTimes": {
-        "POS": 0.5,
-        "SPD": 0.5,
-        "DM": 0.5,
-        "FZ": 0.5
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
       }
     },
     "100.6": {
       "movers": {
-        "1": "SPC:STG",
+        "1": "Off",
         "16": "#16 Fight"
       },
-      "fadeTime": 0.5,
+      "fadeTime": 0.2,
       "fadeTimes": {
-        "POS": 0.5,
-        "SPD": 0.5,
-        "DM": 0.5,
-        "FZ": 0.5
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
       }
     },
     "70.19": {
@@ -820,18 +826,24 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "70.22": {
       "movers": {
         "1": "#1 Tony spot"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.31": {
@@ -839,12 +851,12 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.34": {
@@ -852,12 +864,12 @@
         "1": "#1 Priya",
         "16": "#16 Stella bed"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.37": {
@@ -865,50 +877,62 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.4": {
       "movers": {
         "16": "#16 Tony spot"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.43": {
       "movers": {
         "16": "SPC:STG"
       },
-      "fadeTime": 1,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 1,
-        "SPD": 1,
-        "DM": 1,
-        "FZ": 1
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "60.13": {
       "movers": {
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "60.1": {
       "movers": {
         "1": "SPC:STG",
         "16": "#16 spot on stella and squish"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "60.07": {
       "movers": {
