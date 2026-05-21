@@ -366,36 +366,36 @@
       }
     },
     "#16 spot on stella and squish": {
-      "16": 167,
-      "17": 55,
-      "18": 17,
-      "19": 183,
+      "16": 180,
+      "17": 249,
+      "18": 25,
+      "19": 28,
       "20": 0,
-      "21": 32,
+      "21": 24,
       "22": 0,
       "23": 0,
       "24": 0,
-      "25": 0,
-      "26": 187,
+      "25": 13,
+      "26": 0,
       "27": 4,
       "28": 0,
       "29": 0,
-      "30": 220,
-      "Pan": 167,
-      "PanFine": 55,
-      "Tilt": 17,
-      "TiltFine": 183,
+      "30": 85,
+      "Pan": 180,
+      "PanFine": 249,
+      "Tilt": 25,
+      "TiltFine": 28,
       "PTSpeed": 0,
-      "ColorWheel": 32,
+      "ColorWheel": 24,
       "GoboWheel": 0,
       "GoboRotation": 0,
       "Prism": 0,
-      "Focus": 0,
-      "Dimmer": 187,
+      "Focus": 13,
+      "Dimmer": 0,
       "Shutter": 4,
       "Function": 0,
       "MovementMacros": 0,
-      "Zoom": 220,
+      "Zoom": 85,
       "apply": {
         "POS": true,
         "SPD": true,
@@ -726,18 +726,6 @@
       },
       "fadeTime": 0
     },
-    "10.07": {
-      "movers": {
-        "16": "#16 assembly"
-      },
-      "fadeTime": 0
-    },
-    "10.13": {
-      "movers": {
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
     "25.04": {
       "movers": {
         "1": "SPC:STG",
@@ -776,26 +764,6 @@
         "FZ": 0.5
       }
     },
-    "60.07": {
-      "movers": {
-        "1": "#1 Dwayne",
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
-    "60.13": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "#16 spot on stella and squish"
-      },
-      "fadeTime": 0
-    },
-    "60.16": {
-      "movers": {
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0
-    },
     "70.01": {
       "movers": {
         "16": "#16 Stella bed"
@@ -806,7 +774,13 @@
       "movers": {
         "16": "#16 Stella bed"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "90.1": {
       "movers": {
@@ -820,12 +794,12 @@
         "1": "#1 Fight",
         "16": "SPC:STG"
       },
-      "fadeTime": 0,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 0,
-        "SPD": 0,
-        "DM": 0,
-        "FZ": 0
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "100.6": {
@@ -833,12 +807,12 @@
         "1": "SPC:STG",
         "16": "#16 Fight"
       },
-      "fadeTime": 0,
+      "fadeTime": 0.5,
       "fadeTimes": {
-        "POS": 0,
-        "SPD": 0,
-        "DM": 0,
-        "FZ": 0
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
       }
     },
     "70.19": {
@@ -852,37 +826,100 @@
       "movers": {
         "1": "#1 Tony spot"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "70.31": {
       "movers": {
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "70.34": {
       "movers": {
         "1": "#1 Priya",
         "16": "#16 Stella bed"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "70.37": {
       "movers": {
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "70.4": {
       "movers": {
         "16": "#16 Tony spot"
       },
-      "fadeTime": 0
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
     },
     "70.43": {
       "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 1,
+      "fadeTimes": {
+        "POS": 1,
+        "SPD": 1,
+        "DM": 1,
+        "FZ": 1
+      }
+    },
+    "60.13": {
+      "movers": {
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "60.1": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 spot on stella and squish"
+      },
+      "fadeTime": 0
+    },
+    "60.07": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "60.04": {
+      "movers": {
+        "1": "#1 Dwayne",
         "16": "SPC:STG"
       },
       "fadeTime": 0
