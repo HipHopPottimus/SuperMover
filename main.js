@@ -932,6 +932,24 @@ function getCueStackEntryForMoverPlayback(cueRef, cueStackEntry) {
     return cueStackEntry;
 }
 
+function isBlackoutThenApplyCueRef(cueRef) {
+    return cueRef === SPECIAL_CUE_STAGE || cueRef === SPECIAL_CUE_RESET;
+}
+
+function getDimmerPlaybackDuration(cueStackEntry) {
+    return getCueDelayTime(cueStackEntry, "Dimmer") + getCueFadeTime(cueStackEntry, "Dimmer");
+}
+
+function getInstantCueStackEntry(cueStackEntry) {
+    return {
+        ...cueStackEntry,
+        fadeTime: 0,
+        delayTime: 0,
+        fadeTimes: {},
+        delayTimes: {},
+    };
+}
+
 function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
     return TWEENABLE_ATTRIBUTES.reduce((duration, attribute) => {
         if (cueToSet[attribute] === undefined) return duration;
@@ -943,6 +961,8 @@ function getCuePlaybackDurationForValues(cueToSet, cueStackEntry) {
 }
 
 function getCuePlaybackDuration(cueNumber, ch, cueRef, cueStackEntry) {
+    if (isBlackoutThenApplyCueRef(cueRef)) return getDimmerPlaybackDuration(cueStackEntry);
+
     return getCuePlaybackDurationForValues(
         getCueValuesForStackEntry(cueNumber, ch, cueRef),
         getCueStackEntryForMoverPlayback(cueRef, cueStackEntry)
@@ -1005,8 +1025,37 @@ function applyCueValuesToMover(ch, cueToSet, cueStackEntry, options = {}) {
     else activeCueTweens.push(...tweenIds);
 }
 
+function applyBlackoutThenApplyValuesToMover(ch, cueValues, cueStackEntry, options = {}) {
+    const dimmerOnlyValues = cueValues.Dimmer === undefined ? {} : { Dimmer: cueValues.Dimmer };
+    const remainingValues = { ...cueValues };
+    delete remainingValues.Dimmer;
+
+    applyCueValuesToMover(ch, dimmerOnlyValues, cueStackEntry, options);
+    if (!Object.keys(remainingValues).length) return;
+
+    const applyRemaining = () => {
+        if (!movers.some(m => m.channel == ch)) return;
+        applyCueValuesToMover(ch, remainingValues, getInstantCueStackEntry(cueStackEntry), options);
+    };
+    const dimmerDurationMs = getDimmerPlaybackDuration(cueStackEntry) * 1000;
+    if (dimmerDurationMs <= 0) {
+        applyRemaining();
+        return;
+    }
+
+    const timeoutId = setTimeout(applyRemaining, dimmerDurationMs);
+    if (options.collectTweens) options.collectTweens([timeoutId]);
+    else activeCueTweens.push(timeoutId);
+}
+
 function applyCueRefToMover(ch, cueNumber, cueRef, cueStackEntry, options = {}) {
-    applyCueValuesToMover(ch, getCueValuesForStackEntry(cueNumber, ch, cueRef), cueStackEntry, options);
+    const cueValues = getCueValuesForStackEntry(cueNumber, ch, cueRef);
+    if (isBlackoutThenApplyCueRef(cueRef)) {
+        applyBlackoutThenApplyValuesToMover(ch, cueValues, cueStackEntry, options);
+        return;
+    }
+
+    applyCueValuesToMover(ch, cueValues, cueStackEntry, options);
 }
 
 function startChaseForMover(ch, chaseName) {
@@ -1045,14 +1094,22 @@ function startChaseForMover(ch, chaseName) {
             movers: { [ch]: step.name || step.cue || "" },
         });
 
-        applyCueValuesToMover(ch, stepValues, chaseStepStackEntry, {
+        const stepOptionsForApply = {
             fromChase: true,
             collectTweens: tweenIds => active.tweens.push(...tweenIds),
-        });
+        };
+        if (isBlackoutThenApplyCueRef(step.cue)) {
+            applyBlackoutThenApplyValuesToMover(ch, stepValues, chaseStepStackEntry, stepOptionsForApply);
+        }
+        else {
+            applyCueValuesToMover(ch, stepValues, chaseStepStackEntry, stepOptionsForApply);
+        }
 
         const nextStep = stepIndex + 1;
         if (currentChase.loop !== false || nextStep < steps.length) {
-            const stepDuration = getCuePlaybackDurationForValues(stepValues, chaseStepStackEntry);
+            const stepDuration = isBlackoutThenApplyCueRef(step.cue)
+                ? getDimmerPlaybackDuration(chaseStepStackEntry)
+                : getCuePlaybackDurationForValues(stepValues, chaseStepStackEntry);
             const timerId = setTimeout(() => runStep(nextStep), Math.max(MIN_CHASE_STEP_MS, (stepDuration + waitAfterFade) * 1000));
             active.timers.push(timerId);
         }
