@@ -65,7 +65,7 @@
         "SPD": false,
         "DM": true,
         "FZ": false,
-        "CO": true,
+        "CO": false,
         "GB": true,
         "ROT": true,
         "PS": true,
@@ -120,8 +120,8 @@
     "#1 Right news": {
       "1": 73,
       "2": 34,
-      "3": 236,
-      "4": 21,
+      "3": 239,
+      "4": 0,
       "5": 0,
       "6": 0,
       "7": 0,
@@ -132,11 +132,11 @@
       "12": 4,
       "13": 0,
       "14": 0,
-      "15": 0,
+      "15": 113,
       "Pan": 73,
       "PanFine": 34,
-      "Tilt": 236,
-      "TiltFine": 21,
+      "Tilt": 239,
+      "TiltFine": 0,
       "PTSpeed": 0,
       "ColorWheel": 0,
       "GoboWheel": 0,
@@ -147,7 +147,7 @@
       "Shutter": 4,
       "Function": 0,
       "MovementMacros": 0,
-      "Zoom": 0,
+      "Zoom": 113,
       "apply": {
         "POS": true,
         "SPD": true,
@@ -206,36 +206,36 @@
       }
     },
     "#16 spot on stella and squish": {
-      "16": 180,
-      "17": 249,
-      "18": 25,
-      "19": 28,
+      "16": 168,
+      "17": 123,
+      "18": 18,
+      "19": 54,
       "20": 0,
-      "21": 24,
+      "21": 32,
       "22": 0,
       "23": 0,
       "24": 0,
       "25": 13,
-      "26": 0,
+      "26": 246,
       "27": 4,
       "28": 0,
       "29": 0,
-      "30": 85,
-      "Pan": 180,
-      "PanFine": 249,
-      "Tilt": 25,
-      "TiltFine": 28,
+      "30": 205,
+      "Pan": 168,
+      "PanFine": 123,
+      "Tilt": 18,
+      "TiltFine": 54,
       "PTSpeed": 0,
-      "ColorWheel": 24,
+      "ColorWheel": 32,
       "GoboWheel": 0,
       "GoboRotation": 0,
       "Prism": 0,
       "Focus": 13,
-      "Dimmer": 0,
+      "Dimmer": 246,
       "Shutter": 4,
       "Function": 0,
       "MovementMacros": 0,
-      "Zoom": 85,
+      "Zoom": 205,
       "apply": {
         "POS": true,
         "SPD": true,
@@ -512,6 +512,710 @@
         "SH": true,
         "FN": false
       }
+    },
+    "#1 Montage Center": {
+      "1": 170,
+      "2": 216,
+      "3": 17,
+      "4": 97,
+      "5": 0,
+      "6": 8,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 170,
+      "PanFine": 216,
+      "Tilt": 17,
+      "TiltFine": 97,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage Tony": {
+      "16": 158,
+      "17": 193,
+      "18": 18,
+      "19": 54,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 13,
+      "26": 246,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 205,
+      "Pan": 158,
+      "PanFine": 193,
+      "Tilt": 18,
+      "TiltFine": 54,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 13,
+      "Dimmer": 246,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 205,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Stella bed": {
+      "1": 182,
+      "2": 88,
+      "3": 19,
+      "4": 225,
+      "5": 0,
+      "6": 24,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 13,
+      "11": 184,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 85,
+      "Pan": 182,
+      "PanFine": 88,
+      "Tilt": 19,
+      "TiltFine": 225,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 13,
+      "Dimmer": 184,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 85,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage 2": {
+      "16": 168,
+      "17": 125,
+      "18": 24,
+      "19": 68,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 168,
+      "PanFine": 125,
+      "Tilt": 24,
+      "TiltFine": 68,
+      "PTSpeed": 0,
+      "ColorWheel": 0,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Montage Left": {
+      "1": 180,
+      "2": 228,
+      "3": 12,
+      "4": 234,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 145,
+      "Pan": 180,
+      "PanFine": 228,
+      "Tilt": 12,
+      "TiltFine": 234,
+      "PTSpeed": 0,
+      "ColorWheel": 32,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 145,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Montage Middle": {
+      "1": 171,
+      "2": 205,
+      "3": 12,
+      "4": 240,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 171,
+      "PanFine": 205,
+      "Tilt": 12,
+      "TiltFine": 240,
+      "PTSpeed": 0,
+      "ColorWheel": 16,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#1 Montage Right": {
+      "1": 158,
+      "2": 192,
+      "3": 12,
+      "4": 240,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 255,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 158,
+      "PanFine": 192,
+      "Tilt": 12,
+      "TiltFine": 240,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage Left": {
+      "16": 178,
+      "17": 109,
+      "18": 19,
+      "19": 171,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 178,
+      "PanFine": 109,
+      "Tilt": 19,
+      "TiltFine": 171,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage Middle": {
+      "16": 169,
+      "17": 122,
+      "18": 20,
+      "19": 33,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 169,
+      "PanFine": 122,
+      "Tilt": 20,
+      "TiltFine": 33,
+      "PTSpeed": 0,
+      "ColorWheel": 56,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage Right": {
+      "16": 158,
+      "17": 91,
+      "18": 20,
+      "19": 116,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 158,
+      "PanFine": 91,
+      "Tilt": 20,
+      "TiltFine": 116,
+      "PTSpeed": 0,
+      "ColorWheel": 48,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Fight centre": {
+      "1": 172,
+      "2": 126,
+      "3": 17,
+      "4": 145,
+      "5": 0,
+      "6": 24,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 130,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 255,
+      "Pan": 172,
+      "PanFine": 126,
+      "Tilt": 17,
+      "TiltFine": 145,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 130,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 255,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Chase Left": {
+      "16": 216,
+      "17": 144,
+      "18": 45,
+      "19": 14,
+      "20": 0,
+      "21": 24,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 255,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 70,
+      "Pan": 216,
+      "PanFine": 144,
+      "Tilt": 40,
+      "TiltFine": 0,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 70,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": false,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Chase Right": {
+      "16": 122,
+      "17": 61,
+      "18": 39,
+      "19": 5,
+      "20": 0,
+      "21": 24,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 255,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 70,
+      "Pan": 122,
+      "PanFine": 61,
+      "Tilt": 39,
+      "TiltFine": 5,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 255,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 70,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": false,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Chase Right Off": {
+      "16": 122,
+      "17": 61,
+      "18": 39,
+      "19": 5,
+      "20": 0,
+      "21": 24,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 0,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 70,
+      "Pan": 122,
+      "PanFine": 61,
+      "Tilt": 39,
+      "TiltFine": 5,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 0,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 70,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": false,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Chase Left Off": {
+      "16": 216,
+      "17": 144,
+      "18": 45,
+      "19": 14,
+      "20": 0,
+      "21": 24,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 0,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 70,
+      "Pan": 216,
+      "PanFine": 144,
+      "Tilt": 45,
+      "TiltFine": 14,
+      "PTSpeed": 0,
+      "ColorWheel": 24,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 0,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 70,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": false,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
+    },
+    "#16 Montage end armor": {
+      "16": 169,
+      "17": 122,
+      "18": 20,
+      "19": 33,
+      "20": 0,
+      "21": 8,
+      "22": 0,
+      "23": 0,
+      "24": 0,
+      "25": 0,
+      "26": 189,
+      "27": 4,
+      "28": 0,
+      "29": 0,
+      "30": 220,
+      "Pan": 169,
+      "PanFine": 122,
+      "Tilt": 20,
+      "TiltFine": 33,
+      "PTSpeed": 0,
+      "ColorWheel": 8,
+      "GoboWheel": 0,
+      "GoboRotation": 0,
+      "Prism": 0,
+      "Focus": 0,
+      "Dimmer": 189,
+      "Shutter": 4,
+      "Function": 0,
+      "MovementMacros": 0,
+      "Zoom": 220,
+      "apply": {
+        "POS": true,
+        "SPD": true,
+        "DM": true,
+        "FZ": true,
+        "CO": true,
+        "GB": true,
+        "ROT": true,
+        "PS": true,
+        "SH": true,
+        "FN": false
+      }
     }
   },
   "cueStack": {
@@ -520,7 +1224,13 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
     },
     "25.04": {
       "movers": {
@@ -550,7 +1260,8 @@
     },
     "25.1": {
       "movers": {
-        "1": "SPC:STG"
+        "1": "SPC:STG",
+        "16": "SPC:STG"
       },
       "fadeTime": 0.5,
       "fadeTimes": {
@@ -562,6 +1273,7 @@
     },
     "70.01": {
       "movers": {
+        "1": "SPC:STG",
         "16": "#16 Stella bed"
       },
       "fadeTime": 0.5,
@@ -574,6 +1286,7 @@
     },
     "90.07": {
       "movers": {
+        "1": "SPC:STG",
         "16": "#16 Stella bed"
       },
       "fadeTime": 0.5,
@@ -589,39 +1302,6 @@
         "1": "SPC:STG",
         "16": "SPC:STG"
       },
-      "fadeTime": 0
-    },
-    "100.5": {
-      "movers": {
-        "1": "#1 Fight",
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0.2,
-      "fadeTimes": {
-        "POS": 0.2,
-        "SPD": 0.2,
-        "DM": 0.2,
-        "FZ": 0.2
-      }
-    },
-    "100.6": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "#16 Fight"
-      },
-      "fadeTime": 0.2,
-      "fadeTimes": {
-        "POS": 0.2,
-        "SPD": 0.2,
-        "DM": 0.2,
-        "FZ": 0.2
-      }
-    },
-    "70.19": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "SPC:STG"
-      },
       "fadeTime": 0.5,
       "fadeTimes": {
         "POS": 0.5,
@@ -632,7 +1312,8 @@
     },
     "70.22": {
       "movers": {
-        "1": "#1 Tony spot"
+        "1": "#1 Tony spot",
+        "16": "SPC:STG"
       },
       "fadeTime": 0.5,
       "fadeTimes": {
@@ -668,45 +1349,9 @@
         "FZ": 0.5
       }
     },
-    "70.37": {
-      "movers": {
-        "1": "SPC:STG",
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0.5,
-      "fadeTimes": {
-        "POS": 0.5,
-        "SPD": 0.5,
-        "DM": 0.5,
-        "FZ": 0.5
-      }
-    },
-    "70.4": {
-      "movers": {
-        "16": "#16 Tony spot"
-      },
-      "fadeTime": 0.5,
-      "fadeTimes": {
-        "POS": 0.5,
-        "SPD": 0.5,
-        "DM": 0.5,
-        "FZ": 0.5
-      }
-    },
-    "70.43": {
-      "movers": {
-        "16": "SPC:STG"
-      },
-      "fadeTime": 0.5,
-      "fadeTimes": {
-        "POS": 0.5,
-        "SPD": 0.5,
-        "DM": 0.5,
-        "FZ": 0.5
-      }
-    },
     "60.13": {
       "movers": {
+        "1": "SPC:STG",
         "16": "SPC:STG"
       },
       "fadeTime": 0.5,
@@ -755,7 +1400,288 @@
         "DM": 0.5,
         "FZ": 0.5
       }
+    },
+    "90.16": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "90.13": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Montage Left"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.131": {
+      "movers": {
+        "1": "#1 Montage Middle",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.132": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Montage Right"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.133": {
+      "movers": {
+        "1": "#1 Montage Left",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.134": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Montage Middle"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.135": {
+      "movers": {
+        "1": "#1 Montage Right",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "90.22": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "100.05": {
+      "movers": {
+        "1": "#1 Fight",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "100.06": {
+      "movers": {
+        "1": "Off",
+        "16": "#16 Fight"
+      },
+      "fadeTime": 0.2,
+      "fadeTimes": {
+        "POS": 0.2,
+        "SPD": 0.2,
+        "DM": 0.2,
+        "FZ": 0.2
+      }
+    },
+    "60.01": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0
+    },
+    "70.4": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "70.43": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Tony spot"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "70.46": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "25.02": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "90.136": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Montage Left"
+      },
+      "fadeTime": 0
+    },
+    "90.25": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "#16 Montage end armor"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "90.28": {
+      "movers": {
+        "1": "SPC:STG",
+        "16": "SPC:STG"
+      },
+      "fadeTime": 0.5,
+      "fadeTimes": {
+        "POS": 0.5,
+        "SPD": 0.5,
+        "DM": 0.5,
+        "FZ": 0.5
+      }
+    },
+    "100.13": {
+      "movers": {
+        "1": "#16 Fight centre",
+        "16": "#16 Fight"
+      },
+      "fadeTime": 0
+    },
+    "100.16": {
+      "movers": {
+        "1": "Off",
+        "16": "Off"
+      },
+      "fadeTime": 0
     }
   },
-  "chases": {}
+  "chases": {
+    "Left": {
+      "loop": true,
+      "restartOnEnter": true,
+      "steps": [
+        {
+          "cue": "#16 Chase Left",
+          "fadeTime": 0,
+          "fadeTimes": {
+            "POS": 0,
+            "SPD": 0,
+            "DM": 0,
+            "FZ": 0
+          },
+          "waitAfterFade": 0
+        },
+        {
+          "cue": "#16 Chase Right",
+          "fadeTime": 5,
+          "fadeTimes": {
+            "POS": 5,
+            "SPD": 5,
+            "DM": 5,
+            "FZ": 5
+          },
+          "waitAfterFade": 1
+        },
+        {
+          "cue": "#16 Chase Right Off",
+          "fadeTime": 0,
+          "fadeTimes": {
+            "POS": 0,
+            "SPD": 0,
+            "DM": 0,
+            "FZ": 0
+          },
+          "waitAfterFade": 0
+        },
+        {
+          "cue": "#16 Chase Left Off",
+          "fadeTime": 0,
+          "fadeTimes": {
+            "POS": 0,
+            "SPD": 0,
+            "DM": 0,
+            "FZ": 0
+          },
+          "waitAfterFade": 1.5
+        }
+      ]
+    }
+  }
 }
