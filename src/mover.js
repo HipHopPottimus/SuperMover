@@ -7,7 +7,7 @@
  * Channel value ranges vary between fixtures (see constants below).
  */
 
-import { getFixtureProfile } from "./fixtures.js";
+import { getFixtureProfile } from "../fixtures.js";
 
 export class Mover {
     /** @type {number} Start channel */

@@ -1,8 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "start": "node main.js",
-    "lint": "node --check main.js && node --check public/js/client.js",
+    "start": "node server.js",
+    "lint": "node --check server.js && node --check public/js/client.js",
     "test": "npm run lint"
   },
   "dependencies": {

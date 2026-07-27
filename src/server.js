@@ -11,7 +11,7 @@ import getDmx, { UNIVERSE_SIZE } from './dmx.js';
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
-import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "./fixtures.js";
+import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
 
 import * as util from "./util.js";
 

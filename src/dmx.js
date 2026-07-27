@@ -2,7 +2,7 @@ import { EnttecOpenDMXUSBDevice as EnttecDevice } from "enttec-open-dmx-usb";
 import dgram from "node:dgram";
 import usb from "usb";
 import WebSocket from "ws";
-import { sendError } from "./main.js";
+import { sendError } from "./server.js";
 
 const DEFAULT_FPS = parsePositiveInt(process.env.DMX_FPS, 30);
 export const UNIVERSE_SIZE = 512;
