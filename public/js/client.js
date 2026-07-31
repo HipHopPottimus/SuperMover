@@ -2781,13 +2781,18 @@ function load() {
         if (event.altKey || event.ctrlKey || event.metaKey) return;
         if (isEditableTarget(event.target)) return;
 
-        if (event.key === "ArrowLeft") {
+        if (event.key == "ArrowLeft" || event.key == "ArrowUp") {
             event.preventDefault();
             moveCueNumber(-1);
         }
-        else if (event.key === "ArrowRight") {
+        //TODO: Commit and squash
+        else if (event.key == "ArrowRight" || event.key == "ArrowDown") {
             event.preventDefault();
             moveCueNumber(1);
+        }
+
+        if(event.key == "Backspace" || event.key == "Delete" || event.key == "Escape") {
+            clearCurrentCue();
         }
     });
 }

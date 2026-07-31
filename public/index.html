@@ -31,11 +31,15 @@
         <div class="cue-storage cue-box cue-list"></div>
         
         <div class="cue-storage cue-stack-container">
-            <div class="cue-box cue-stack"></div>
+            <div class="cue-box cue-stack" tabindex="-1"></div>
             <div>
                 <button onclick="moveCueNumber(-1)">Previous cue</button>
                 <button onclick="clearCurrentCue()">Clear cue</button>
                 <button onclick="moveCueNumber(1)">Next cue</button>
+                <span class="cue-arrow-move-message">
+                    <span class="unfocused">Arrow key cue movement disabled</span>
+                    <span class="focused">Arrow key cue movement enabled</span>
+                </span>
             </div>
         </div>
     

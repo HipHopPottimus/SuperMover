@@ -134,7 +134,7 @@ async function searchForInputDevices() {
         console.log("Using dummy input device");
         const dummyInput = new DummyInput();
         registerInputDevice(dummyInput);
-        dummyInput.linkedMover = movers[0];
+        dummyInput.linkedMover = movers[1];
         setTimeout(() => dummyInput.start(), 1500);
     }
 }

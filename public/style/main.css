@@ -509,7 +509,8 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     margin: 0px 0px !important;
 }
 
-.cue-storage p:not(.cue-box-header, .cue-table-header):hover {
+.cue-stack p:not(.cue-box-header, .cue-table-header):hover,
+.cue-list p:not(.cue-box-header, .cue-table-header):hover {
     background-color: #222933;
 }
 
@@ -760,6 +761,28 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     gap: 0.5em;
     grid-auto-rows: 1fr min-content;
 }
+
+.cue-arrow-move-message {
+    float: right;
+    margin-right: 10px;
+}
+
+.cue-arrow-move-message {
+    font-size: 83%;
+}
+
+.cue-arrow-move-message .focused {
+    display: none;
+}
+
+.cue-stack:focus + * .unfocused {
+    display: none;
+}
+
+.cue-stack:focus + * .focused {
+    display: block;
+}
+
 
 #cue-stack-fade-matrix-open {
     float: right;
@@ -1098,4 +1121,5 @@ dialog::backdrop {
 
 .fade-matrix-table input[type="number"] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
