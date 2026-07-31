@@ -1,0 +1,34 @@
+{
+    "fixtures": [
+        {
+            "type": "375z",
+            "channel": 1,
+            "name": "Spot 1"
+        },
+        {
+            "type": "375z",
+            "channel": 16,
+            "name": "Spot 2"
+        },
+        {
+            "type": "475z",
+            "channel": 31,
+            "name": "Big Spot 1"
+        },
+        {
+            "type": "475z",
+            "channel": 46,
+            "name": "Big Spot 2"
+        },
+        {
+            "type": "375z",
+            "channel": 61,
+            "name": "Spot 3"
+        },
+        {
+            "type": "375z",
+            "channel": 76,
+            "name": "Spot 4"
+        }
+    ]
+}

@@ -11,9 +11,12 @@ import getDmx, { UNIVERSE_SIZE } from './dmx.js';
 import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
+import DummyInput from "./dummyInput.js";
 import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
 
 import * as util from "./util.js";
+
+process.loadEnvFile();
 
 const dmx = getDmx();
 const USE_FINE_CONTROL = process.env.DMX_DISABLE_FINE_PANTILT === "true" ? false : true;
@@ -36,63 +39,112 @@ function logSocketServerEvent(label, extra = {}) {
     });
 }
 
-let movers = [new mlib.Mover(1, debug, '375z'), new mlib.Mover(16, debug, '375z')];
-const primaryMover = movers[0];
-const gamepadMover = movers[1];
+let venue = {
+    fixtures: [
+        {
+            type: "375z",
+            channel: 1
+        },
+        {
+            type: "375z",
+            channel: 16
+        }
+    ]
+};
+
+let venueFile;
+
+if (process.env.VENUE) {
+    try {
+        venueFile = path.join("./show-data/venues", process.env.VENUE);
+        venue = JSON.parse(fs.readFileSync(venueFile, "utf8").trim());
+        console.log("Loaded venue file", venueFile);
+
+    }
+    catch (e) {
+        throw new Error("Error parsing venue file" + e);
+    }
+}
+else {
+    venue = {
+        fixtures: [
+            {
+                type: "375z",
+                channel: 1
+            },
+            {
+                type: "375z",
+                channel: 16
+            }
+        ]
+    };
+    console.log("Using default venue");
+}
+
+let movers = venue.fixtures.map(f => new mlib.Mover(f.channel, f.type, f.name, debug));
+
+const blockedChannels = new Set();
+
+for (const mover of movers) {
+    for (let i = 0; i < mover.channelCount; i++) {
+        blockedChannels.add(mover.channel + i);
+    }
+}
+
 syncConfiguredDmxChannels();
 syncAllMoversToUniverse();
 dmx.start();
 
-let joystick1 = { onUpdate() { } };
+const inputDevices = [];
 
-try {
-    joystick1 = new jlib.Joystick(0x046d, 0xc214);
-    console.log("Joystick initialized");
-} catch {
-    console.log("No joystick found");
+function registerInputDevice(inputDevice) {
+    inputDevices.push(inputDevice);
+    inputDevice.onUpdate = () => {
+        const {linkedMover} = inputDevice;
+        if(!linkedMover) return;
+        const channels = {
+            [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
+            [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
+            ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
+        }
+        applyMoverChannels(linkedMover, channels);
+        updateState();
+    }
 }
 
-let gamepad1 = { onUpdate() { } };
+async function searchForInputDevices() {
+    console.log("Searching for input devices...");
+    try {
+        registerInputDevice(new jlib.Joystick(0x046d, 0xc214));
+    }
+    catch {
+        console.log("No joystick found");
+    }
 
-try {
-    gamepad1 = new glib.Gamepad(0);
-    console.log("Gamepad initialized on controller index 0");
-} catch {
-    console.log("No gamepad found");
+    for (let i = 0; i < 4; i++) {
+        const gamepad = new glib.Gamepad(0);
+
+        if (await gamepad.deviceConnected()) {
+            registerInputDevice(gamepad);
+            console.log("Gamepad connected on index ", i);
+        }
+    }
+
+    if(inputDevices.length == 0) {
+        console.log("Using dummy input device");
+        const dummyInput = new DummyInput();
+        registerInputDevice(dummyInput);
+        dummyInput.linkedMover = movers[0];
+        setTimeout(() => dummyInput.start(), 1500);
+    }
 }
 
-gamepad1.onUpdate = () => {
-    const channels = {
-        [gamepadMover.CHANNELS.Zoom]: Math.round(gamepad1.zoom),
-        [gamepadMover.CHANNELS.Dimmer]: Math.round(gamepad1.dimmer),
-        ...encodePanTiltChannels(gamepadMover, gamepad1.x, gamepad1.y),
-    };
-    applyMoverChannels(gamepadMover, channels);
-    updateState();
-};
-
-joystick1.onUpdate = () => {
-    const channels = {
-        [primaryMover.CHANNELS.Zoom]: Math.round(joystick1.zoom),
-        [primaryMover.CHANNELS.Dimmer]: Math.round(joystick1.dimmer ?? joystick1.throttle ?? 0),
-        ...encodePanTiltChannels(primaryMover, joystick1.x, joystick1.y),
-    };
-    applyMoverChannels(primaryMover, channels);
-    updateState();
-};
-
-const blockedChannels = new Set([
-    ...Array.from({ length: primaryMover.channelCount }, (_, i) => i + 1),
-    ...Array.from({ length: gamepadMover.channelCount }, (_, i) => i + 16),
-]);
+await searchForInputDevices();
 
 let cueStorage = {};
 let currentCueNumber = null;
 
-let cueStorageFile = "cues.json";
-
-const cueFileArgIndex = process.argv.indexOf("--cue-file");
-if (cueFileArgIndex > 0 && process.argv[cueFileArgIndex + 1]) cueStorageFile = process.argv[cueFileArgIndex + 1];
+const cueStorageFile = path.join("./show-data", process.env.CUES || "testCues.json");
 
 if (process.argv.includes("--force-reset-cues") || !fs.existsSync(cueStorageFile)) {
     fs.writeFileSync(cueStorageFile, "{}");
@@ -106,6 +158,8 @@ try {
 catch (e) {
     throw new Error("Error parsing cue file" + e);
 }
+
+console.log("Loaded cue storage file", cueStorageFile);
 
 if (!cueStorage.cues) cueStorage.cues = {};
 if (!cueStorage.cueStack) cueStorage.cueStack = {};
@@ -210,8 +264,6 @@ function normalizeSpecialCues() {
     cueStorage.cues = orderedCues;
 }
 
-console.log("Loaded cue storage file", cueStorageFile);
-
 function sendClientError(ws, message) {
     ws.send(JSON.stringify({
         type: 'ERROR',
@@ -299,6 +351,7 @@ function getState() {
     return {
         movers,
         dmx: debug ? dmx.getStats() : undefined,
+        inputDevices,
         useFineControl: USE_FINE_CONTROL,
     };
 }
@@ -364,13 +417,15 @@ function moverSet(channel, values, options = {}) {
     const sanitizedValues = {};
     for (const [channelName, value] of Object.entries(values || {})) {
         if (!(channelName in mover.CHANNELS)) {
-            console.error(`Invalid channel name for mover at channel ${channel}: ${channelName} (v: ${value})`);
+            console.error(`Invalid channel name for mover at channel ${channel} ${channelName} (v: ${value})`);
             continue;
         }
 
-        const numericValue = Number(value);
+        let numericValue = Number(value);
         if (!Number.isFinite(numericValue)) {
-            throw new Error(`Invalid value for ${channelName}: ${value}`);
+            // TODO: FIX LATER!!!
+            numericValue = 0;
+            // throw new Error(`Invalid value for ${channelName}: ${value}`);
         }
 
         sanitizedValues[channelName] = numericValue;
@@ -378,36 +433,24 @@ function moverSet(channel, values, options = {}) {
 
     if (!options.fromChase) stopChase(channel);
 
-    if (mover.channel === primaryMover.channel) {
-        if (sanitizedValues.Zoom !== undefined)
-            joystick1.zoom = sanitizedValues.Zoom;
-        if (sanitizedValues.Dimmer !== undefined)
-            joystick1.dimmer = sanitizedValues.Dimmer;
-        if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
-            const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
-            const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
-            joystick1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
-        }
-        if (sanitizedValues.Tilt !== undefined || sanitizedValues.TiltFine !== undefined) {
-            const tiltCoarse = sanitizedValues.Tilt ?? (mover.channelValues.Tilt ?? 0);
-            const tiltFine = USE_FINE_CONTROL ? (sanitizedValues.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
-            joystick1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
-        }
-    }
+    for (const inputDevice of inputDevices) {
+        if (!inputDevice.linkedMover.ch == channel) continue;
 
-    if (mover.channel === gamepadMover.channel) {
-        if (sanitizedValues.Zoom !== undefined) gamepad1.zoom = sanitizedValues.Zoom;
-        if (sanitizedValues.Dimmer !== undefined) gamepad1.dimmer = sanitizedValues.Dimmer;
+        if (sanitizedValues.Zoom !== undefined) inputDevice.zoom = sanitizedValues.Zoom;
+        if (sanitizedValues.Dimmer !== undefined) inputDevice.dimmer = sanitizedValues.Dimmer;
+
         if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
             const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
             const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
-            gamepad1.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+            inputDevice.x = ((panCoarse << 8) | panFine) / 65535 * 255;
         }
+
         if (sanitizedValues.Tilt !== undefined || sanitizedValues.TiltFine !== undefined) {
             const tiltCoarse = sanitizedValues.Tilt ?? (mover.channelValues.Tilt ?? 0);
             const tiltFine = USE_FINE_CONTROL ? (sanitizedValues.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
-            gamepad1.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
+            inputDevice.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
         }
+
     }
 
     const translatedValues = Object.fromEntries(
@@ -439,24 +482,6 @@ function blackoutAllMovers() {
     stopCueTweens();
 
     for (const mover of movers) moverSet(mover.channel, { Dimmer: 0 });
-}
-
-function syncControlSurfaceFromMover(mover) {
-    const values = mover.channelValues;
-
-    if (mover.channel === primaryMover.channel) {
-        joystick1.zoom = values.Zoom;
-        joystick1.dimmer = values.Dimmer;
-        joystick1.x = (((values.Pan ?? 0) << 8) | (USE_FINE_CONTROL ? (values.PanFine ?? 0) : 0)) / 65535 * 255;
-        joystick1.y = (((values.Tilt ?? 0) << 8) | (USE_FINE_CONTROL ? (values.TiltFine ?? 0) : 0)) / 65535 * 255;
-    }
-
-    if (mover.channel === gamepadMover.channel) {
-        gamepad1.zoom = values.Zoom;
-        gamepad1.dimmer = values.Dimmer;
-        gamepad1.x = (((values.Pan ?? 0) << 8) | (USE_FINE_CONTROL ? (values.PanFine ?? 0) : 0)) / 65535 * 255;
-        gamepad1.y = (((values.Tilt ?? 0) << 8) | (USE_FINE_CONTROL ? (values.TiltFine ?? 0) : 0)) / 65535 * 255;
-    }
 }
 
 function sendToAllClients(message) {
@@ -570,11 +595,13 @@ wss.on('connection', (ws) => {
             remotePort,
             type: msg?.type,
             size: message.length ?? message.toString().length,
-        });
+        });``
         if (debug) console.log(msg);
 
         switch (msg.type) {
             case 'CREATE_MOVER': {
+                sendClientError(ws, `This feature is kinda broken. Edit ${venueFile} instead`);
+                return;
                 const fixtureType = msg.fixtureType || '375z';
                 const channelCount = getFixtureProfile(fixtureType).channelCount;
                 const validatedChannel = parseDmxChannel(msg.channel);
@@ -591,7 +618,7 @@ wss.on('connection', (ws) => {
                     return;
                 }
 
-                const newMover = new mlib.Mover(validatedChannel, debug, fixtureType);
+                const newMover = new mlib.Mover(validatedChannel, fixtureType, "New mover", debug);
                 blockMoverChannels(validatedChannel, newMover.channelCount);
                 movers.push(newMover);
                 syncConfiguredDmxChannels();
@@ -607,10 +634,7 @@ wss.on('connection', (ws) => {
                     sendClientError(ws, `Channel must be between 1 and ${UNIVERSE_SIZE}.`);
                     return;
                 }
-                if (channel === primaryMover.channel || channel === gamepadMover.channel) {
-                    sendClientError(ws, 'Cannot forget the primary mover!');
-                    return;
-                }
+
                 const forgetMover = movers.find(m => m.channel === channel);
                 if (!forgetMover) {
                     sendClientError(ws, `No mover at channel ${msg.channel}`);

@@ -62,6 +62,16 @@ export class Gamepad {
         }, UPDATE_INTERVAL_MS);
     }
 
+    async deviceConnected() {
+        try {
+            await XInput.getState(this._index);
+            return true;
+        }
+        catch(e) {
+            return false;
+        }
+    }
+
     _handleState(gamepad) {
         const held = new Set(gamepad.wButtons);
 

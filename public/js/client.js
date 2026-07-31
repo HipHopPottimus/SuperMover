@@ -160,6 +160,14 @@ function connectSocket() {
 
                 for (const mover of msg.state.movers) renderMover(mover);
 
+                //TODO: update with stronger checks for new input devices
+                if (!currentState || currentState?.inputDevices.length != oldState?.inputDevices.length) {
+                    for (const inputDevice of currentState.inputDevices) {
+                        renderInputDevice(inputDevice);
+                    }
+                }
+
+                setTimeout(redrawInputDeviceConnections, 100);
                 break;
             }
             case 'ERROR': {
@@ -210,6 +218,68 @@ function connectSocket() {
 
 connectSocket();
 
+function renderInputDevice(inputDevice) {
+    const inputDevicePanel = document.querySelector(".input-device-panel");
+
+    const deviceWidget = createWidget(inputDevice.name, {
+        class: ["input-device-widget"],
+        id: `input-device-widget-${escapeCss(inputDevice.name)}`
+    });
+
+    inputDevicePanel.appendChild(deviceWidget);
+
+    deviceWidget.addEventListener("click", e => {
+        setActiveControls(document.getElementById(
+            `input-device-controls-${escapeCss(inputDevice.name)}`
+        ));
+        deviceWidget.classList.add("active-widget");
+    });
+
+
+    const controls = document.createElement("div");
+    controls.classList.add("input-device-controls");
+    controls.id = `input-device-controls-${escapeCss(inputDevice.name)}`;
+    controls.innerHTML = `
+        <h2 class="controls-title">${inputDevice.name}</h2>
+        <p>More to be added later!</p>
+    `;
+
+    document.querySelector(".controls-container").appendChild(controls);
+}
+
+function redrawInputDeviceConnections() {
+    const svgOverlay = document.querySelector(".svg-overlay");
+    svgOverlay.innerHTML = "";
+    for (const inputDevice of currentState.inputDevices) {
+        redrawInputDeviceConnection(inputDevice);
+    }
+}
+
+window.addEventListener("resize", redrawInputDeviceConnections);
+
+function redrawInputDeviceConnection(inputDevice) {
+    const { linkedMover } = inputDevice;
+    if (!linkedMover) return;
+    const inputWidget = document.getElementById(`input-device-widget-${escapeCss(inputDevice.name)}`);
+    const inputWidgetBounds = inputWidget.getBoundingClientRect();
+
+    const moverWidget = document.getElementById(`mover-widget-${linkedMover.channel}`);
+    const moverWidgetBounds = moverWidget.getBoundingClientRect();
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+
+    line.setAttribute("x1", inputWidgetBounds.x + inputWidgetBounds.width / 2);
+    line.setAttribute("y1", inputWidgetBounds.y + inputWidgetBounds.height / 2);
+
+    line.setAttribute("x2", moverWidgetBounds.x + moverWidgetBounds.width / 2);
+    line.setAttribute("y2", moverWidgetBounds.y + moverWidgetBounds.height);
+
+    line.classList.add("input-link-line");
+    line.id = `input-device-connection-line-${escapeCss(inputDevice.name)}`;
+
+    document.querySelector(".svg-overlay").appendChild(line);
+}
+
 /**
  * Updates the style property --range-value for a slider- used for styling slider vertically
  * @param {Element} slider the slider element
@@ -241,6 +311,41 @@ function addMover() {
     });
 }
 
+let activeControls = false;
+
+function resetActiveControls() {
+    const moverControls = document.querySelector(".controls-container");
+    moverControls.prepend(document.querySelector(".empty-controls-message"));
+
+    [...document.querySelectorAll(".active-widget")].forEach(c => c.classList.remove("active-widget"));
+
+    activeControls = false;
+}
+
+function setActiveControls(element) {
+    resetActiveControls();
+    const moverControls = document.querySelector(".controls-container");
+    moverControls.prepend(element);
+    activeControls = true;
+}
+
+function createWidget(content, data = {}) {
+    const widget = document.createElement("div");
+
+    for (const [key, value] of Object.entries(data)) {
+        if (key == "class") {
+            widget.classList.add(...value);
+            continue;
+        }
+        widget.setAttribute(key, value);
+    }
+
+    widget.innerHTML = content;
+    widget.classList.add("widget");
+
+    return widget;
+}
+
 /**
  * Renders the html for a mover block
  * @param {*} mover mover object
@@ -251,6 +356,23 @@ function renderMover(mover) {
     moverFixtureTypes[ch] = fixtureType;
     const profile = getProfile(fixtureType);
 
+    const moverPanel = document.querySelector(".mover-panel");
+
+    if (!document.getElementById(`mover-widget-${ch}`)) {
+        const moverWidget = createWidget(mover.name, {
+            id: `mover-widget-${ch}`,
+            "data-channel": ch,
+            class: ["mover-widget"]
+        });
+
+        moverPanel.appendChild(moverWidget);
+
+        moverWidget.addEventListener("click", e => {
+            setActiveControls(document.getElementById(`mover-${ch}`));
+            moverWidget.classList.add("active-widget");
+        });
+    }
+
     if (!document.getElementById(`mover-${ch}`)) {
         const template = document.getElementById('mover-template')?.firstElementChild;
         if (!template) return;
@@ -258,7 +380,7 @@ function renderMover(mover) {
         const moverElement = template.cloneNode(true);
         moverElement.innerHTML = moverElement.innerHTML
             .replace(/\{ch\}/g, ch)
-            .replace(/\{type\}/g, profile.name);
+            .replace(/\{name\}/g, mover.name);
         moverElement.id = `mover-${ch}`;
         moverElement.classList.remove("noSee");
 
@@ -295,11 +417,9 @@ function renderMover(mover) {
                     <span id="${ch}-static-gobo-speed-label">0%</span>
                 </span>
             `;
-            const forgetBtn = selectsDiv.querySelector(`#forget-${ch}`);
-            selectsDiv.insertBefore(staticGoboBlock, forgetBtn);
         }
 
-        document.querySelector('.movers').appendChild(moverElement);
+        document.querySelector('.controls-container').appendChild(moverElement);
         initMoverControls(ch, fixtureType);
     }
     fillMoverFromChannelValues(ch, mover.channelValues, fixtureType);
@@ -318,19 +438,6 @@ function getCueEditorSource() {
 
 function cueToEditorChannelValues() {
     return cueObjectToEditorChannelValues(getCueEditorSource() || {});
-}
-
-function getCueEditorSlot() {
-    let slot = document.getElementById("cue-editor-slot");
-    if (!slot) {
-        const movers = document.querySelector(".movers");
-        if (!movers) return null;
-        slot = document.createElement("div");
-        slot.id = "cue-editor-slot";
-        slot.className = "cue-editor-slot";
-        movers.prepend(slot);
-    }
-    return slot;
 }
 
 function cueObjectToEditorChannelValues(cue) {
@@ -435,8 +542,6 @@ function addStaticGoboControls(container, ch) {
             <span id="${ch}-static-gobo-speed-label">0%</span>
         </span>
     `;
-    const forgetBtn = selectsDiv.querySelector(`#forget-${ch}`);
-    selectsDiv.insertBefore(staticGoboBlock, forgetBtn);
 }
 
 function openCueEditor(cueName) {
@@ -449,6 +554,8 @@ function openCueEditor(cueName) {
         cueName,
         source: cueStorage.cues[cueName],
     });
+
+    activeControls = true;
 }
 
 function openChaseStepEditor(chaseName, stepIndex) {
@@ -467,6 +574,9 @@ function openChaseStepEditor(chaseName, stepIndex) {
 }
 
 function openCueEditorForTarget(target) {
+    const oldEditor = document.querySelector(".cue-editor-mover");
+    oldEditor?.remove();
+
     const firstMover = currentState?.movers?.[0];
     const fixtureType = firstMover?.fixtureType || "375z";
     const profile = getProfile(fixtureType);
@@ -483,36 +593,40 @@ function openCueEditorForTarget(target) {
     const editor = template.cloneNode(true);
     editor.innerHTML = editor.innerHTML
         .replace(/\{ch\}/g, CUE_EDITOR_CHANNEL)
-        .replace(/\{type\}/g, escapeHtml(target.title));
+        .replace(/\{type\}/g, escapeHtml(target.title))
+        .replace(/\{name\}/g, escapeHtml("Cue: " + target.title));
     editor.id = `mover-${CUE_EDITOR_CHANNEL}`;
     editor.classList.remove("noSee");
     editor.classList.add("cue-editor-mover");
-    editor.querySelector("h2").textContent = target.title;
+
     if (profile.hasStaticGobo) addStaticGoboControls(editor, CUE_EDITOR_CHANNEL);
 
-    const actions = editor.querySelector(".mover-selects");
+    setActiveControls(editor);
+
+    const actions = editor.querySelector(".mover-actions");
+
     const saveButton = document.createElement("button");
     saveButton.type = "button";
     saveButton.id = "cue-editor-save";
     saveButton.textContent = "Save";
-    actions.insertBefore(saveButton, editor.querySelector(`#forget-${CUE_EDITOR_CHANNEL}`));
+    actions.append(saveButton);
 
-    const slot = getCueEditorSlot();
-    if (!slot) return;
-    slot.replaceChildren(editor);
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.id = "cue-editor-cancel";
+    cancelButton.textContent = "Cancel";
+
+    cancelButton.addEventListener("click", resetActiveControls);
+
+    actions.appendChild(cancelButton);
+
     moverFixtureTypes[CUE_EDITOR_CHANNEL] = fixtureType;
 
     initMoverControls(CUE_EDITOR_CHANNEL, fixtureType, {
         onSet(values) {
             activeCueEditor.draft = { ...activeCueEditor.draft, ...values };
             setCueEditorDirty(true);
-        },
-        onForget() {
-            getCueEditorSlot()?.replaceChildren();
-            delete moverFixtureTypes[CUE_EDITOR_CHANNEL];
-            activeCueEditor = null;
-        },
-        forgetLabel: "Close",
+        }
     });
 
     fillMoverFromChannelValues(CUE_EDITOR_CHANNEL, cueToEditorChannelValues(), fixtureType);
@@ -949,21 +1063,6 @@ function initMoverControls(ch, fixtureType, options = {}) {
     funcSelect.addEventListener('change', () => {
         emitMoverSet({ Function: parseInt(funcSelect.value) });
     });
-
-    // Forget mover
-    const forgetButton = document.getElementById(`forget-${ch}`);
-    if (options.onForget) {
-        forgetButton.textContent = options.forgetLabel || "Close";
-        forgetButton.addEventListener("click", options.onForget);
-        return;
-    }
-
-    forgetButton.addEventListener("click", () => {
-        sendSocketMessage({
-            type: 'FORGET_MOVER',
-            channel: ch
-        });
-    });
 }
 
 let unproxiedStorage = {};
@@ -1028,7 +1127,7 @@ function applyCueStackState(cueNumber, transitionMs) {
     const cue = currentCueNumber && cueStorage?.cueStack?.[currentCueNumber];
     const fadeTime = transitionMs ?? (cue ? getCueMaxFadeTime(cue) * 1000 : 500);
 
-    document.querySelectorAll(".cue-stack-table p").forEach(r => {
+    document.querySelectorAll(".cue-stack p").forEach(r => {
         r.style.transition = `background-color ${fadeTime}ms`;
         r.classList.remove("cue-stack-active");
     });
@@ -1036,7 +1135,7 @@ function applyCueStackState(cueNumber, transitionMs) {
     if (!cue) return;
 
     document.querySelectorAll(`
-        .cue-stack-table-${escapeCss(currentCueNumber)},
+        .cue-stack-${escapeCss(currentCueNumber)},
         #cue-stack-fade-time-${escapeCss(currentCueNumber)},
         #cue-stack-number-${escapeCss(currentCueNumber)},
         #cue-stack-go-${escapeCss(currentCueNumber)},
@@ -1457,7 +1556,6 @@ window.addEventListener("pointerup", () => {
  * Copies a mover's state to a cue
  * @param {*} cueName the name of the cue to copy to
  * @param {*} ch the mover channel to copy from
- * @returns
  */
 async function setCue(cueName, ch) {
     const mover = currentState.movers.filter(m => m.channel == ch)[0];
@@ -1595,25 +1693,27 @@ function handleAltChaseStepRename(event, chaseName, stepIndex) {
 }
 
 /**
- * Fills cue-stack-container with the cue stack table
+ * Fills cue-stack with the cue stack table
  */
 async function generateCueStackTable() {
-    const cueStackContainer = document.getElementById("cue-stack-container");
+    const cueStackContainer = document.querySelector(".cue-stack");
     cueStackContainer.innerHTML = `
-        <p class="cue-section-header">Cue stack <button type="button" id="cue-stack-fade-matrix-open">Fade matrix</button></p>
-        <div id="cue-stack-table" class="cue-stack-table"></div>
+        <p class="cue-box-header">Cue stack <button type="button" id="cue-stack-fade-matrix-open">Fade matrix</button></p>
+        <div class="cue-stack-table"></div>
     `;
 
     if (!Object.entries(cueStorage.cueStack).length) {
         cueStackContainer.innerHTML += `<p class="empty-message">No cues saved in cue stack</p>`;
     }
 
-    const cueStackTable = document.getElementById("cue-stack-table");
+    const cueStackTable = document.querySelector(".cue-stack-table");
 
     cueStackTable.style.gridTemplateColumns = `repeat(${currentState.movers.length + 4}, max-content)`;
 
+    console.log("STATE", currentState);
+
     cueStackTable.innerHTML += `<p class="cue-table-header">Cue number</p>
-        ${currentState.movers.map(m => `<p class="cue-table-header">Mover #${m.channel}</p>`).join("")}
+        ${currentState.movers.map(m => `<p class="cue-table-header">${m.name}</p>`).join("")}
         <p class="cue-table-header">Fade</p>
         <p class="cue-table-header">Go</p>
         <p class="cue-table-header">Delete</p>
@@ -1623,7 +1723,7 @@ async function generateCueStackTable() {
         cueStackTable.innerHTML += `
             <p contenteditable id="cue-stack-number-${escapeCss(cueNumber)}">${escapeHtml(cueNumber)}</p>
             ${currentState.movers.map(m =>
-            `<p class="cue-stack-cue cue-stack-table-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Alt+click to rename. Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
+            `<p class="cue-stack-cue cue-stack-${escapeCss(cueNumber)} ${getCueStackCellClass(cue.movers?.[m.channel])}" data-channel="${m.channel}" data-cue-number="${escapeAttr(cueNumber)}" title="Alt+click to rename. Ctrl+click to clear">${formatCueStackCell(cue.movers?.[m.channel])}</p>`
         ).join("")}
             <p class="cue-stack-fade-time" id="cue-stack-fade-time-${escapeCss(cueNumber)}" title="Open fade matrix">${getCueFadeSummary(cue)}</p>
             <p class="cue-stack-go" id="cue-stack-go-${escapeCss(cueNumber)}" title="Go to cue ${escapeAttr(cueNumber)}">Go</p>
@@ -1637,7 +1737,7 @@ async function generateCueStackTable() {
         <p class="cue-stack-add-header"></p>
     `;
 
-    document.getElementById("cue-stack-fade-matrix-open")?.addEventListener("click", openFadeMatrix);
+    document.getElementById("cue-stack-fade-matrix-open")?.addEventListener("click", () => openFadeMatrix(null));
 
     //apply listeners now that table construction is done
     for (const [cueNumber, cue] of Object.entries(cueStorage.cueStack)) {
@@ -1823,13 +1923,18 @@ function openFadeMatrix(selectedCueNumber) {
 
     if (!dialog.open) dialog.showModal();
 
-    if (selectedCueNumber !== undefined) {
+    if (selectedCueNumber != null) {
         const selectedRow = dialog.querySelector(`tr[data-cue-key="${escapeCss(selectedCueNumber)}"]`);
         if (selectedRow) {
             selectedRow.scrollIntoView({ block: "center", inline: "nearest" });
             selectedRow.classList.remove("fade-matrix-flash-row");
             requestAnimationFrame(() => selectedRow.classList.add("fade-matrix-flash-row"));
         }
+        console.log(selectedCueNumber);
+
+        const applyAllInput = document.querySelector(`[data-cue-number="${selectedCueNumber}"][data-apply-all]`)
+        applyAllInput.focus();
+        applyAllInput.select();
     }
 }
 
@@ -1948,7 +2053,7 @@ function renderChases(cueList) {
     const chaseNames = Object.keys(cueStorage.chases);
     cueList.innerHTML += `
         <div class="chase-list" id="chase-list">
-            <p class="cue-section-header">Chases</p>
+            <p class="cue-box-header">Chases</p>
             <div id="chase-table"></div>
             <button type="button" id="chase-add" class="chase-add-button">+ New chase</button>
         </div>
@@ -2139,21 +2244,21 @@ async function renderCues() {
     if (!cueStorage?.cues) return;
     ensureChaseStorage();
 
-    const moverList = document.getElementById("mover-list");
-    moverList.innerHTML = `<p class="cue-section-header">Movers</p>`;
+    const moverPanel = document.querySelector(".mover-panel");
+    // moverList.innerHTML = `<p class="cue-section-header">Movers</p>`;
 
-    for (let mover of currentState.movers) {
-        const ft = mover.fixtureType || '375z';
-        const label = ft === '475z' ? `475z #${mover.channel}` : `Mover #${mover.channel}`;
-        moverList.innerHTML += `
-            <p class="cue-table-mover cue-table-mover-main" data-channel="${mover.channel}" data-mode="all" id="cue-table-mover-${mover.channel}">${label}</p>
-        `;
-    }
+    // for (let mover of currentState.movers) {
+    //     const ft = mover.fixtureType || '375z';
+    //     const label = ft === '475z' ? `475z #${mover.channel}` : `Mover #${mover.channel}`;
+    //     moverList.innerHTML += `
+    //         <p class="cue-table-mover cue-table-mover-main" data-channel="${mover.channel}" data-mode="all" id="cue-table-mover-${mover.channel}">${label}</p>
+    //     `;
+    // }
 
 
-    const cueList = document.getElementById("cue-list");
+    const cueList = document.querySelector(".cue-list");
     cueList.innerHTML = `
-        <p class="cue-section-header">Saved cues</p>
+        <p class="cue-box-header">Saved cues</p>
         <div id="cue-table-cues"></div>
     `;
 
@@ -2196,7 +2301,7 @@ async function renderCues() {
 
     await generateCueStackTable();
 
-    for (const moverListing of moverList.querySelectorAll(".cue-table-mover-main")) {
+    for (const moverListing of moverPanel.children) {
         setupDragDrop(moverListing, Number.parseInt(moverListing.getAttribute("data-channel")), document.querySelectorAll(".cue-table-cue, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
                 captureCueEditorFromMover(event.data);
@@ -2222,6 +2327,8 @@ async function renderCues() {
                 if (!cueName || isSpecialCueName(cueName)) return;
                 setCue(cueName, event.data);
 
+                console.log("Set cue", event.data, cueName);
+
                 renderCues();
             }
             else {
@@ -2244,7 +2351,7 @@ async function renderCues() {
 
         setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCss(cueName)}`));
 
-        setupDragDrop(cueListing, cueName, document.querySelectorAll(".cue-table-mover, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue:not(.cue-table-add), .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
+        setupDragDrop(cueListing, cueName, document.querySelectorAll(".mover-widget, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue:not(.cue-table-add), .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
                 openCueEditor(cueName);
                 return;
@@ -2590,20 +2697,6 @@ function isEditableTarget(target) {
     return !!target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
 }
 
-document.addEventListener("keydown", event => {
-    if (event.defaultPrevented) return;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    if (isEditableTarget(event.target)) return;
-
-    if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        moveCueNumber(-1);
-    } else if (event.key === "ArrowRight") {
-        event.preventDefault();
-        moveCueNumber(1);
-    }
-});
-
 /**
  * Sorts the cues in the cue stack by number and returns their numbers as strings in an array
  */
@@ -2682,7 +2775,21 @@ function requestISU() {
 }
 
 function load() {
-    renderCues();
+    document.querySelector(".cue-stack").addEventListener("keydown", event => {
+        console.log("click");
+        if (event.defaultPrevented) return;
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        if (isEditableTarget(event.target)) return;
+
+        if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            moveCueNumber(-1);
+        }
+        else if (event.key === "ArrowRight") {
+            event.preventDefault();
+            moveCueNumber(1);
+        }
+    });
 }
 
 if (document.readyState != "loading") load();

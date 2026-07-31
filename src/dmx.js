@@ -473,7 +473,7 @@ async function createBackend() {
         console.log(`Connected to Art-Net backend at ${target.host} universe ${target.universe}!`);
         return new ArtNetBackend(target);
     } catch (err) {
-        console.log("Failed! Trying QLC+..." + (err?.message ? " (" + err.message + ")" : ""));
+        console.log("Failed!" + (err?.message ? " (" + err.message + ")" : ""));
     }
 
     try {

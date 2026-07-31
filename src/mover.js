@@ -13,18 +13,22 @@ export class Mover {
     /** @type {number} Start channel */
     channel;
 
-    /** @type {string} Fixture type key (e.g. '375z', '475z') */
+    /** @type {string} Fixture type key (e.g. 375z, 475z) */
     fixtureType;
+
+    /** @type {string} Name of the fixture */
+    name;
 
     /** @type {Record<number, number>} */
     channelValues = {};
 
     debug = false;
 
-    constructor(channel = 1, debug = false, fixtureType = '375z') {
+    constructor(channel = 1, fixtureType = "375z", name = "#"+channel, debug = false) {
         this.channel = channel;
         this.debug = debug;
         this.fixtureType = fixtureType;
+        this.name = name;
 
         this.reset();
     }

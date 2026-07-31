@@ -1,0 +1,12 @@
+{
+    "fixtures": [
+        {
+            "type": "375z",
+            "channel": 1
+        },
+        {
+            "type": "375z",
+            "channel": 16
+        }
+    ]
+}
