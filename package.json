@@ -6,6 +6,7 @@
     "test": "npm run lint"
   },
   "dependencies": {
+    "dmxnet": "^0.9.0",
     "enttec-open-dmx-usb": "^4.0.1",
     "express": "^5.2.1",
     "node-osc": "^11.3.0",
@@ -17,5 +18,9 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/prompt-sync": "^4.2.3"
+  },
+  "allowScripts": {
+    "usb@2.17.0": true,
+    "@serialport/bindings-cpp@11.0.3": true
   }
 }

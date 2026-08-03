@@ -15,6 +15,7 @@ import DummyInput from "./dummyInput.js";
 import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
 
 import * as util from "./util.js";
+import mover from './mover.js';
 
 process.loadEnvFile();
 
@@ -100,16 +101,54 @@ const inputDevices = [];
 function registerInputDevice(inputDevice) {
     inputDevices.push(inputDevice);
     inputDevice.onUpdate = () => {
-        const {linkedMover} = inputDevice;
-        if(!linkedMover) return;
-        const channels = {
-            [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
-            [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
-            ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
-        }
-        applyMoverChannels(linkedMover, channels);
+        const { linkedMover } = inputDevice;
+        if (linkedMover) {
+            const channels = {
+                [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
+                [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
+                ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
+            }
+            applyMoverChannels(linkedMover, channels);
+        };
+    }
+
+    inputDevice.onLinkMovement = d => {
+        moveInputDeviceLink(inputDevice, d);
         updateState();
     }
+}
+
+function copyMoverValuesToInputDevice(mover, inputDevice) {
+    const values = mover.channelValues;
+
+    if (values.Zoom !== undefined) inputDevice.zoom = values.Zoom;
+    if (values.Dimmer !== undefined) inputDevice.dimmer = values.Dimmer;
+
+    if (values.Pan !== undefined || values.PanFine !== undefined) {
+        const panCoarse = values.Pan ?? (mover.channelValues.Pan ?? 0);
+        const panFine = USE_FINE_CONTROL ? (values.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
+        inputDevice.x = ((panCoarse << 8) | panFine) / 65535 * 255;
+    }
+
+    if (values.Tilt !== undefined || values.TiltFine !== undefined) {
+        const tiltCoarse = values.Tilt ?? (mover.channelValues.Tilt ?? 0);
+        const tiltFine = USE_FINE_CONTROL ? (values.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
+        inputDevice.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
+    }
+}
+
+function moveInputDeviceLink(inputDevice, d) {
+    const oldLink = inputDevice.linkedMover;
+    inputDevice.linkedMover = null;
+
+    let oldMoverIndex = movers.indexOf(oldLink);
+
+    if (oldMoverIndex == -1 && d < 0) oldMoverIndex = movers.length;
+
+    const newMover = movers[oldMoverIndex + d];
+    if (!newMover) return;
+    copyMoverValuesToInputDevice(newMover, inputDevice);
+    inputDevice.linkedMover = newMover;
 }
 
 async function searchForInputDevices() {
@@ -122,7 +161,7 @@ async function searchForInputDevices() {
     }
 
     for (let i = 0; i < 4; i++) {
-        const gamepad = new glib.Gamepad(0);
+        const gamepad = new glib.Gamepad(i);
 
         if (await gamepad.deviceConnected()) {
             registerInputDevice(gamepad);
@@ -130,7 +169,7 @@ async function searchForInputDevices() {
         }
     }
 
-    if(inputDevices.length == 0) {
+    if (inputDevices.length == 0) {
         console.log("Using dummy input device");
         const dummyInput = new DummyInput();
         registerInputDevice(dummyInput);
@@ -433,30 +472,17 @@ function moverSet(channel, values, options = {}) {
 
     if (!options.fromChase) stopChase(channel);
 
-    for (const inputDevice of inputDevices) {
-        if (!inputDevice.linkedMover.ch == channel) continue;
-
-        if (sanitizedValues.Zoom !== undefined) inputDevice.zoom = sanitizedValues.Zoom;
-        if (sanitizedValues.Dimmer !== undefined) inputDevice.dimmer = sanitizedValues.Dimmer;
-
-        if (sanitizedValues.Pan !== undefined || sanitizedValues.PanFine !== undefined) {
-            const panCoarse = sanitizedValues.Pan ?? (mover.channelValues.Pan ?? 0);
-            const panFine = USE_FINE_CONTROL ? (sanitizedValues.PanFine ?? (mover.channelValues.PanFine ?? 0)) : 0;
-            inputDevice.x = ((panCoarse << 8) | panFine) / 65535 * 255;
-        }
-
-        if (sanitizedValues.Tilt !== undefined || sanitizedValues.TiltFine !== undefined) {
-            const tiltCoarse = sanitizedValues.Tilt ?? (mover.channelValues.Tilt ?? 0);
-            const tiltFine = USE_FINE_CONTROL ? (sanitizedValues.TiltFine ?? (mover.channelValues.TiltFine ?? 0)) : 0;
-            inputDevice.y = ((tiltCoarse << 8) | tiltFine) / 65535 * 255;
-        }
-
-    }
-
     const translatedValues = Object.fromEntries(
         Object.entries(sanitizedValues).map(([channelName, value]) => [mover.CHANNELS[channelName], value])
     );
     applyMoverChannels(mover, translatedValues);
+
+    for (const inputDevice of inputDevices) {
+        if (!inputDevice.linkedMover?.ch == channel) continue;
+
+        copyMoverValuesToInputDevice(mover, inputDevice);
+    }
+
     updateState();
 }
 
@@ -595,7 +621,7 @@ wss.on('connection', (ws) => {
             remotePort,
             type: msg?.type,
             size: message.length ?? message.toString().length,
-        });``
+        }); ``
         if (debug) console.log(msg);
 
         switch (msg.type) {
@@ -766,6 +792,16 @@ wss.on('connection', (ws) => {
                 });
                 sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
                 saveCueStorage();
+                break;
+            }
+            case "MOVE_INPUT_DEVICE_LINK": {
+                const inputDevice = inputDevices.find(i => i.name == msg.inputDeviceName);
+                if (!inputDevice) {
+                    sendClientError(ws, "Invalid input device");
+                    return;
+                }
+                moveInputDeviceLink(inputDevice, msg.d);
+                updateState();
                 break;
             }
             default: {

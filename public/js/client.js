@@ -167,7 +167,7 @@ function connectSocket() {
                     }
                 }
 
-                setTimeout(redrawInputDeviceConnections, 100);
+                setTimeout(redrawInputDeviceLinks, 100);
                 break;
             }
             case 'ERROR': {
@@ -231,7 +231,13 @@ function renderInputDevice(inputDevice) {
     deviceWidget.addEventListener("click", e => {
         setActiveControls(document.getElementById(
             `input-device-controls-${escapeCss(inputDevice.name)}`
-        ));
+        ), {onclose: () => {
+            document.getElementById(`input-device-link-line-${escapeCss(inputDevice.name)}`)?.classList.remove("highlighted-link");
+        }});
+
+        const linkLine = document.getElementById(`input-device-link-line-${escapeCss(inputDevice.name)}`);
+        linkLine?.classList.add("highlighted-link");
+
         deviceWidget.classList.add("active-widget");
     });
 
@@ -239,6 +245,7 @@ function renderInputDevice(inputDevice) {
     const controls = document.createElement("div");
     controls.classList.add("input-device-controls");
     controls.id = `input-device-controls-${escapeCss(inputDevice.name)}`;
+    controls.setAttribute("data-input-device-name", inputDevice.name);
     controls.innerHTML = `
         <h2 class="controls-title">${inputDevice.name}</h2>
         <p>More to be added later!</p>
@@ -247,17 +254,17 @@ function renderInputDevice(inputDevice) {
     document.querySelector(".controls-container").appendChild(controls);
 }
 
-function redrawInputDeviceConnections() {
+function redrawInputDeviceLinks() {
     const svgOverlay = document.querySelector(".svg-overlay");
     svgOverlay.innerHTML = "";
     for (const inputDevice of currentState.inputDevices) {
-        redrawInputDeviceConnection(inputDevice);
+        redrawInputDeviceLink(inputDevice);
     }
 }
 
-window.addEventListener("resize", redrawInputDeviceConnections);
+window.addEventListener("resize", redrawInputDeviceLinks);
 
-function redrawInputDeviceConnection(inputDevice) {
+function redrawInputDeviceLink(inputDevice) {
     const { linkedMover } = inputDevice;
     if (!linkedMover) return;
     const inputWidget = document.getElementById(`input-device-widget-${escapeCss(inputDevice.name)}`);
@@ -274,8 +281,12 @@ function redrawInputDeviceConnection(inputDevice) {
     line.setAttribute("x2", moverWidgetBounds.x + moverWidgetBounds.width / 2);
     line.setAttribute("y2", moverWidgetBounds.y + moverWidgetBounds.height);
 
+    line.id = `input-device-link-line-${escapeCss(inputDevice.name)}`;
     line.classList.add("input-link-line");
-    line.id = `input-device-connection-line-${escapeCss(inputDevice.name)}`;
+
+    if(activeControls?.id == `input-device-controls-${escapeCss(inputDevice.name)}`) {
+        line.classList.add("highlighted-link");
+    }
 
     document.querySelector(".svg-overlay").appendChild(line);
 }
@@ -311,7 +322,7 @@ function addMover() {
     });
 }
 
-let activeControls = false;
+let activeControls = null;
 
 function resetActiveControls() {
     const moverControls = document.querySelector(".controls-container");
@@ -319,14 +330,21 @@ function resetActiveControls() {
 
     [...document.querySelectorAll(".active-widget")].forEach(c => c.classList.remove("active-widget"));
 
-    activeControls = false;
+    if(activeControls?.onclose) {
+        activeControls.onclose();
+        activeControls.onclose = null;
+    }
+
+    activeControls = null;
 }
 
-function setActiveControls(element) {
+function setActiveControls(element, options = {}) {
     resetActiveControls();
     const moverControls = document.querySelector(".controls-container");
     moverControls.prepend(element);
-    activeControls = true;
+    activeControls = element;
+
+    Object.assign(activeControls, options);
 }
 
 function createWidget(content, data = {}) {
@@ -2775,7 +2793,21 @@ function requestISU() {
 }
 
 function load() {
+    document.addEventListener("keydown", e => {
+        const inputDeviceName = activeControls?.getAttribute("data-input-device-name");
+        if(!inputDeviceName) return;
+
+        let d = null;
+        if(e.key == "ArrowLeft") d = -1;
+        if(e.key == "ArrowRight") d = 1;
+
+        if(!d) return;
+
+        sendSocketMessage({type: "MOVE_INPUT_DEVICE_LINK", inputDeviceName, d});
+    });
+    
     document.querySelector(".cue-stack").addEventListener("keydown", event => {
+        event.stopPropagation();
         console.log("click");
         if (event.defaultPrevented) return;
         if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -2785,7 +2817,6 @@ function load() {
             event.preventDefault();
             moveCueNumber(-1);
         }
-        //TODO: Commit and squash
         else if (event.key == "ArrowRight" || event.key == "ArrowDown") {
             event.preventDefault();
             moveCueNumber(1);

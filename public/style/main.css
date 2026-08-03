@@ -140,6 +140,11 @@ footer img {
     stroke-dasharray: 10px 10px;
 }
 
+.input-link-line.highlighted-link {
+    /* stroke: #707b89; */
+    stroke-width: 2px;
+}
+
 .workspace {
     display: grid;
     grid-template-columns: max-content 1fr;
@@ -165,7 +170,8 @@ footer img {
 .panel {
     display: flex;
     align-self: center;
-    justify-content: space-around;
+    gap: 10px;
+    justify-content: center;
 }
 
 .cue-box,

@@ -10,6 +10,8 @@ const DIMMER_SENSITIVITY = 500;
 const ZOOM_EASING = 0.4;
 const UPDATE_INTERVAL_MS = 10;
 
+const LINK_MOVEMENT_TIMEOUT = 150;
+
 export class Gamepad {
     /** @type {number} 0-255 pan position */
     x = 127;
@@ -43,6 +45,8 @@ export class Gamepad {
     constructor(controllerIndex = 0) {
         this._index = controllerIndex;
 
+        this.name = `Gamepad ${controllerIndex + 1}`
+
         this._pollTimer = setInterval(async () => {
             try {
                 const { gamepad } = await XInput.getState(this._index);
@@ -72,6 +76,11 @@ export class Gamepad {
         }
     }
 
+    toJSON() {
+        const {_pollTimer, _updateTimer, ...otherProps} = this;
+        return otherProps;
+    }
+
     _handleState(gamepad) {
         const held = new Set(gamepad.wButtons);
 
@@ -85,9 +94,25 @@ export class Gamepad {
         const rx = applyDeadzone(normalizeAxis(gamepad.sThumbRX));
         const ry = applyDeadzone(normalizeAxis(gamepad.sThumbRY));
 
-        this._dX = (-lx * HIGH_SENSITIVITY_X) + (-rx * LOW_SENSITIVITY_X);
-        this._dY = (-ly * HIGH_SENSITIVITY_Y) + (-ry * LOW_SENSITIVITY_Y);
+        this._dX = (-lx * LOW_SENSITIVITY_X) + (-rx * HIGH_SENSITIVITY_X);
+        this._dY = (-ly * LOW_SENSITIVITY_Y) + (-ry * HIGH_SENSITIVITY_Y);
         this._dZ = held.has("XINPUT_GAMEPAD_DPAD_DOWN") ? ZOOM_SENSITIVITY : held.has("XINPUT_GAMEPAD_DPAD_UP") ? -ZOOM_SENSITIVITY : 0;
+    
+        if(held.has("XINPUT_GAMEPAD_DPAD_LEFT") && !this.linkMovementDisabled) {
+            if(this.onLinkMovement) this.onLinkMovement(-1);
+            this.onUpdate();
+
+            this.linkMovementDisabled = true;
+            setTimeout(() => this.linkMovementDisabled = false, LINK_MOVEMENT_TIMEOUT);
+        }
+
+        if(held.has("XINPUT_GAMEPAD_DPAD_RIGHT") && !this.linkMovementDisabled) {
+            if(this.onLinkMovement) this.onLinkMovement(1);
+            this.onUpdate();
+
+            this.linkMovementDisabled = true;
+            setTimeout(() => this.linkMovementDisabled = false, LINK_MOVEMENT_TIMEOUT);
+        }
     }
 
     destroy() {
