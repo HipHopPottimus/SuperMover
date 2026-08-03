@@ -4,15 +4,17 @@ html {
     padding: 0;
 }
 
+* {
+    min-height: 0;
+}
+
 body {
     color-scheme: dark;
     background: #0b0d10;
     color: #e8edf2;
     font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
     height: 100dvh;
+    max-height: 100dvh;
     display: grid;
     grid-template-rows: min-content 1fr;
 }
@@ -151,6 +153,7 @@ footer img {
     grid-template-rows: min-content 1fr;
     padding: 5px;
     gap: 10px;
+    min-height: 0;
 }
 
 .toolbar {
@@ -183,7 +186,7 @@ footer img {
 }
 
 .widget {
-    padding: 3%;
+    padding: 15px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 80%;
@@ -215,14 +218,6 @@ footer img {
 .empty-controls-message {
     margin: auto;
 }
-
-/* .cue-storage {
-    display: grid;
-    grid-auto-flow: column;
-    grid-gap: 10px;
-    grid-template-columns: max-content 1fr;
-    min-width: 0;
-} */
 
 .cue-editor-slot {
     margin: 0;
@@ -501,8 +496,9 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 .cue-list {
     width: max-content;
-    overflow-y: auto;
     overflow-x: visible;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .cue-storage p:not(.cue-box-header) {
@@ -567,6 +563,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     align-items: center;
     width: 100%;
     min-width: 100%;
+    min-height: 0;
 }
 
 #cue-table-cues span:has(input[type="checkbox"]) {
@@ -766,6 +763,12 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     display: grid;
     gap: 0.5em;
     grid-auto-rows: 1fr min-content;
+    min-height: 0;
+}
+
+.cue-stack {
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .cue-arrow-move-message {
@@ -854,6 +857,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     row-gap: 2px;
     width: 100%;
     min-width: 100%;
+    min-height: 0;
 }
 
 .cue-stack-table p {

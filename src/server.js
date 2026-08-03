@@ -183,7 +183,7 @@ await searchForInputDevices();
 let cueStorage = {};
 let currentCueNumber = null;
 
-const cueStorageFile = path.join("./show-data", process.env.CUES || "testCues.json");
+const cueStorageFile = path.join("./show-data/cues", process.env.CUES || "testCues.json");
 
 if (process.argv.includes("--force-reset-cues") || !fs.existsSync(cueStorageFile)) {
     fs.writeFileSync(cueStorageFile, "{}");
