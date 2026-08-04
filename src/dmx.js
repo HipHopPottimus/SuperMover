@@ -19,7 +19,9 @@ const ARTNET_POLL_TIMEOUT_MS = parsePositiveInt(process.env.DMX_ARTNET_POLL_TIME
 class DummyBackend {
     name = "dummy";
 
-    async sendUniverse(foo) { }
+    async sendUniverse(foo) {
+        console.log(foo);
+     }
 }
 
 class QLCPlusWebsocketBackend {
@@ -349,7 +351,7 @@ class DMXUniverseManager {
         const frame = Buffer.from(this.artnetUniverse);
         
         for(const channelOverride of this.channelOverrides) {
-            frame[channelOverride] = this.universe[channelOverride];
+            frame[channelOverride - 1] = this.universe[channelOverride - 1];
         }
         
         const started = performance.now();

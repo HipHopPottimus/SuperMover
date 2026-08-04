@@ -2,7 +2,7 @@
     "fixtures": [
         {
             "type": "375z",
-            "channel": 0,
+            "channel": 1,
             "name": "Spot 1"
         },
         {
