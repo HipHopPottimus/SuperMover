@@ -20,7 +20,7 @@ class DummyBackend {
     name = "dummy";
 
     async sendUniverse(foo) {
-        console.log(foo);
+        // console.log(foo);
      }
 }
 

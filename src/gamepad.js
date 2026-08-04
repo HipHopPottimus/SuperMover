@@ -71,13 +71,13 @@ export class Gamepad {
             await XInput.getState(this._index);
             return true;
         }
-        catch(e) {
+        catch (e) {
             return false;
         }
     }
 
     toJSON() {
-        const {_pollTimer, _updateTimer, ...otherProps} = this;
+        const { _pollTimer, _updateTimer, ...otherProps } = this;
         return otherProps;
     }
 
@@ -97,22 +97,30 @@ export class Gamepad {
         this._dX = (-lx * LOW_SENSITIVITY_X) + (-rx * HIGH_SENSITIVITY_X);
         this._dY = (-ly * LOW_SENSITIVITY_Y) + (-ry * HIGH_SENSITIVITY_Y);
         this._dZ = held.has("XINPUT_GAMEPAD_DPAD_DOWN") ? ZOOM_SENSITIVITY : held.has("XINPUT_GAMEPAD_DPAD_UP") ? -ZOOM_SENSITIVITY : 0;
-    
-        if(held.has("XINPUT_GAMEPAD_DPAD_LEFT") && !this.linkMovementDisabled) {
-            if(this.onLinkMovement) this.onLinkMovement(-1);
-            this.onUpdate();
 
-            this.linkMovementDisabled = true;
-            setTimeout(() => this.linkMovementDisabled = false, LINK_MOVEMENT_TIMEOUT);
+        const leftHeld = held.has("XINPUT_GAMEPAD_DPAD_LEFT");
+        const rightHeld = held.has("XINPUT_GAMEPAD_DPAD_RIGHT");
+        
+        if (this.linkMovementTimeout) {
+            if (!leftHeld && !rightHeld) this.linkMovementTimeout -= 1;
+        }
+        else {
+            if (leftHeld) {
+                if (this.onLinkMovement) this.onLinkMovement(-1);
+                this.onUpdate();
+
+                this.linkMovementTimeout = 3;
+            }
+
+            if (rightHeld) {
+                if (this.onLinkMovement) this.onLinkMovement(1);
+                this.onUpdate();
+
+                this.linkMovementTimeout = 3;
+            }
         }
 
-        if(held.has("XINPUT_GAMEPAD_DPAD_RIGHT") && !this.linkMovementDisabled) {
-            if(this.onLinkMovement) this.onLinkMovement(1);
-            this.onUpdate();
 
-            this.linkMovementDisabled = true;
-            setTimeout(() => this.linkMovementDisabled = false, LINK_MOVEMENT_TIMEOUT);
-        }
     }
 
     destroy() {

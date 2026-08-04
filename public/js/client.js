@@ -2808,7 +2808,6 @@ function load() {
     
     document.querySelector(".cue-stack").addEventListener("keydown", event => {
         event.stopPropagation();
-        console.log("click");
         if (event.defaultPrevented) return;
         if (event.altKey || event.ctrlKey || event.metaKey) return;
         if (isEditableTarget(event.target)) return;
