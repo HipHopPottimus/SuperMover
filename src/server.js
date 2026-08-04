@@ -14,7 +14,6 @@ import DummyInput from "./dummyInput.js";
 import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
 
 import * as util from "./util.js";
-import mover from './mover.js';
 
 process.loadEnvFile();
 
@@ -99,14 +98,14 @@ function registerInputDevice(inputDevice) {
     inputDevices.push(inputDevice);
     inputDevice.onUpdate = () => {
         const { linkedMover } = inputDevice;
-        if (linkedMover) {
-            const channels = {
-                [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
-                [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
-                ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
-            }
-            applyMoverChannels(linkedMover, channels);
-        };
+        if (!linkedMover) return;
+        const channels = {
+            [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
+            [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
+            ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
+        }
+        applyMoverChannels(linkedMover, channels);
+        updateState();
     }
 
     inputDevice.onLinkMovement = d => {
