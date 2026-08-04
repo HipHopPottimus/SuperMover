@@ -6,6 +6,7 @@
     "test": "npm run lint"
   },
   "dependencies": {
+    "artnet": "^1.4.0",
     "dmxnet": "^0.9.0",
     "enttec-open-dmx-usb": "^4.0.1",
     "express": "^5.2.1",

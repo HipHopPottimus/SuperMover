@@ -2,7 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Client as OSCClient, Server as OSCServer } from "node-osc";
-
 import path from 'path';
 import * as fs from "fs";
 
@@ -84,11 +83,9 @@ else {
 
 let movers = venue.fixtures.map(f => new mlib.Mover(f.channel, f.type, f.name, debug));
 
-const blockedChannels = new Set();
-
 for (const mover of movers) {
     for (let i = 0; i < mover.channelCount; i++) {
-        blockedChannels.add(mover.channel + i);
+        dmx.channelOverrides.add(mover.channel + i);
     }
 }
 
@@ -542,7 +539,7 @@ function sendCueState(ws) {
 const clients = [];
 
 function isChannelBlocked(channel) {
-    return blockedChannels.has(channel);
+    return dmx.channelOverrides.has(channel);
 }
 
 function getMoverChannelRange(startChannel, count) {
@@ -563,7 +560,7 @@ function getMoverCreateError(startChannel, count) {
 
 function blockMoverChannels(startChannel, count) {
     for (let channel = startChannel; channel < startChannel + (count || 15); channel++) {
-        blockedChannels.add(channel);
+        dmx.channelOverrides.add(channel);
     }
 }
 
@@ -669,7 +666,7 @@ wss.on('connection', (ws) => {
                 stopChase(channel);
                 movers = movers.filter(m => m.channel !== channel);
                 for (let dmxChannel = channel; dmxChannel < channel + forgetMover.channelCount; dmxChannel++)
-                    blockedChannels.delete(dmxChannel);
+                    dmx.channelOverrides.delete(dmxChannel);
                 syncConfiguredDmxChannels();
                 updateState();
                 break;

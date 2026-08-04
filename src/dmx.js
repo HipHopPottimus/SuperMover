@@ -19,7 +19,7 @@ const ARTNET_POLL_TIMEOUT_MS = parsePositiveInt(process.env.DMX_ARTNET_POLL_TIME
 class DummyBackend {
     name = "dummy";
 
-    async sendUniverse() { }
+    async sendUniverse(foo) { }
 }
 
 class QLCPlusWebsocketBackend {
@@ -77,6 +77,34 @@ class ArtNetBackend {
         const packet = createArtDmxPacket(universe, this.universe, this.sequence);
         this.sequence = this.sequence >= 255 ? 1 : this.sequence + 1;
         await sendUdp(this.socket, packet, this.port, this.host);
+    }
+}
+
+class ArtNetListener {
+    onData = (data) => { }
+
+    constructor(port = ARTNET_PORT) {
+        const server = dgram.createSocket("udp4");
+
+        server.on("message", (msg, rinfo) => {
+            const id = msg.toString("utf8", 0, 8);
+            if (id != "Art-Net\0") return;
+
+            const opCode = msg.readUInt16LE(8);
+
+            if (opCode == 0x5000) {
+                const sequence = msg.readUInt8(12);
+                const physical = msg.readUInt8(13);
+                const universe = msg.readUInt16LE(14);
+                const length = msg.readUInt16BE(16);
+
+                const data = Buffer.from(msg.subarray(18));
+
+                this.onMsg({ data, universe });
+            }
+        });
+
+        server.bind(port);
     }
 }
 
@@ -187,6 +215,14 @@ class DMXUniverseManager {
             startedAt: 0,
             lastStatsLoggedAt: 0,
         };
+
+        this.artnetListener = new ArtNetListener();
+        this.artnetUniverse = Buffer.alloc(UNIVERSE_SIZE, 0);
+        this.artnetListener.onMsg = msg => {
+            this.artnetUniverse = msg.data;
+        }
+
+        this.channelOverrides = new Set();
     }
 
     setBackend(backend) {
@@ -309,7 +345,13 @@ class DMXUniverseManager {
         this.pendingFrame = false;
         this.writeQueued = false;
         this.stats.lastWriteStartedAt = Date.now();
-        const frame = Buffer.from(this.universe.subarray(0, this.outputChannelCount));
+
+        const frame = Buffer.from(this.artnetUniverse);
+        
+        for(const channelOverride of this.channelOverrides) {
+            frame[channelOverride] = this.universe[channelOverride];
+        }
+        
         const started = performance.now();
 
         try {
