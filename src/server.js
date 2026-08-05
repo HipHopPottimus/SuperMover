@@ -96,10 +96,11 @@ const inputDevices = [];
 
 function registerInputDevice(inputDevice) {
     inputDevices.push(inputDevice);
-    inputDevice.onUpdate = () => {
+    inputDevice.onUpdate = (a) => {
         const { linkedMover } = inputDevice;
         if (!linkedMover) return;
         const channels = {
+            ...linkedMover.channelValues,
             [linkedMover.CHANNELS.Zoom]: Math.round(inputDevice.zoom),
             [linkedMover.CHANNELS.Dimmer]: Math.round(inputDevice.dimmer),
             ...encodePanTiltChannels(linkedMover, inputDevice.x, inputDevice.y),
@@ -473,10 +474,9 @@ function moverSet(channel, values, options = {}) {
     );
     applyMoverChannels(mover, translatedValues);
 
-    for (const inputDevice of inputDevices) {
-        if (!inputDevice.linkedMover?.ch == channel) continue;
-
-        copyMoverValuesToInputDevice(mover, inputDevice);
+    const linkedInputDevice = inputDevices.find(d => d.linkedMover == mover);
+    if(linkedInputDevice) {
+        copyMoverValuesToInputDevice(mover, linkedInputDevice);
     }
 
     updateState();

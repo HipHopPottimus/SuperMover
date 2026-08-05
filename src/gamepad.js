@@ -1,4 +1,5 @@
 import * as XInput from "xinput-ffi";
+import { createRisingEdgeTrigger } from "./util.js";
 
 const DEADZONE = 0.1;
 const HIGH_SENSITIVITY_X = 127;
@@ -10,6 +11,8 @@ const DIMMER_SENSITIVITY = 500;
 const FAST_DIMMER_SENSITIVITY = 3000;
 const ZOOM_EASING = 0.4;
 const UPDATE_INTERVAL_MS = 10;
+
+import { FIXTURE_TYPES, lookupColor } from "../fixtures.js";
 
 export class Gamepad {
     /** @type {number} 0-255 pan position */
@@ -63,6 +66,9 @@ export class Gamepad {
             this.dimmer = clamp(this.dimmer + this.dimmerVelocity * UPDATE_INTERVAL_MS / 1000, 0, 255);
             this.onUpdate?.();
         }, UPDATE_INTERVAL_MS);
+
+        this.triggerLinkMovement = createRisingEdgeTrigger(3);
+        this.triggerColorChange = createRisingEdgeTrigger(3);
     }
 
     async deviceConnected() {
@@ -103,27 +109,25 @@ export class Gamepad {
 
         const leftHeld = held.has("XINPUT_GAMEPAD_DPAD_LEFT");
         const rightHeld = held.has("XINPUT_GAMEPAD_DPAD_RIGHT");
-        
-        if (this.linkMovementTimeout) {
-            if (!leftHeld && !rightHeld) this.linkMovementTimeout -= 1;
-        }
-        else {
-            if (leftHeld) {
-                if (this.onLinkMovement) this.onLinkMovement(-1);
-                this.onUpdate();
 
-                this.linkMovementTimeout = 3;
-            }
+        this.triggerLinkMovement(leftHeld || rightHeld, () => {
+            this.onLinkMovement(rightHeld ? 1 : -1);
+            this.onUpdate();
+        });
 
-            if (rightHeld) {
-                if (this.onLinkMovement) this.onLinkMovement(1);
-                this.onUpdate();
+        this.triggerColorChange(held.has("XINPUT_GAMEPAD_B"), () => {
+            if (!this.linkedMover) return;
 
-                this.linkMovementTimeout = 3;
-            }
-        }
+            const profile = FIXTURE_TYPES[this.linkedMover.fixtureType];
+            const currentColor = lookupColor(profile, this.linkedMover.channelValues.ColorWheel);
 
+            let newIndex = profile.colors.indexOf(currentColor) + 1;
+            newIndex %= profile.colors.length;
 
+            this.linkedMover.channelValues[this.linkedMover.CHANNELS.ColorWheel] = profile.colors[newIndex].values[0] + 1;
+
+            this.onUpdate(true);
+        });
     }
 
     destroy() {

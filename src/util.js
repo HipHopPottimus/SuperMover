@@ -13,7 +13,7 @@ function deepMerge(target, source) {
                 else {
                     output[key] = deepMerge(target[key], source[key]);
                 }
-            } 
+            }
             else if (Array.isArray(source[key])) {
                 output[key] = source[key];
             }
@@ -25,4 +25,17 @@ function deepMerge(target, source) {
     return output;
 }
 
-export {isObject, deepMerge}
+function createRisingEdgeTrigger(maxTimeout) {
+    let timeout = 0;
+    return (condition, callback) => {
+        if(!timeout && condition) {
+            timeout = maxTimeout;
+            callback();
+        }
+        if(timeout && !condition) {
+            timeout -= 1;
+        }
+    }
+}
+
+export { isObject, deepMerge, createRisingEdgeTrigger }

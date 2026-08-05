@@ -110,6 +110,11 @@ export const FIXTURE_TYPES = {
     },
 };
 
+export function lookupColor(profile, colorValue) {
+    const color = profile.colors.find(cp => colorValue >= cp.values[0] && colorValue <= cp.values[1]) || profile.colors[0];
+    return color;
+}
+
 export function getFixtureProfile(type) {
     return FIXTURE_TYPES[type] || FIXTURE_TYPES['375z'];
 }

@@ -1,5 +1,5 @@
 import channelValues from "./channelValueUtil.js";
-import { CUE_APPLY_GROUPS, getFixtureProfile } from "/fixtures.js";
+import { CUE_APPLY_GROUPS, getFixtureProfile, lookupColor} from "/fixtures.js";
 
 const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
 const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
@@ -772,8 +772,7 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
         else if (col <= 221) setSelectSpeed(ch, 'color', 'cycle', (col - 190) / 31);
         else setSelectSpeed(ch, 'color', 'rcycle', (col - 222) / 33);
 
-        const colorValue = profile.colors.find(cp => col >= cp.values[0] && col <= cp.values[1]).color || "white";
-        console.log(colorValue);
+        const colorValue = lookupColor(profile, col).color || "white";
         intensityBar.style.setProperty("--fill-color", colorValue);
     }
 
