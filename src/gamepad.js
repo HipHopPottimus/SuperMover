@@ -7,6 +7,7 @@ const LOW_SENSITIVITY_X = 25.4;
 const LOW_SENSITIVITY_Y = LOW_SENSITIVITY_X * 540 / 270;
 const ZOOM_SENSITIVITY = 500;
 const DIMMER_SENSITIVITY = 500;
+const FAST_DIMMER_SENSITIVITY = 3000;
 const ZOOM_EASING = 0.4;
 const UPDATE_INTERVAL_MS = 10;
 
@@ -83,8 +84,12 @@ export class Gamepad {
         const held = new Set(gamepad.wButtons);
 
         const rightTrigger = gamepad.bRightTrigger / 255;
+        const rightShoulder = held.has("XINPUT_GAMEPAD_RIGHT_SHOULDER") ? 1 : 0;
+
         const leftTrigger = gamepad.bLeftTrigger / 255;
-        this._dDimmer = (rightTrigger - leftTrigger) * DIMMER_SENSITIVITY;
+        const leftShoulder = held.has("XINPUT_GAMEPAD_LEFT_SHOULDER") ? 1 : 0;
+
+        this._dDimmer = (rightTrigger - leftTrigger) * DIMMER_SENSITIVITY + (rightShoulder - leftShoulder) * FAST_DIMMER_SENSITIVITY;
 
         const lx = applyDeadzone(normalizeAxis(gamepad.sThumbLX));
         const ly = applyDeadzone(normalizeAxis(gamepad.sThumbLY));
