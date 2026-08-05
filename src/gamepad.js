@@ -1,6 +1,6 @@
 import * as XInput from "xinput-ffi";
 
-const DEADZONE = 0.05;
+const DEADZONE = 0.1;
 const HIGH_SENSITIVITY_X = 127;
 const HIGH_SENSITIVITY_Y = HIGH_SENSITIVITY_X * 540 / 270;
 const LOW_SENSITIVITY_X = 25.4;
@@ -9,8 +9,6 @@ const ZOOM_SENSITIVITY = 500;
 const DIMMER_SENSITIVITY = 500;
 const ZOOM_EASING = 0.4;
 const UPDATE_INTERVAL_MS = 10;
-
-const LINK_MOVEMENT_TIMEOUT = 150;
 
 export class Gamepad {
     /** @type {number} 0-255 pan position */

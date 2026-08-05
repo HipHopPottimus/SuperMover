@@ -221,19 +221,24 @@ connectSocket();
 function renderInputDevice(inputDevice) {
     const inputDevicePanel = document.querySelector(".input-device-panel");
 
-    const deviceWidget = createWidget(inputDevice.name, {
-        class: ["input-device-widget"],
-        id: `input-device-widget-${escapeCss(inputDevice.name)}`
-    });
+    const deviceWidget = createWidget(
+        `<span class="widget-title">${inputDevice.name}</span>`,
+        {
+            class: ["input-device-widget"],
+            id: `input-device-widget-${escapeCss(inputDevice.name)}`
+        }
+    );
 
     inputDevicePanel.appendChild(deviceWidget);
 
     deviceWidget.addEventListener("click", e => {
         setActiveControls(document.getElementById(
             `input-device-controls-${escapeCss(inputDevice.name)}`
-        ), {onclose: () => {
-            document.getElementById(`input-device-link-line-${escapeCss(inputDevice.name)}`)?.classList.remove("highlighted-link");
-        }});
+        ), {
+            onclose: () => {
+                document.getElementById(`input-device-link-line-${escapeCss(inputDevice.name)}`)?.classList.remove("highlighted-link");
+            }
+        });
 
         const linkLine = document.getElementById(`input-device-link-line-${escapeCss(inputDevice.name)}`);
         linkLine?.classList.add("highlighted-link");
@@ -284,7 +289,7 @@ function redrawInputDeviceLink(inputDevice) {
     line.id = `input-device-link-line-${escapeCss(inputDevice.name)}`;
     line.classList.add("input-link-line");
 
-    if(activeControls?.id == `input-device-controls-${escapeCss(inputDevice.name)}`) {
+    if (activeControls?.id == `input-device-controls-${escapeCss(inputDevice.name)}`) {
         line.classList.add("highlighted-link");
     }
 
@@ -330,7 +335,7 @@ function resetActiveControls() {
 
     [...document.querySelectorAll(".active-widget")].forEach(c => c.classList.remove("active-widget"));
 
-    if(activeControls?.onclose) {
+    if (activeControls?.onclose) {
         activeControls.onclose();
         activeControls.onclose = null;
     }
@@ -377,11 +382,17 @@ function renderMover(mover) {
     const moverPanel = document.querySelector(".mover-panel");
 
     if (!document.getElementById(`mover-widget-${ch}`)) {
-        const moverWidget = createWidget(mover.name, {
-            id: `mover-widget-${ch}`,
-            "data-channel": ch,
-            class: ["mover-widget"]
-        });
+        const moverWidget = createWidget(
+            `
+                <span class="widget-intensity-bar"></span>
+                <span class="widget-title">${mover.name}<span>
+            `,
+            {
+                id: `mover-widget-${ch}`,
+                "data-channel": ch,
+                class: ["mover-widget"]
+            }
+        );
 
         moverPanel.appendChild(moverWidget);
 
@@ -746,12 +757,24 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
         if (cv[ch + abs] !== undefined) setSlider(ch, id, cv[ch + abs]);
     }
 
+    const intensityBar = document.querySelector(`#mover-widget-${ch} .widget-intensity-bar`);
+
+    const dim = cv[off.Dimmer + ch];
+
+    if(dim !== undefined) {
+        intensityBar.style.setProperty("--intensity", (dim / 255 * 100) + "%");
+    }
+
     const col = cv[ch + off.ColorWheel];
     if (col !== undefined) {
         if (col < 64) setSelectSpeed(ch, 'color', `w:${Math.floor(col / 8) * 8}`);
         else if (col <= 189) setSelectSpeed(ch, 'color', 'indexed', (col - 64) / 125);
         else if (col <= 221) setSelectSpeed(ch, 'color', 'cycle', (col - 190) / 31);
         else setSelectSpeed(ch, 'color', 'rcycle', (col - 222) / 33);
+
+        const colorValue = profile.colors.find(cp => col >= cp.values[0] && col <= cp.values[1]).color || "white";
+        console.log(colorValue);
+        intensityBar.style.setProperty("--fill-color", colorValue);
     }
 
     const gob = cv[ch + off.GoboWheel];
@@ -2795,17 +2818,17 @@ function requestISU() {
 function load() {
     document.addEventListener("keydown", e => {
         const inputDeviceName = activeControls?.getAttribute("data-input-device-name");
-        if(!inputDeviceName) return;
+        if (!inputDeviceName) return;
 
         let d = null;
-        if(e.key == "ArrowLeft") d = -1;
-        if(e.key == "ArrowRight") d = 1;
+        if (e.key == "ArrowLeft") d = -1;
+        if (e.key == "ArrowRight") d = 1;
 
-        if(!d) return;
+        if (!d) return;
 
-        sendSocketMessage({type: "MOVE_INPUT_DEVICE_LINK", inputDeviceName, d});
+        sendSocketMessage({ type: "MOVE_INPUT_DEVICE_LINK", inputDeviceName, d });
     });
-    
+
     document.querySelector(".cue-stack").addEventListener("keydown", event => {
         event.stopPropagation();
         if (event.defaultPrevented) return;
@@ -2821,7 +2844,7 @@ function load() {
             moveCueNumber(1);
         }
 
-        if(event.key == "Backspace" || event.key == "Delete" || event.key == "Escape") {
+        if (event.key == "Backspace" || event.key == "Delete" || event.key == "Escape") {
             clearCurrentCue();
         }
     });

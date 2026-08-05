@@ -12,6 +12,48 @@ export const FIXTURE_TYPES = {
             ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, Prism: 8,
             Focus: 9, Dimmer: 10, Shutter: 11, Function: 12, MovementMacros: 13, Zoom: 14,
         },
+        colors: [
+            {
+                values: [0, 7],
+                name: "White",
+                color: "#FFFFFF"
+            },
+            {
+                values: [8, 15],
+                name: "Medium Bastard Amber",
+                color: "#FF7F00"
+            },
+            {
+                values: [16, 23],
+                name: "Lime Green",
+                color: "#00FF00"
+            },
+            {
+                values: [24, 31],
+                name: "Cyan",
+                color: "#00FFFF"
+            },
+            {
+                values: [32, 39],
+                name: "Red",
+                color: "#FF0000"
+            },
+            {
+                values: [40, 47],
+                name: "Green",
+                color: "#00AA00"
+            },
+            {
+                values: [48, 55],
+                name: "Magenta",
+                color: "#FF00FF"
+            },
+            {
+                values: [56, 63],
+                name: "Yellow",
+                color: "#FFFF00"
+            },
+        ],
         hasStaticGobo: false,
     },
     '475z': {
@@ -27,6 +69,43 @@ export const FIXTURE_TYPES = {
             ColorWheel: 5, GoboWheel: 6, GoboRotation: 7, StaticGoboWheel: 8,
             Prism: 9, Focus: 10, Zoom: 11, Dimmer: 12, Shutter: 13, Function: 14, MovementMacros: 15,
         },
+        colors: [
+            {
+                values: [0, 7],
+                name: "White",
+                color: "#FFFFFF"
+            },
+            {
+                values: [8, 15],
+                name: "Medium Bastard Amber",
+                color: "#FF7F00"
+            },
+            {
+                values: [16, 23],
+                name: "Lime Green",
+                color: "#00FF00"
+            },
+            {
+                values: [24, 31],
+                name: "Cyan",
+                color: "#00FFFF"
+            },
+            {
+                values: [32, 39],
+                name: "Red",
+                color: "#FF0000"
+            },
+            {
+                values: [40, 47],
+                name: "Green",
+                color: "#00AA00"
+            },
+            {
+                values: [48, 55],
+                name: "Magenta",
+                color: "#FF00FF"
+            },
+        ],
         hasStaticGobo: true,
     },
 };

@@ -21,7 +21,7 @@ class DummyBackend {
 
     async sendUniverse(foo) {
         // console.log(foo);
-     }
+    }
 }
 
 class QLCPlusWebsocketBackend {
@@ -349,11 +349,11 @@ class DMXUniverseManager {
         this.stats.lastWriteStartedAt = Date.now();
 
         const frame = Buffer.from(this.artnetUniverse);
-        
-        for(const channelOverride of this.channelOverrides) {
+
+        for (const channelOverride of this.channelOverrides) {
             frame[channelOverride - 1] = this.universe[channelOverride - 1];
         }
-        
+
         const started = performance.now();
 
         try {

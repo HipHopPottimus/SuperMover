@@ -1,10 +1,12 @@
 {
     "fixtures": [
         {
+            "name": "Spot #1",
             "type": "375z",
             "channel": 1
         },
         {
+            "name": "Spot #16",
             "type": "375z",
             "channel": 16
         }

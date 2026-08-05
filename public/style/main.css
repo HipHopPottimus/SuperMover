@@ -186,10 +186,29 @@ footer img {
 }
 
 .widget {
-    padding: 15px;
+    padding: 0px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    overflow: hidden;
     border-radius: 10px;
     cursor: pointer;
     font-size: 80%;
+}
+
+.widget-title {
+    padding: 15px 5px;
+}
+
+.widget-intensity-bar {
+    display: inline-block;
+    height: 100%;
+    width: 7.5px;
+    --intensity: 0%;
+    --fill-color: white;
+    background-image: linear-gradient(to top, var(--fill-color) var(--intensity), transparent var(--intensity));
+    border-right: 1px solid #33404d;
+    /* border-right: 1px solid var(--fill-color); */
 }
 
 .active-widget {
