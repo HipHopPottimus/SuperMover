@@ -119,7 +119,7 @@ export function getFixtureProfile(type) {
     return FIXTURE_TYPES[type] || FIXTURE_TYPES['375z'];
 }
 
-export const CUE_APPLY_GROUPS = [
+export const CUE_MASK_GROUPS = [
     { id: 'POS', label: 'POS', title: 'Position', keys: ['Pan', 'PanFine', 'Tilt', 'TiltFine'], defaultOn: true },
     { id: 'SPD', label: 'SPD', title: 'Mover speed', keys: ['PTSpeed'], defaultOn: true },
     { id: 'DM', label: 'DM', title: 'Dimmer', keys: ['Dimmer'], defaultOn: true },

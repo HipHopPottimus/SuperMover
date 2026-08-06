@@ -11,7 +11,7 @@ import mlib from './mover.js';
 import jlib from "./joystick.js";
 import glib from "./gamepad.js";
 import DummyInput from "./dummyInput.js";
-import { CUE_APPLY_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
+import { CUE_MASK_GROUPS, CUE_FADE_GROUP_IDS, getFixtureProfile } from "../fixtures.js";
 
 import * as util from "./util.js";
 
@@ -208,7 +208,7 @@ const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
 function getSpecialStageCue() {
     return {
         special: "stage",
-        apply: getDefaultCueApplyState(),
+        apply: getDefaultCueMaskState(),
     };
 }
 
@@ -241,7 +241,7 @@ function normalizeSpecialCues() {
             Function: 0,
             MovementMacros: 0,
             Zoom: 0,
-            apply: getDefaultCueApplyState(),
+            apply: getDefaultCueMaskState(),
         };
     }
 
@@ -280,7 +280,7 @@ function normalizeSpecialCues() {
                 cue: step.cue,
                 name: typeof step.name === "string" ? step.name : undefined,
                 values: util.isObject(step.values)
-                    ? Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_APPLY_KEYS.has(key)))
+                    ? Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_MASK_KEYS.has(key)))
                     : undefined,
                 fadeTime: Math.max(0, Number.parseFloat(step.fadeTime) || 0),
                 fadeTimes: util.isObject(step.fadeTimes)
@@ -835,8 +835,8 @@ wss.on('connection', (ws) => {
     });
 });
 
-const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
-const TWEENABLE_ATTRIBUTES = CUE_APPLY_GROUPS
+const CUE_MASK_KEYS = new Map(CUE_MASK_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
+const TWEENABLE_ATTRIBUTES = CUE_MASK_GROUPS
     .filter(group => CUE_FADE_GROUP_IDS.has(group.id))
     .flatMap(group => group.keys);
 
@@ -846,9 +846,9 @@ function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
     if (!cue) return {};
 
-    const applyState = getCueApplyState(cue);
+    const applyState = getCueMaskState(cue);
     return Object.fromEntries(Object.entries(cue).filter(([key]) => {
-        const group = CUE_APPLY_KEYS.get(key);
+        const group = CUE_MASK_KEYS.get(key);
         return group && applyState[group];
     }));
 }
@@ -860,7 +860,7 @@ function getChaseStepValues(chaseName, stepIndex, stageDepth = 0) {
 
     const step = steps[stepIndex % steps.length];
     if (step?.values && typeof step.values === "object") {
-        return Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_APPLY_KEYS.has(key)));
+        return Object.fromEntries(Object.entries(step.values).filter(([key]) => CUE_MASK_KEYS.has(key)));
     }
 
     if (!step?.cue || step.cue === SPECIAL_CUE_RESET || !cueStorage.cues[step.cue]) return null;
@@ -883,16 +883,16 @@ function getCueValuesForCueRef(cueRef) {
     return getCueValues(cueRef);
 }
 
-function getDefaultCueApplyState() {
-    return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
+function getDefaultCueMaskState() {
+    return Object.fromEntries(CUE_MASK_GROUPS.map(group => [group.id, group.defaultOn]));
 }
 
-function getCueApplyState(cue) {
-    if (cue?.apply) return { ...getDefaultCueApplyState(), ...cue.apply };
+function getCueMaskState(cue) {
+    if (cue?.apply) return { ...getDefaultCueMaskState(), ...cue.apply };
 
-    const applyState = getDefaultCueApplyState();
+    const applyState = getDefaultCueMaskState();
     if (cue?.mode === "pos") {
-        for (const group of CUE_APPLY_GROUPS) applyState[group.id] = group.id === "POS";
+        for (const group of CUE_MASK_GROUPS) applyState[group.id] = group.id === "POS";
     }
     else if (cue?.mode === "no-pos") {
         applyState.POS = false;
@@ -929,7 +929,7 @@ function stopChasesExcept(assignmentsToKeep = new Map()) {
 function getCueFadeTime(cue, attribute) {
     // if (cue?.special === "stage") return 0;
 
-    const groupId = CUE_APPLY_KEYS.get(attribute);
+    const groupId = CUE_MASK_KEYS.get(attribute);
     const groupFade = Number.parseFloat(cue?.fadeTimes?.[groupId]);
     if (!Number.isNaN(groupFade)) return groupFade;
 
@@ -955,7 +955,7 @@ function getNextCueRefForMover(cueNumber, ch) {
 }
 
 function getCueDelayTime(cue, attribute) {
-    const groupId = CUE_APPLY_KEYS.get(attribute);
+    const groupId = CUE_MASK_KEYS.get(attribute);
     const groupDelay = Number.parseFloat(cue?.delayTimes?.[groupId]);
     if (!Number.isNaN(groupDelay)) return groupDelay;
 

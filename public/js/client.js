@@ -1,9 +1,9 @@
 import channelValues from "./channelValueUtil.js";
-import { CUE_APPLY_GROUPS, getFixtureProfile, lookupColor} from "/fixtures.js";
+import { CUE_MASK_GROUPS, getFixtureProfile, lookupColor } from "/fixtures.js";
 
-const CUE_APPLY_KEYS = new Map(CUE_APPLY_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
-const CUE_FADE_GROUPS = CUE_APPLY_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
-const CUE_VALUE_KEYS = [...new Set(CUE_APPLY_GROUPS.flatMap(group => group.keys))];
+const CUE_MASK_KEYS = new Map(CUE_MASK_GROUPS.flatMap(group => group.keys.map(key => [key, group.id])));
+const CUE_FADE_GROUPS = CUE_MASK_GROUPS.filter(group => ["POS", "SPD", "DM", "FZ"].includes(group.id));
+const CUE_VALUE_KEYS = [...new Set(CUE_MASK_GROUPS.flatMap(group => group.keys))];
 const SPECIAL_CUE_STAGE = "SPC:STG";
 const SPECIAL_CUE_RESET = "SPC:RST";
 const SPECIAL_CUE_NAMES = [SPECIAL_CUE_STAGE, SPECIAL_CUE_RESET];
@@ -487,7 +487,7 @@ function saveCueEditor() {
         cueStorage.cues[activeCueEditor.cueName] = {
             ...cueStorage.cues[activeCueEditor.cueName],
             ...activeCueEditor.draft,
-            apply: getCueApplyState(cueStorage.cues[activeCueEditor.cueName]),
+            apply: getCueMaskState(cueStorage.cues[activeCueEditor.cueName]),
         };
     }
     setCueEditorDirty(false);
@@ -732,7 +732,7 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
 
     const dim = cv[off.Dimmer + ch];
 
-    if(dim !== undefined) {
+    if (dim !== undefined) {
         intensityBar?.style.setProperty("--intensity", (dim / 255 * 100) + "%");
     }
 
@@ -1254,15 +1254,15 @@ function cueStackAppliesGroup(cueStackEntry, groupId) {
         if (isChaseRef(cueRef)) {
             return (cueStorage.chases?.[cueRef.name]?.steps || []).some(step => {
                 if (hasChaseStepValues(step)) {
-                    return Object.keys(step.values).some(key => CUE_APPLY_KEYS.get(key) === groupId);
+                    return Object.keys(step.values).some(key => CUE_MASK_KEYS.get(key) === groupId);
                 }
                 const cue = cueStorage.cues[step.cue];
-                return cue && getCueApplyState(cue)[groupId];
+                return cue && getCueMaskState(cue)[groupId];
             });
         }
 
         const cue = cueStorage.cues[cueRef];
-        return cue && getCueApplyState(cue)[groupId];
+        return cue && getCueMaskState(cue)[groupId];
     });
 }
 
@@ -1299,11 +1299,11 @@ function setAllCueFadeTimes(cueNumber, value) {
 
 function chaseStepAppliesGroup(step, groupId) {
     if (hasChaseStepValues(step)) {
-        return Object.keys(step.values).some(key => CUE_APPLY_KEYS.get(key) === groupId);
+        return Object.keys(step.values).some(key => CUE_MASK_KEYS.get(key) === groupId);
     }
 
     const cue = cueStorage.cues?.[step?.cue];
-    return !!cue && getCueApplyState(cue)[groupId];
+    return !!cue && getCueMaskState(cue)[groupId];
 }
 
 function getChaseStepFadeTime(step, groupId) {
@@ -1500,7 +1500,7 @@ function setCueApplyCheckbox(cb, checked) {
 
     suppressCueStorageUpdates = true;
     try {
-        cueStorage.cues[cueName].apply = getCueApplyState(cueStorage.cues[cueName]);
+        cueStorage.cues[cueName].apply = getCueMaskState(cueStorage.cues[cueName]);
         cueStorage.cues[cueName].apply[groupId] = checked;
         delete cueStorage.cues[cueName].mode;
     }
@@ -1576,7 +1576,7 @@ async function setCue(cueName, ch) {
     const existingCue = cueStorage.cues[cueName];
     cueStorage.cues[cueName] = {
         ...cueState,
-        apply: existingCue ? getCueApplyState(existingCue) : getDefaultCueApplyState(),
+        apply: existingCue ? getCueMaskState(existingCue) : getDefaultCueMaskState(),
     };
     await renderCues();
 }
@@ -1709,7 +1709,10 @@ function handleAltChaseStepRename(event, chaseName, stepIndex) {
 async function generateCueStackTable() {
     const cueStackContainer = document.querySelector(".cue-stack");
     cueStackContainer.innerHTML = `
-        <p class="cue-box-header">Cue stack <button type="button" id="cue-stack-fade-matrix-open">Fade matrix</button></p>
+        <p class="cue-box-header">
+            Cue stack
+            <button type="button" id="cue-stack-fade-matrix-open" class="matrix-open-button">Fade matrix</button>
+        </p>
         <div class="cue-stack-table"></div>
     `;
 
@@ -1851,7 +1854,7 @@ function openFadeMatrix(selectedCueNumber) {
     const cueRows = Object.entries(cueStorage.cueStack).sort((a, b) => Number.parseFloat(a[0]) - Number.parseFloat(b[0]));
     dialog.innerHTML = `
         <form method="dialog" class="fade-matrix">
-            <div class="fade-matrix-header">
+            <div class="dialog-header">
                 <div>
                     <h3>Fade time matrix</h3>
                 </div>
@@ -1962,7 +1965,7 @@ function openChaseFadeMatrix(chaseName, selectedStepIndex) {
 
     dialog.innerHTML = `
         <form method="dialog" class="fade-matrix">
-            <div class="fade-matrix-header">
+            <div class="dialog-header">
                 <div>
                     <h3>${escapeHtml(chaseName)} fade matrix</h3>
                 </div>
@@ -2269,38 +2272,62 @@ async function renderCues() {
 
     const cueList = document.querySelector(".cue-list");
     cueList.innerHTML = `
-        <p class="cue-box-header">Saved cues</p>
+        <p class="cue-box-header">Saved cues
+            <button type="button" id="mask-matrix-open" class="matrix-open-button">Mask matrix</button>
+        </p>
         <div id="cue-table-cues"></div>
     `;
 
     const cueTableCues = document.getElementById("cue-table-cues");
-    cueTableCues.innerHTML = `
-        <p class="cue-table-header">Cue name</p>
-        ${CUE_APPLY_GROUPS.map(group => `<p class="cue-table-header" title="${group.title}">${group.label}</p>`).join("")}
-        <p class="cue-table-header">Edit</p>
+
+    let maskMatrixDialog = document.getElementById("mask-matrix-dialog");
+    if (!maskMatrixDialog) {
+        maskMatrixDialog = document.createElement("dialog");
+        maskMatrixDialog.id = "mask-matrix-dialog";
+        document.body.appendChild(maskMatrixDialog);
+    }
+
+    maskMatrixDialog.innerHTML = `
+        <form method="dialog">
+            <div class="dialog-header">
+                <h3>Cue mask matrix</h3>
+                <button type="submit" aria-label="Close mask matrix">Close</button>
+            </div>
+            <div id="mask-table">
+                <p class="cue-table-header">Cue name</p>
+                ${CUE_MASK_GROUPS.map(group => `<p class="cue-table-header" title="${group.title}">${group.label}</p>`).join("")}
+            </div>
+        </form>
     `;
 
+    const maskTable = document.getElementById("mask-table");
+
     const cueNames = Object.keys(cueStorage.cues);
+
     for (const [cueIndex, cueName] of cueNames.entries()) {
-        const applyState = getCueApplyState(cueStorage.cues[cueName]);
+        const maskState = getCueMaskState(cueStorage.cues[cueName]);
         const isSpecialCue = isSpecialCueName(cueName);
         cueTableCues.innerHTML += `
             <span class="cue-table-cue-drop" data-cue-index="${cueIndex}"></span>
             <p class="cue-table-cue ${isSpecialCue ? "cue-table-special" : ""}" id="cue-table-cue-${escapeCss(cueName)}" title="${isSpecialCue ? "" : "Alt+click to rename"}">${escapeHtml(cueName)}</p>
-            ${CUE_APPLY_GROUPS.map(group => `
+            <button type="button" class="cue-edit-button" data-cue-name="${escapeAttr(cueName)}" ${isSpecialCue && cueName === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
+        `;
+        if(isSpecialCue) continue;
+        maskTable.innerHTML += `
+            <p class="cue-table-cue">${escapeHtml(cueName)}</p>
+            ${(CUE_MASK_GROUPS).map(group => `
                 <span>
                     <input
                         type="checkbox"
-                        class="cue-table-cue-apply-${escapeCss(cueName)}"
+                        class="cue-table-cue-mask-${escapeCss(cueName)}"
                         data-cue-name="${escapeAttr(cueName)}"
                         data-group="${group.id}"
                         title="${group.title}"
-                        ${applyState[group.id] ? "checked" : ""}
+                        ${maskState[group.id] ? "checked" : ""}
                         ${isSpecialCue ? "disabled" : ""}
                     />
                 </span>
             `).join("")}
-            <button type="button" class="cue-edit-button" data-cue-name="${escapeAttr(cueName)}" ${isSpecialCue && cueName === SPECIAL_CUE_STAGE ? "disabled" : ""}>Edit</button>
         `;
     }
     cueTableCues.innerHTML += `<span class="cue-table-cue-drop" data-cue-index="${cueNames.length}"></span>`;
@@ -2357,7 +2384,7 @@ async function renderCues() {
         cueListing.addEventListener("pointerdown", e => handleAltCueRename(e, cueName));
         cueListing.addEventListener("click", e => handleAltCueRename(e, cueName));
 
-        setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-apply-${escapeCss(cueName)}`));
+        setupCueApplyDrag(document.getElementsByClassName(`cue-table-cue-mask-${escapeCss(cueName)}`));
 
         setupDragDrop(cueListing, cueName, document.querySelectorAll(".mover-widget, .cue-table-delete, .cue-stack-add, .cue-stack-cue, .cue-table-cue:not(.cue-table-add), .cue-table-cue-drop, .cue-editor-mover, .chase-expanded, .chase-step-add, .chase-step-cue"), async event => {
             if (event.target.classList.contains("cue-editor-mover")) {
@@ -2485,6 +2512,10 @@ async function renderCues() {
         });
     });
 
+    document.getElementById("mask-matrix-open").addEventListener("click", () => {
+        maskMatrixDialog.showModal();
+    });
+
     applyCueStackState(currentCueNumber, 0);
     refreshCueEditorFromStorage();
 }
@@ -2497,36 +2528,36 @@ function getCueValues(cueName) {
     const cue = cueStorage.cues[cueName];
     if (!cue) return {};
 
-    const applyState = getCueApplyState(cue);
+    const maskState = getCueMaskState(cue);
     return Object.fromEntries(Object.entries(cue).filter(([key]) => {
-        const group = CUE_APPLY_KEYS.get(key);
-        return group && applyState[group];
+        const group = CUE_MASK_KEYS.get(key);
+        return group && maskState[group];
     }));
 }
 
 /**
- * Gets the default apply state for a cue (currently all except mover function)
+ * Gets the default mask state for a cue (currently all except mover function)
  */
-function getDefaultCueApplyState() {
-    return Object.fromEntries(CUE_APPLY_GROUPS.map(group => [group.id, group.defaultOn]));
+function getDefaultCueMaskState() {
+    return Object.fromEntries(CUE_MASK_GROUPS.map(group => [group.id, group.defaultOn]));
 }
 
 /**
- * Returns an object that associates apply ids with true / false depending on their state
+ * Returns an object that associates mask ids with true / false depending on their state
  * Returns the default if one isn't set
  * @param {*} cue the cue object
  */
-function getCueApplyState(cue) {
-    if (cue?.apply) return { ...getDefaultCueApplyState(), ...cue.apply };
+function getCueMaskState(cue) {
+    if (cue?.apply) return { ...getDefaultCueMaskState(), ...cue.apply };
 
-    const applyState = getDefaultCueApplyState();
+    const maskState = getDefaultCueMaskState();
     if (cue?.mode === "pos") {
-        for (const group of CUE_APPLY_GROUPS) applyState[group.id] = group.id === "POS";
+        for (const group of CUE_MASK_GROUPS) maskState[group.id] = group.id === "POS";
     }
     else if (cue?.mode === "no-pos") {
-        applyState.POS = false;
+        maskState.POS = false;
     }
-    return applyState;
+    return maskState;
 }
 
 /**

@@ -149,11 +149,24 @@ footer img {
 
 .workspace {
     display: grid;
-    grid-template-columns: max-content 1fr;
     grid-template-rows: min-content 1fr;
     padding: 5px;
     gap: 10px;
     min-height: 0;
+}
+
+.workspace-row {
+    display: grid;
+    gap: 10px;
+    min-height: 0;
+    grid-template-columns: max-content 1fr;
+    grid-auto-flow: column;
+    justify-content: start;
+}
+
+.mover.workspace-row {
+    /* grid-template-columns: 1fr 800px; */
+    gap: 20px;
 }
 
 .toolbar {
@@ -525,7 +538,6 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 }
 
 .cue-list {
-    width: max-content;
     overflow-x: visible;
     overflow-y: auto;
     min-height: 0;
@@ -548,7 +560,6 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 
 .cue-box-header {
     text-decoration: underline;
-    position: sticky;
     top: 0;
     z-index: 10;
     background-color: #11151A;
@@ -586,14 +597,24 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
     cursor: not-allowed;
 }
 
-#cue-table-cues {
+#cue-table-cues, #mask-table {
     display: grid;
     margin-bottom: 5px;
-    grid-template-columns: minmax(0, 1fr) repeat(11, minmax(34px, max-content));
     align-items: center;
-    width: 100%;
-    min-width: 100%;
     min-height: 0;
+}
+
+#cue-table-cues {
+    grid-template-columns: 1fr min-content;
+    column-gap: 5px;
+}
+
+#mask-table {
+    grid-template-columns: minmax(0, 1fr) repeat(10, minmax(34px, max-content));
+}
+
+#mask-table .cue-table-cue {
+    margin: 2px;
 }
 
 #cue-table-cues span:has(input[type="checkbox"]) {
@@ -823,7 +844,7 @@ input[type="range"].vertical-slider::-webkit-slider-thumb {
 }
 
 
-#cue-stack-fade-matrix-open {
+.matrix-open-button {
     float: right;
 }
 
@@ -968,7 +989,7 @@ dialog::backdrop {
     min-width: min(620px, calc(100vw - 64px));
 }
 
-.fade-matrix-header {
+.dialog-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -977,12 +998,12 @@ dialog::backdrop {
     border-bottom: 1px solid #2d3742;
 }
 
-.fade-matrix-header h3,
-.fade-matrix-header p {
+.dialog-header h3,
+.dialog-header p {
     margin: 0;
 }
 
-.fade-matrix-header p {
+.dialog-header p {
     margin-top: 2px;
     color: #9aa6b2;
     font-size: 0.85rem;
