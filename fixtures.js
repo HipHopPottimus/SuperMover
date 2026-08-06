@@ -31,7 +31,7 @@ export const FIXTURE_TYPES = {
             {
                 values: [24, 31],
                 name: "Cyan",
-                color: "#00FFFF"
+                color: "#0099FF"
             },
             {
                 values: [32, 39],
@@ -41,7 +41,7 @@ export const FIXTURE_TYPES = {
             {
                 values: [40, 47],
                 name: "Green",
-                color: "#00AA00"
+                color: "#00BB00"
             },
             {
                 values: [48, 55],
@@ -88,7 +88,7 @@ export const FIXTURE_TYPES = {
             {
                 values: [24, 31],
                 name: "Cyan",
-                color: "#00FFFF"
+                color: "#0099FF"
             },
             {
                 values: [32, 39],
@@ -98,7 +98,7 @@ export const FIXTURE_TYPES = {
             {
                 values: [40, 47],
                 name: "Green",
-                color: "#00AA00"
+                color: "#00BB00"
             },
             {
                 values: [48, 55],

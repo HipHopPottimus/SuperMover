@@ -268,6 +268,7 @@ function redrawInputDeviceLinks() {
 }
 
 window.addEventListener("resize", redrawInputDeviceLinks);
+window.addEventListener("scroll", redrawInputDeviceLinks);
 
 function redrawInputDeviceLink(inputDevice) {
     const { linkedMover } = inputDevice;
@@ -414,38 +415,8 @@ function renderMover(mover) {
         moverElement.classList.remove("noSee");
 
         if (profile.hasStaticGobo) {
-            const selectsDiv = moverElement.querySelector('.mover-selects');
-            const staticGoboBlock = document.createElement('div');
-            staticGoboBlock.className = 'mover-input-block';
-            staticGoboBlock.innerHTML = `
-                <label for="${ch}-static-gobo">Static Gobo:</label>
-                <select id="${ch}-static-gobo">
-                    <option value="w:0">Open</option>
-                    <option value="w:7">Gobo 1</option>
-                    <option value="w:14">Gobo 2</option>
-                    <option value="w:21">Gobo 3</option>
-                    <option value="w:28">Gobo 4</option>
-                    <option value="w:35">Gobo 5</option>
-                    <option value="w:42">Gobo 6</option>
-                    <option value="w:49">Gobo 7</option>
-                    <option value="w:56">Gobo 8</option>
-                    <option value="g8shake">Gobo 8 Shake</option>
-                    <option value="g7shake">Gobo 7 Shake</option>
-                    <option value="g6shake">Gobo 6 Shake</option>
-                    <option value="g5shake">Gobo 5 Shake</option>
-                    <option value="g4shake">Gobo 4 Shake</option>
-                    <option value="g3shake">Gobo 3 Shake</option>
-                    <option value="g2shake">Gobo 2 Shake</option>
-                    <option value="g1shake">Gobo 1 Shake</option>
-                    <option value="rcycle">Reverse Cycle</option>
-                    <option value="cycle">Cycle Effect</option>
-                </select>
-                <span id="${ch}-static-gobo-speed-wrap" class="noSee">
-                    <label for="${ch}-static-gobo-speed">Speed:</label>
-                    <input type="range" min="0" max="100" value="0" id="${ch}-static-gobo-speed">
-                    <span id="${ch}-static-gobo-speed-label">0%</span>
-                </span>
-            `;
+            console.log("FOO");
+            moverElement.classList.add("static-gobo-controls-visible");
         }
 
         document.querySelector('.controls-container').appendChild(moverElement);
@@ -762,7 +733,7 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
     const dim = cv[off.Dimmer + ch];
 
     if(dim !== undefined) {
-        intensityBar.style.setProperty("--intensity", (dim / 255 * 100) + "%");
+        intensityBar?.style.setProperty("--intensity", (dim / 255 * 100) + "%");
     }
 
     const col = cv[ch + off.ColorWheel];
@@ -773,7 +744,7 @@ function fillMoverFromChannelValues(ch, cv, fixtureType) {
         else setSelectSpeed(ch, 'color', 'rcycle', (col - 222) / 33);
 
         const colorValue = lookupColor(profile, col).color || "white";
-        intensityBar.style.setProperty("--fill-color", colorValue);
+        intensityBar?.style.setProperty("--fill-color", colorValue);
     }
 
     const gob = cv[ch + off.GoboWheel];
@@ -2366,9 +2337,6 @@ async function renderCues() {
                 const cueName = prompt("Enter new cue name:");
                 if (!cueName || isSpecialCueName(cueName)) return;
                 setCue(cueName, event.data);
-
-                console.log("Set cue", event.data, cueName);
-
                 renderCues();
             }
             else {
