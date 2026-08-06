@@ -2084,7 +2084,7 @@ function renderChases(cueList) {
                 <span class="chase-row-name">${expanded ? "▼" : "▶"} ${escapeHtml(chaseName)}</span>
                 <button type="button" class="chase-edit" data-chase-name="${escapeAttr(chaseName)}">${expanded ? "Close" : "Edit"}</button>
                 <button type="button" class="chase-fade-matrix-open" data-chase-name="${escapeAttr(chaseName)}">Fade matrix</button>
-                <button type="button" class="chase-duplicate" data-chase-name="${escapeAttr(chaseName)}">Duplicate</button>
+                <button type="button" class="chase-duplicate" style="display: none;" data-chase-name="${escapeAttr(chaseName)}">Duplicate</button>
                 <button type="button" class="chase-delete" data-chase-name="${escapeAttr(chaseName)}">Delete</button>
             </div>
             ${expanded ? `
@@ -2120,7 +2120,9 @@ function renderChases(cueList) {
                                 <button type="button" class="chase-step-up" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" ${index === 0 ? "disabled" : ""}>↑</button>
                                 <button type="button" class="chase-step-down" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}" ${index === (chase.steps || []).length - 1 ? "disabled" : ""}>↓</button>
                             </p>
-                            <p><button type="button" class="chase-step-delete" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">🗑</button></p>
+                            <p><button type="button" class="chase-step-delete" data-chase-name="${escapeAttr(chaseName)}" data-step-index="${index}">
+                                <img src="imgs/bin.svg" width="15"/>
+                            </button></p>
                         `}).join("")}
                     </div>
                     <button type="button" class="chase-step-add" data-chase-name="${escapeAttr(chaseName)}">+ Add step</button>
@@ -2272,7 +2274,8 @@ async function renderCues() {
 
     const cueList = document.querySelector(".cue-list");
     cueList.innerHTML = `
-        <p class="cue-box-header">Saved cues
+        <p class="cue-box-header">
+            Cues
             <button type="button" id="mask-matrix-open" class="matrix-open-button">Mask matrix</button>
         </p>
         <div id="cue-table-cues"></div>
@@ -2335,7 +2338,10 @@ async function renderCues() {
     if (!cueNames.length) cueList.innerHTML += `<p class="empty-message">No cues saved.</p>`;
     cueList.innerHTML += `<p class="cue-table-cue cue-table-add">+</p>`;
     cueList.innerHTML += `<p class="cue-table-delete"><img src="imgs/bin.svg" width="15"/></p>`;
-    renderChases(cueList);
+
+    const chaseBox = document.querySelector(".chase-box");
+    chaseBox.innerHTML = "";
+    renderChases(chaseBox);
 
     await generateCueStackTable();
 
