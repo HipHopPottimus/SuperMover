@@ -513,6 +513,7 @@ function sendToAllClients(message) {
     //     recipients: clients.filter(client => client.readyState === WebSocket.OPEN).length,
     //     size: stringifiedMessage.length,
     // });
+    if(!clients) return;
     for (const client of clients) {
         if (client.readyState === WebSocket.OPEN) {
             client.send(stringifiedMessage);
@@ -1208,13 +1209,15 @@ function clearCurrentCue() {
     sendToAllClients({ type: "CUE_STATE", cueNumber: currentCueNumber });
 }
 
-const oscClient = new OSCClient("192.168.200.1", 8000);
-if (process.argv.includes("--use-quickq-feedback"))
+const useQuickQFeedback = process.argv.includes("--use-quickq-feedback") || true;
+
+const oscClient = new OSCClient("10.0.0.2", 8000);
+if (useQuickQFeedback)
     oscClient.send("/feedback/pb+exec");
 
 const oscServer = new OSCServer(8001, "0.0.0.0");
 oscServer.on("message", msg => {
-    if (debug) console.log("RECEIVED OSC", msg);
+    console.log("RECEIVED OSC",  msg);
     const path = msg[0].split("/");
     const [_, cmd, pb, cueNumber] = path;
 
@@ -1222,12 +1225,24 @@ oscServer.on("message", msg => {
 
     goToCueNumber(cueNumber);
 
-
-    if (process.argv.includes("--use-quickq-feedback") && pb == 1) {
+    if (useQuickQFeedback && pb == 7) {
         const intensity = msg[1];
         console.log(pb, msg[1]);
         let data = {};
-        let channelsToSet = [1, 2, 3, 4, 5];
+        let channelsToSet = [
+            //EVO160F
+            151,
+            156,
+            161,
+            166,
+            171,
+            //Frensal RGBAL
+            176,177,178,179,180,181,
+            186,187,188,189,190,191,
+            196,197,198,199,200,201,
+            206,207,208,209,210,211,
+            216,217,218,219,220,221,
+        ];
         channelsToSet.forEach(c => data[c] = intensity);
         getDmx().setChannels(data);
         return;

@@ -102,6 +102,8 @@ class ArtNetListener {
 
                 const data = Buffer.from(msg.subarray(18));
 
+                if(universe != 1) return;
+
                 this.onMsg({ data, universe });
             }
         });

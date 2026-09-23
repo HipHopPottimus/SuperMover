@@ -1,4 +1,7 @@
 import usb from "usb";
+import { TRIGGER_THRESHOLD } from "xinput-ffi/constants";
+
+import {createRisingEdgeTrigger} from "./util.js"
 
 const DEADZONE = 10;
 const LOW_SENSITIVITY_X = 0.2;
@@ -6,7 +9,7 @@ const LOW_SENSITIVITY_Y = LOW_SENSITIVITY_X * 540 / 270;
 const HIGH_SENSITIVITY_X = 1;
 const HIGH_SENSITIVITY_Y = HIGH_SENSITIVITY_X * 540 / 270;
 const NON_LINEAR_EXPONENT = 3;
-const INVERT_X = true;
+const INVERT_X = false;
 const INVERT_Y = false;
 const UPDATE_INTERVAL_MS = 10;
 const ZOOM_SENSITIVITY = 500;
@@ -75,6 +78,14 @@ class Joystick {
     /** @type {boolean} */
     USE_HIGH_SENSITIVITY = false;
 
+    name = "Amogus stick"
+
+    toJSON() {
+        const {device, endpoint, updateTimer, ...otherProps} = this;
+        otherProps.interface = null;
+        return otherProps;
+    }
+
     constructor(vendorId, productId) {
         this.device = usb.findByIds(vendorId, productId);
         if (!this.device) throw new Error("Joystick not found!");
@@ -111,6 +122,8 @@ class Joystick {
         }, UPDATE_INTERVAL_MS);
 
         this.endpoint.startPoll();
+
+        this.triggerLinkMovement = createRisingEdgeTrigger(1);
     }
 
     handleInput(data) {
@@ -130,6 +143,17 @@ class Joystick {
         this.dZ = buttons & ZOOM_DOWN_MASK ? ZOOM_SENSITIVITY : buttons & ZOOM_UP_MASK ? -ZOOM_SENSITIVITY : 0;
         this.dDimmer = buttons & DIMMER_UP_MASK ? DIMMER_SENSITIVITY : buttons & DIMMER_DOWN_MASK ? -DIMMER_SENSITIVITY : 0;
         this.onData?.();
+
+        const leftHeld = this.rawData[3] == 128;
+        const rightHeld = this.rawData[4] == 1;
+
+        console.log(leftHeld, rightHeld);
+
+        this.triggerLinkMovement(leftHeld || rightHeld, () => {
+            this.onLinkMovement(rightHeld ? 1 : -1);
+            this.onUpdate();
+        });
+
     }
 
     destroy() {

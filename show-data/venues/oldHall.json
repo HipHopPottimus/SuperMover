@@ -2,12 +2,12 @@
     "fixtures": [
         {
             "type": "375z",
-            "channel": 300,
+            "channel": 33,
             "name": "Spot 1"
         },
         {
             "type": "375z",
-            "channel": 315,
+            "channel": 48,
             "name": "Spot 2"
         },
         {
@@ -22,12 +22,12 @@
         },
         {
             "type": "375z",
-            "channel": 330,
+            "channel": 63,
             "name": "Spot 3"
         },
         {
             "type": "375z",
-            "channel": 345,
+            "channel": 78,
             "name": "Spot 4"
         }
     ]

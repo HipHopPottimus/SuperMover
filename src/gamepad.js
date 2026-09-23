@@ -104,7 +104,10 @@ export class Gamepad {
         const ry = applyDeadzone(normalizeAxis(gamepad.sThumbRY));
 
         this._dX = (-lx * LOW_SENSITIVITY_X) + (-rx * HIGH_SENSITIVITY_X);
+        this._dX *= -1;
+
         this._dY = (-ly * LOW_SENSITIVITY_Y) + (-ry * HIGH_SENSITIVITY_Y);
+        
         this._dZ = held.has("XINPUT_GAMEPAD_DPAD_DOWN") ? ZOOM_SENSITIVITY : held.has("XINPUT_GAMEPAD_DPAD_UP") ? -ZOOM_SENSITIVITY : 0;
 
         const leftHeld = held.has("XINPUT_GAMEPAD_DPAD_LEFT");

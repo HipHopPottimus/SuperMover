@@ -1076,8 +1076,6 @@ function initMoverControls(ch, fixtureType, options = {}) {
     });
 }
 
-let unproxiedStorage = {};
-
 /**
  * Creates a proxy for an object that is also applied to all nested objects and arrays
  * @param {*} target the object to target
